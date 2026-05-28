@@ -1,15 +1,14 @@
-# Technical Architecture: {{COMPANY}} AI Training
+# Technical Architecture: Nava AI Academy
 
-This document outlines the architectural decisions and design patterns used in the AI Training platform.
+This document outlines the architectural decisions and design patterns used in the
+Nava AI Academy platform — an internal AI-literacy training app that teaches the Nava
+AI Literacy Skills Matrix (Stages 1–2).
 
-## 1. Local-First AI Strategy
+## 1. AI Provider & Data Layer
 
-The core architectural requirement is **Zero Data Leakage**. Traditional AI platforms rely on Cloud APIs (OpenAI, Anthropic, Google). This platform defaults to Local Model providers.
-
-### Provider Integration:
-- **Ollama:** Primary provider, accessed via `localhost:11434`.
-- **LM Studio:** Secondary provider, accessed via `localhost:12345` (OpenAI-compatible endpoint).
-- **Service Layer:** `src/services/localProviderService.ts` handles discovery of local endpoints and fetching model lists.
+The platform is backed by **Claude via API** for its interactive AI features, with a
+**Supabase data layer** for persistence. It runs locally in development and is deployed
+to a Nava subdomain.
 
 ## 2. The "Harness" Pattern
 
@@ -18,7 +17,7 @@ The "Harness" is a software layer that surrounds the raw LLM. In this applicatio
 ### Component Layers:
 1. **System Instructions:** Controlled via `AI_PERSONAS` in `constants.ts`. These set the identity and safety boundaries.
 2. **Grounding Context:** Dynamically injected into prompts based on the current lesson or policy snippet.
-3. **Model Selection:** Users are encouraged to switch between models (e.g., Llama 3 vs. Phi-3) to understand performance/privacy trade-offs.
+3. **Grounding & Boundaries:** Lesson context and safety boundaries shape each request so responses stay on-task for the curriculum.
 
 ## 3. Data Flow
 
@@ -26,11 +25,8 @@ The "Harness" is a software layer that surrounds the raw LLM. In this applicatio
 graph TD
     User([User Input]) --> App[React UI]
     App --> Harness[Harness Logic]
-    Harness --> LocalEndpoint{Local Provider?}
-    LocalEndpoint -- Ollama --> O[Ollama API]
-    LocalEndpoint -- LM Studio --> LS[LM Studio API]
-    O --> Response[Streaming Response]
-    LS --> Response
+    Harness --> Claude[Claude API]
+    Claude --> Response[Streaming Response]
     Response --> UI[Live Markdown Rendering]
 ```
 
@@ -51,4 +47,4 @@ To allow the platform to be generic or specific to a company, we use the `inject
 
 ## 6. Deployment Considerations
 
-The app is built as a Static Single Page Application (SPA). It can be served from any static host. However, the **Local AI connectivity** requires the user to be running a provider on their local loopback interface (`127.0.0.1`).
+The app is built as a Single Page Application (SPA). It runs locally in development and is deployed to a Nava subdomain.
