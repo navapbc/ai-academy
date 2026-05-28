@@ -1,0 +1,14 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-nava-green: #005041;
+  --color-nava-plum: #3d234d;
+  --color-nava-sand: #f5f2e9;
+  --color-nava-gold: #fdcc52;
+  --color-nava-mint: #e8f3ee;
+  
+  --color-primary: var(--color-nava-green);
+  --color-secondary: var(--color-nava-plum);
+  --color-accent: var(--color-nava-gold);
+}

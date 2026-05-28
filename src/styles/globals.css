@@ -1,0 +1,597 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+Pro:ital,wght@0,400;0,600;0,700;0,900;1,400;1,600;1,700;1,900&family=Inter:wght@300;400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;700&display=swap');
+
+/* Official Nava brand fonts — GT America (sans) + Freight Text Pro (serif) */
+@font-face {
+  font-family: 'GTAmerica';
+  src: url('/fonts/GT-America/GT-America-Light.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GTAmerica';
+  src: url('/fonts/GT-America/GT-America-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GTAmerica';
+  src: url('/fonts/GT-America/GT-America-Black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Freight Text Pro';
+  src: url('/fonts/Freight_Text_Pro/freigtexprolig-webfont.woff2') format('woff2');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Freight Text Pro';
+  src: url('/fonts/Freight_Text_Pro/freigtexprobook-webfont.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Freight Text Pro';
+  src: url('/fonts/Freight_Text_Pro/freigtexprobold-webfont.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 18px;
+
+  /* Semantic tokens — mapped to Nava brand colors */
+  --background: #f5f2e9;
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+  --primary: #005041;
+  --primary-foreground: #ffffff;
+  --secondary: #3d234d;
+  --secondary-foreground: #ffffff;
+  --muted: #f3f4f6;
+  --muted-foreground: #374151;
+  --accent: #fdcc52;
+  --accent-foreground: #005041;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --input-background: #f9fafb;
+  --ring: #005041;
+  --switch-background: #005041;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+
+  /* Typography — Nava brand fonts */
+  --font-serif: 'Freight Text Pro', 'Source Serif Pro', Georgia, serif;
+  --font-sans: 'GTAmerica', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', Monaco, Consolas, monospace;
+
+  /* Sharp corners — matches Nava website */
+  --radius: 0.1rem;
+
+  /* Plum scale — Nava Labs sub-brand */
+  --plum-50:  #f5e4f0;
+  --plum-100: #e8bada;
+  --plum-200: #d98bc3;
+  --plum-300: #c85aab;
+  --plum-400: #b14092;
+  --plum-500: #a11e83;
+  --plum-600: #95197f;
+  --plum-700: #851178;
+  --plum-800: #760c71;
+  --plum-900: #5b0462;
+
+  /* Gray scale */
+  --gray-50:  #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  /* Sidebar */
+  --sidebar: #f9fafb;
+  --sidebar-foreground: #111827;
+  --sidebar-primary: #005041;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8f3ee;
+  --sidebar-accent-foreground: #005041;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #005041;
+
+  /* Navy scale — Nava parent brand */
+  --navy-50:  #e3e4ec;
+  --navy-100: #b9bcd1;
+  --navy-200: #8d91b2;
+  --navy-300: #636893;
+  --navy-400: #464a7f;
+  --navy-500: #282e6c;
+  --navy-600: #232965;
+  --navy-700: #1b205a;
+  --navy-800: #14184e;
+  --navy-900: #0a0539;
+
+  /* Legacy earth palette — keep for backward compat with existing components */
+  --earth-terracotta: var(--plum-500);
+  --earth-terracotta-foreground: #ffffff;
+  --earth-terracotta-light: var(--plum-200);
+  --earth-terracotta-light-foreground: var(--plum-900);
+  --earth-forest: var(--plum-800);
+  --earth-forest-foreground: #ffffff;
+  --earth-forest-light: var(--plum-300);
+  --earth-forest-light-foreground: var(--plum-900);
+  --earth-ocean: var(--plum-700);
+  --earth-ocean-foreground: #ffffff;
+  --earth-ocean-light: var(--plum-200);
+  --earth-ocean-light-foreground: var(--plum-900);
+  --earth-brown: var(--plum-900);
+  --earth-brown-foreground: #ffffff;
+  --earth-brown-light: var(--plum-300);
+  --earth-brown-light-foreground: var(--plum-900);
+  --earth-cream: var(--plum-50);
+  --earth-cream-foreground: var(--plum-900);
+  --earth-cream-light: var(--plum-50);
+  --earth-cream-light-foreground: var(--plum-900);
+
+  --earth-magenta: var(--plum-400);
+  --earth-magenta-foreground: #ffffff;
+  --earth-magenta-light: var(--plum-200);
+  --earth-magenta-light-foreground: var(--plum-900);
+  --earth-magenta-muted: var(--plum-100);
+  --earth-magenta-muted-foreground: var(--plum-900);
+  --earth-magenta-wash: var(--plum-50);
+  --earth-magenta-wash-foreground: var(--plum-900);
+
+  --earth-plum: var(--plum-900);
+  --earth-plum-foreground: #ffffff;
+  --earth-plum-light: var(--plum-300);
+  --earth-plum-light-foreground: #ffffff;
+  --earth-plum-wash: var(--plum-50);
+  --earth-plum-wash-foreground: var(--plum-900);
+
+  --earth-success: var(--plum-700);
+  --earth-success-foreground: #ffffff;
+  --earth-success-light: var(--plum-200);
+  --earth-success-light-foreground: var(--plum-900);
+  --earth-warning: var(--plum-500);
+  --earth-warning-foreground: #ffffff;
+  --earth-warning-light: var(--plum-200);
+  --earth-warning-light-foreground: var(--plum-900);
+  --earth-error: var(--plum-800);
+  --earth-error-foreground: #ffffff;
+  --earth-error-light: var(--plum-300);
+  --earth-error-light-foreground: var(--plum-900);
+  --earth-info: var(--plum-600);
+  --earth-info-foreground: #ffffff;
+  --earth-info-light: var(--plum-200);
+  --earth-info-light-foreground: var(--plum-900);
+  --earth-neutral: var(--plum-600);
+  --earth-neutral-foreground: #ffffff;
+  --earth-neutral-light: var(--plum-200);
+  --earth-neutral-light-foreground: var(--plum-900);
+}
+
+.dark {
+  --background: #111827;
+  --foreground: #f9fafb;
+  --card: #1f2937;
+  --card-foreground: #f9fafb;
+  --popover: #1f2937;
+  --popover-foreground: #f9fafb;
+  --primary: #e8f3ee;
+  --primary-foreground: #005041;
+  --secondary: #3d234d;
+  --secondary-foreground: #ffffff;
+  --muted: #374151;
+  --muted-foreground: #9ca3af;
+  --accent: #fdcc52;
+  --accent-foreground: #005041;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #374151;
+  --input: #374151;
+  --ring: #e8f3ee;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+
+  --sidebar: #1f2937;
+  --sidebar-foreground: #f9fafb;
+  --sidebar-primary: #e8f3ee;
+  --sidebar-primary-foreground: #005041;
+  --sidebar-accent: #374151;
+  --sidebar-accent-foreground: #f9fafb;
+  --sidebar-border: #374151;
+  --sidebar-ring: #e8f3ee;
+
+  --earth-terracotta: var(--plum-300);
+  --earth-terracotta-foreground: var(--plum-900);
+  --earth-terracotta-light: var(--plum-700);
+  --earth-terracotta-light-foreground: #ffffff;
+  --earth-forest: var(--plum-400);
+  --earth-forest-foreground: #ffffff;
+  --earth-forest-light: var(--plum-700);
+  --earth-forest-light-foreground: #ffffff;
+  --earth-ocean: var(--plum-400);
+  --earth-ocean-foreground: #ffffff;
+  --earth-ocean-light: var(--plum-700);
+  --earth-ocean-light-foreground: #ffffff;
+  --earth-brown: var(--plum-500);
+  --earth-brown-foreground: #ffffff;
+  --earth-brown-light: var(--plum-700);
+  --earth-brown-light-foreground: #ffffff;
+  --earth-cream: var(--plum-900);
+  --earth-cream-foreground: var(--plum-100);
+  --earth-cream-light: var(--plum-800);
+  --earth-cream-light-foreground: var(--plum-100);
+
+  --earth-magenta: var(--plum-300);
+  --earth-magenta-foreground: var(--plum-900);
+  --earth-magenta-light: var(--plum-600);
+  --earth-magenta-light-foreground: #ffffff;
+  --earth-magenta-muted: var(--plum-700);
+  --earth-magenta-muted-foreground: #ffffff;
+  --earth-magenta-wash: var(--plum-900);
+  --earth-magenta-wash-foreground: var(--plum-100);
+
+  --earth-plum: var(--plum-600);
+  --earth-plum-foreground: #ffffff;
+  --earth-plum-light: var(--plum-400);
+  --earth-plum-light-foreground: #ffffff;
+  --earth-plum-wash: var(--plum-900);
+  --earth-plum-wash-foreground: var(--plum-100);
+
+  --earth-success: var(--plum-500);
+  --earth-success-foreground: #ffffff;
+  --earth-success-light: var(--plum-700);
+  --earth-success-light-foreground: #ffffff;
+  --earth-warning: var(--plum-300);
+  --earth-warning-foreground: var(--plum-900);
+  --earth-warning-light: var(--plum-600);
+  --earth-warning-light-foreground: #ffffff;
+  --earth-error: var(--plum-400);
+  --earth-error-foreground: #ffffff;
+  --earth-error-light: var(--plum-700);
+  --earth-error-light-foreground: #ffffff;
+  --earth-info: var(--plum-400);
+  --earth-info-foreground: #ffffff;
+  --earth-info-light: var(--plum-700);
+  --earth-info-light-foreground: #ffffff;
+  --earth-neutral: var(--plum-500);
+  --earth-neutral-foreground: #ffffff;
+  --earth-neutral-light: var(--plum-700);
+  --earth-neutral-light-foreground: #ffffff;
+}
+
+@theme inline {
+  /* Typography — registers font-sans / font-serif / font-mono utilities */
+  --font-sans: 'GTAmerica', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: 'Freight Text Pro', 'Source Serif Pro', Georgia, serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', Monaco, Consolas, monospace;
+
+  /* Semantic tokens */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 0.05rem);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 0.1rem);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Plum scale — available as Tailwind classes (e.g. bg-plum-500) */
+  --color-plum-50:  var(--plum-50);
+  --color-plum-100: var(--plum-100);
+  --color-plum-200: var(--plum-200);
+  --color-plum-300: var(--plum-300);
+  --color-plum-400: var(--plum-400);
+  --color-plum-500: var(--plum-500);
+  --color-plum-600: var(--plum-600);
+  --color-plum-700: var(--plum-700);
+  --color-plum-800: var(--plum-800);
+  --color-plum-900: var(--plum-900);
+
+  /* Gray scale — available as Tailwind classes (e.g. bg-gray-200) */
+  --color-gray-50:  var(--gray-50);
+  --color-gray-100: var(--gray-100);
+  --color-gray-200: var(--gray-200);
+  --color-gray-300: var(--gray-300);
+  --color-gray-400: var(--gray-400);
+  --color-gray-500: var(--gray-500);
+  --color-gray-600: var(--gray-600);
+  --color-gray-700: var(--gray-700);
+  --color-gray-800: var(--gray-800);
+  --color-gray-900: var(--gray-900);
+
+  /* Navy scale — Nava parent brand */
+  --color-navy-50:  var(--navy-50);
+  --color-navy-100: var(--navy-100);
+  --color-navy-200: var(--navy-200);
+  --color-navy-300: var(--navy-300);
+  --color-navy-400: var(--navy-400);
+  --color-navy-500: var(--navy-500);
+  --color-navy-600: var(--navy-600);
+  --color-navy-700: var(--navy-700);
+  --color-navy-800: var(--navy-800);
+  --color-navy-900: var(--navy-900);
+
+  /* Legacy earth aliases */
+  --color-earth-terracotta: var(--earth-terracotta);
+  --color-earth-terracotta-foreground: var(--earth-terracotta-foreground);
+  --color-earth-terracotta-light: var(--earth-terracotta-light);
+  --color-earth-terracotta-light-foreground: var(--earth-terracotta-light-foreground);
+  --color-earth-forest: var(--earth-forest);
+  --color-earth-forest-foreground: var(--earth-forest-foreground);
+  --color-earth-forest-light: var(--earth-forest-light);
+  --color-earth-forest-light-foreground: var(--earth-forest-light-foreground);
+  --color-earth-ocean: var(--earth-ocean);
+  --color-earth-ocean-foreground: var(--earth-ocean-foreground);
+  --color-earth-ocean-light: var(--earth-ocean-light);
+  --color-earth-ocean-light-foreground: var(--earth-ocean-light-foreground);
+  --color-earth-brown: var(--earth-brown);
+  --color-earth-brown-foreground: var(--earth-brown-foreground);
+  --color-earth-brown-light: var(--earth-brown-light);
+  --color-earth-brown-light-foreground: var(--earth-brown-light-foreground);
+  --color-earth-cream: var(--earth-cream);
+  --color-earth-cream-foreground: var(--earth-cream-foreground);
+  --color-earth-cream-light: var(--earth-cream-light);
+  --color-earth-cream-light-foreground: var(--earth-cream-light-foreground);
+  --color-earth-magenta: var(--earth-magenta);
+  --color-earth-magenta-foreground: var(--earth-magenta-foreground);
+  --color-earth-magenta-light: var(--earth-magenta-light);
+  --color-earth-magenta-light-foreground: var(--earth-magenta-light-foreground);
+  --color-earth-magenta-muted: var(--earth-magenta-muted);
+  --color-earth-magenta-muted-foreground: var(--earth-magenta-muted-foreground);
+  --color-earth-magenta-wash: var(--earth-magenta-wash);
+  --color-earth-magenta-wash-foreground: var(--earth-magenta-wash-foreground);
+  --color-earth-plum: var(--earth-plum);
+  --color-earth-plum-foreground: var(--earth-plum-foreground);
+  --color-earth-plum-light: var(--earth-plum-light);
+  --color-earth-plum-light-foreground: var(--earth-plum-light-foreground);
+  --color-earth-plum-wash: var(--earth-plum-wash);
+  --color-earth-plum-wash-foreground: var(--earth-plum-wash-foreground);
+  --color-earth-success: var(--earth-success);
+  --color-earth-success-foreground: var(--earth-success-foreground);
+  --color-earth-success-light: var(--earth-success-light);
+  --color-earth-success-light-foreground: var(--earth-success-light-foreground);
+  --color-earth-warning: var(--earth-warning);
+  --color-earth-warning-foreground: var(--earth-warning-foreground);
+  --color-earth-warning-light: var(--earth-warning-light);
+  --color-earth-warning-light-foreground: var(--earth-warning-light-foreground);
+  --color-earth-error: var(--earth-error);
+  --color-earth-error-foreground: var(--earth-error-foreground);
+  --color-earth-error-light: var(--earth-error-light);
+  --color-earth-error-light-foreground: var(--earth-error-light-foreground);
+  --color-earth-info: var(--earth-info);
+  --color-earth-info-foreground: var(--earth-info-foreground);
+  --color-earth-info-light: var(--earth-info-light);
+  --color-earth-info-light-foreground: var(--earth-info-light-foreground);
+  --color-earth-neutral: var(--earth-neutral);
+  --color-earth-neutral-foreground: var(--earth-neutral-foreground);
+  --color-earth-neutral-light: var(--earth-neutral-light);
+  --color-earth-neutral-light-foreground: var(--earth-neutral-light-foreground);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+}
+
+/**
+ * Base typography
+ */
+@layer base {
+  h1 {
+    font-family: var(--font-sans);
+    font-size: 3rem;
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-family: var(--font-sans);
+    font-size: 2.25rem;
+    font-weight: 900;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    font-family: var(--font-sans);
+    font-size: 1.875rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  h4 {
+    font-family: var(--font-sans);
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  h5 {
+    font-family: var(--font-sans);
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  h6 {
+    font-family: var(--font-sans);
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  p {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.6;
+  }
+
+  label {
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  button {
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  input {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  small {
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.4;
+  }
+
+  strong {
+    font-weight: 600;
+  }
+
+  em {
+    font-style: italic;
+  }
+
+  blockquote {
+    font-family: var(--font-serif);
+    font-size: 1.125rem;
+    font-weight: 400;
+    line-height: 1.6;
+    font-style: italic;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    font-weight: 400;
+  }
+}
+
+html {
+  font-size: var(--font-size);
+}
+
+html, body {
+  min-height: 100%;
+}
+
+#root {
+  min-height: 100%;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Hide the injected v3 badge while still allowing background verification. */
+.grecaptcha-badge {
+  visibility: hidden;
+}
+
+/* Legacy brand color aliases — remapped to plum */
+.bg-brand-100 { background-color: var(--plum-50); }
+.bg-brand-50 { background-color: var(--plum-50); }
+.bg-brand-600 { background-color: var(--plum-400); }
+.bg-brand-700 { background-color: var(--plum-900); }
+.text-brand-600 { color: var(--plum-400); }
+.text-brand-700 { color: var(--plum-700); }
+.text-brand-800 { color: var(--plum-900); }
+.text-brand-900 { color: var(--plum-900); }
+.border-brand-200 { border-color: var(--plum-200); }
+.border-brand-300 { border-color: var(--plum-300); }
+.hover\:bg-brand-50:hover { background-color: var(--plum-50); }
+.hover\:bg-brand-700:hover { background-color: var(--plum-900); }
+.hover\:border-brand-300:hover { border-color: var(--plum-300); }
+.focus\:ring-brand-500:focus { --tw-ring-color: var(--plum-400); }
+.focus\:border-brand-500:focus { border-color: var(--plum-400); }
+.bg-warm-50 { background-color: var(--plum-50); }
+
+/* Custom animations */
+@keyframes pulse-gentle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.02);
+  }
+}
+
+.animate-pulse-gentle {
+  animation: pulse-gentle 3s ease-in-out infinite;
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-gentle {
+    animation: none;
+  }
+}
