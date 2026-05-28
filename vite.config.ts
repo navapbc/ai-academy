@@ -13,13 +13,6 @@ export default defineConfig(() => {
     },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
-      proxy: {
-        '/lm-studio': {
-          target: 'http://localhost:1234',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/lm-studio/, ''),
-        },
-      },
     },
   };
 });

@@ -5,18 +5,13 @@ import { CheckCircle, ExternalLink, PlayCircle, Library } from 'lucide-react';
 import { Module, AIPersona } from '../types';
 import { GLOSSARY_TERMS } from '../constants';
 import { BRANDING, injectBranding } from '../branding';
-import { LocalModel } from '../services/localProviderService';
 import PrivacySimulator from './PrivacySimulator';
 import PromptLab from './PromptLab';
 import Quiz from './Quiz';
 import UseCaseLib from './UseCaseLib';
-import OllamaGuide from './OllamaGuide';
 
 interface Props {
   module: Module;
-  isLocalActive: boolean;
-  localModels: LocalModel[];
-  selectedLocalModel?: string;
   selectedPersona: AIPersona;
   onComplete: () => void;
 }
@@ -26,7 +21,7 @@ function toYouTubeEmbed(url: string): string {
   return match ? `https://www.youtube.com/embed/${match[1]}` : url;
 }
 
-export default function ModuleRenderer({ module, isLocalActive, localModels, selectedLocalModel, selectedPersona, onComplete }: Props) {
+export default function ModuleRenderer({ module, selectedPersona, onComplete }: Props) {
   const renderInteractive = () => {
     switch (module.type) {
       case 'simulator':
@@ -35,9 +30,6 @@ export default function ModuleRenderer({ module, isLocalActive, localModels, sel
         return (
           <PromptLab
             onComplete={onComplete}
-            isLocalActive={isLocalActive}
-            localModels={localModels}
-            selectedLocalModel={selectedLocalModel}
             selectedPersona={selectedPersona}
           />
         );
@@ -45,8 +37,6 @@ export default function ModuleRenderer({ module, isLocalActive, localModels, sel
         return <Quiz moduleId={module.id} onComplete={onComplete} />;
       case 'use-case':
         return <UseCaseLib onComplete={onComplete} />;
-      case 'local-setup':
-        return <OllamaGuide isActive={isLocalActive} onComplete={onComplete} />;
       case 'glossary':
         return <Glossary />;
       default:

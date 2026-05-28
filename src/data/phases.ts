@@ -8,7 +8,6 @@ import contentP1M3 from '../content/p1-m3.md?raw';
 import contentP2M1 from '../content/p2-m1.md?raw';
 import contentP2M2 from '../content/p2-m2.md?raw';
 import contentP2M3 from '../content/p2-m3.md?raw';
-import contentP3M1 from '../content/p3-m1.md?raw';
 import contentP3M2 from '../content/p3-m2.md?raw';
 import contentP3M3 from '../content/p3-m3.md?raw';
 import contentP4M1 from '../content/p4-m1.md?raw';
@@ -22,19 +21,6 @@ export const PHASES: Phase[] = [
     title: 'Crawl: Mental Models',
     description: "Understanding what AI is (and isn't) before we touch the tech.",
     modules: [
-      {
-        id: 'p0-setup',
-        phaseId: 'phase-1',
-        title: 'Before You Begin: Install Local AI',
-        type: 'local-setup' as const,
-        content: '',
-        videoUrl: 'https://www.youtube.com/watch?v=2ShWmXICOjI',
-        resources: [
-          { title: 'LM Studio — Download', url: 'https://lmstudio.ai/' },
-          { title: 'Ollama — Download & Docs', url: 'https://ollama.com/' },
-          { title: 'IBM Granite Models (free, open-source)', url: 'https://ollama.com/library/granite3.1-dense' },
-        ]
-      },
       {
         id: 'p1-m0',
         phaseId: 'phase-1',
@@ -169,19 +155,6 @@ export const PHASES: Phase[] = [
     title: 'Run: Local Independence',
     description: 'Taking the training wheels off and running models on your hardware.',
     modules: [
-      {
-        id: 'p3-m1',
-        phaseId: 'phase-3',
-        title: 'The Local Stack',
-        type: 'local-setup',
-        videoUrl: 'https://www.youtube.com/watch?v=5RIOQuHOihY',
-        content: contentP3M1,
-        resources: [
-          { title: 'Ollama Documentation', url: 'https://ollama.com/' },
-          { title: 'LM Studio Documentation', url: 'https://lmstudio.ai/docs' },
-          { title: 'IBM Granite — Open Source Models', url: 'https://ollama.com/library/granite3.1-dense' },
-        ]
-      },
       {
         id: 'p3-m2',
         phaseId: 'phase-3',
