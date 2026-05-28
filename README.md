@@ -20,6 +20,31 @@ npm install
 npm run dev
 ```
 
+## Local development
+
+The app uses a fully local Supabase backend (Postgres + Auth + Studio) run via
+the Supabase CLI and Docker.
+
+**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+running, plus `npm install`.
+
+```bash
+# 1. Start the local Supabase stack (first run pulls Docker images).
+npx supabase start
+
+# 2. Copy the printed API URL + anon key into your .env.
+cp .env.example .env
+#   then set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY from the output.
+
+# 3. Run the app.
+npm run dev
+```
+
+Useful commands:
+- `npx supabase status` — show local URLs/keys (Studio is at http://127.0.0.1:54323).
+- `npx supabase db reset` — re-apply migrations + seed against a fresh local DB.
+- `npx supabase stop` — tear the stack down.
+
 ## Configuration
 
 You can customize the company name, logo, and core mission in `src/branding.ts`:

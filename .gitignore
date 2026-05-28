@@ -1,4 +1,12 @@
 node_modules
+
+# Local env (keep .env.example committed)
 .env
+.env.local
+.env.*.local
 
 dist
+
+# Supabase local temp artifacts
+supabase/.branches
+supabase/.temp
