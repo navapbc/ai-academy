@@ -1,5 +1,5 @@
 
-export type ModuleType = 'content' | 'lab' | 'simulator' | 'use-case' | 'quiz' | 'local-setup' | 'glossary';
+export type ModuleType = 'content' | 'lab' | 'simulator' | 'use-case' | 'quiz' | 'glossary';
 
 export interface Module {
   id: string;
