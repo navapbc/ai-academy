@@ -1,33 +1,24 @@
-# {{COMPANY}} AI Training Platform
+# Nava AI Academy
 
-An interactive, local-first learning platform for mastering Generative AI and Large Language Models (LLMs) with a focus on data privacy and professional ethics.
+An internal AI-literacy training platform for Nava.
 
 ## Overview
 
-This application provides a structured curriculum for internal teams to learn about AI. It emphasizes **Local AI** (using Ollama or LM Studio) to ensure that sensitive data never leaves your machine.
-
-### Key Features:
-- **Interactive Labs:** Real-time feedback using local LLMs.
-- **AI Harness Concepts:** Learn how to "cage" an AI using system prompts and grounding.
-- **Privacy First:** Designed for high-security environments like government services (PII/PHI).
-- **Custom Branding:** Easily adaptable for different organizations via `src/branding.ts`.
+Nava AI Academy is an internal training platform that teaches the Nava AI Literacy
+Skills Matrix (Stages 1–2). It pairs a structured curriculum with interactive labs,
+backed by Claude via API and a Supabase data layer. The app runs locally in
+development and is deployed to a Nava subdomain.
 
 ## Getting Started
 
 ### Prerequisites:
 1. **Node.js:** v18 or higher.
-2. **Local AI Provider (Highly Recommended):**
-   - [Ollama](https://ollama.com/) (Standard)
-   - [LM Studio](https://lmstudio.ai/) (Advanced)
 
 ### Installation:
 ```bash
 npm install
 npm run dev
 ```
-
-### Connected Local Models:
-Once you have Ollama or LM Studio running on port `11434` or `12345`, the dashboard will automatically detect your available models (e.g., Llama 3, Mistral, Phi-3).
 
 ## Configuration
 
