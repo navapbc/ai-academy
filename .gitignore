@@ -5,6 +5,10 @@ node_modules
 .env.local
 .env.*.local
 
+# Edge Function secrets (ANTHROPIC_API_KEY) — keep .env.example committed.
+# Covered by the bare `.env` rule above, but listed explicitly to be safe.
+supabase/functions/.env
+
 dist
 
 # Supabase local temp artifacts
