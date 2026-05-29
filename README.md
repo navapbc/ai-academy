@@ -28,6 +28,11 @@ the Supabase CLI and Docker.
 **Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 running, plus `npm install`.
 
+AI features (Playground, Prompt Lab) talk to Claude through a Supabase Edge
+Function (`supabase/functions/chat`). The `ANTHROPIC_API_KEY` is held
+**server-side** in that function's runtime env and is never exposed to the
+browser — the client only ever calls the Edge Function.
+
 ```bash
 # 1. Start the local Supabase stack (first run pulls Docker images).
 npx supabase start
@@ -36,9 +41,22 @@ npx supabase start
 cp .env.example .env
 #   then set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY from the output.
 
-# 3. Run the app.
+# 3. Set your Anthropic API key for the Edge Function (server-side only).
+cp supabase/functions/.env.example supabase/functions/.env
+#   then set ANTHROPIC_API_KEY=sk-ant-... in that file (it is gitignored).
+
+# 4. Serve the Edge Functions with that env file (leave running).
+npx supabase functions serve --env-file supabase/functions/.env
+
+# 5. In another terminal, run the app.
 npm run dev
 ```
+
+Get an Anthropic API key from
+[console.anthropic.com](https://console.anthropic.com/settings/keys). The
+function defaults to Claude Haiku 4.5 (cheapest current model); override the
+default with `ANTHROPIC_MODEL` in the same env file, or per request via the
+in-app model selector.
 
 Useful commands:
 - `npx supabase status` — show local URLs/keys (Studio is at http://127.0.0.1:54323).
