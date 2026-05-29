@@ -1,7 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Loader2 } from 'lucide-react';
 import { PHASES } from './constants';
-import { UserProgress, AIPersona } from './types';
+import { AIPersona } from './types';
 import { BRANDING } from './branding';
+import { useAuth } from './lib/auth';
+import { useProgress } from './lib/useProgress';
+import Login from './components/Login';
 import ModuleRenderer from './components/ModuleRenderer';
 import Playground from './components/Playground';
 import Sidebar from './components/layout/Sidebar';
@@ -10,36 +14,46 @@ import SupportModal from './components/SupportModal';
 import LocalTutorFAB from './components/LocalTutorFAB';
 
 export default function App() {
-  const [progress, setProgress] = useState<UserProgress>(() => {
-    const saved = localStorage.getItem('sprint_progress');
-    if (saved) return JSON.parse(saved);
-    return {
-      completedModuleIds: [],
-      currentModuleId: PHASES[0].modules[0].id
-    };
-  });
-
-  const [view, setView] = useState<'learning' | 'playground'>('learning');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isSupportOpen, setIsSupportOpen] = useState(false);
-  const [selectedPersona, setSelectedPersona] = useState<AIPersona>('default');
+  const { loading, session, signOut } = useAuth();
 
   // Page Title
   useEffect(() => {
     document.title = `${BRANDING.name} AI Training`;
   }, []);
 
-  // Persistence
-  useEffect(() => {
-    localStorage.setItem('sprint_progress', JSON.stringify(progress));
-  }, [progress]);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-nava-sand flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-nava-green animate-spin" />
+      </div>
+    );
+  }
 
+  if (!session) return <Login />;
+
+  // Keyed on user id so progress state resets cleanly across sign-in/out.
+  return <AcademyApp key={session.user.id} userId={session.user.id} onSignOut={signOut} />;
+}
+
+function AcademyApp({ userId, onSignOut }: { userId: string; onSignOut: () => void }) {
   const allModules = useMemo(() => PHASES.flatMap(p => p.modules), []);
+  const allModuleIds = useMemo(() => allModules.map(m => m.id), [allModules]);
+
+  const { progress, completeModule, selectModule, error, dismissError } = useProgress(
+    userId,
+    allModuleIds,
+  );
+
+  const [view, setView] = useState<'learning' | 'playground'>('learning');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [selectedPersona, setSelectedPersona] = useState<AIPersona>('default');
+
   const currentModule = allModules.find(m => m.id === progress.currentModuleId) || allModules[0];
   const currentPhase = PHASES.find(p => p.id === currentModule.phaseId);
 
   const handleModuleSelect = (moduleId: string) => {
-    setProgress(prev => ({ ...prev, currentModuleId: moduleId }));
+    selectModule(moduleId);
     // Auto-close sidebar on mobile
     if (window.innerWidth < 1024) {
       setIsSidebarOpen(false);
@@ -47,16 +61,7 @@ export default function App() {
   };
 
   const handleComplete = (moduleId: string) => {
-    if (!progress.completedModuleIds.includes(moduleId)) {
-      setProgress(prev => {
-        const nextModuleIndex = allModules.findIndex(m => m.id === moduleId) + 1;
-        const nextModuleId = allModules[nextModuleIndex]?.id || moduleId;
-        return {
-          completedModuleIds: [...prev.completedModuleIds, moduleId],
-          currentModuleId: nextModuleId
-        };
-      });
-    }
+    completeModule(moduleId);
   };
 
   const overallProgress = Math.round((progress.completedModuleIds.length / allModules.length) * 100);
@@ -82,7 +87,20 @@ export default function App() {
           currentPhase={currentPhase}
           selectedPersona={selectedPersona}
           onPersonaSelect={setSelectedPersona}
+          onSignOut={onSignOut}
         />
+
+        {error && (
+          <div className="mx-4 mt-3 flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-orange-50 border border-orange-200 text-orange-800 text-sm">
+            <span>{error}</span>
+            <button
+              onClick={dismissError}
+              className="font-bold text-orange-600 hover:text-orange-900 shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto w-full">
           <div className={view === 'playground' ? 'h-full p-4 lg:p-6' : 'hidden'}>

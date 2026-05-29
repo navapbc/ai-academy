@@ -1,4 +1,4 @@
-import { Menu, ChevronRight, UserCircle } from 'lucide-react';
+import { Menu, ChevronRight, UserCircle, LogOut } from 'lucide-react';
 import { Phase, Module, AIPersona } from '../../types';
 import { AI_PERSONAS } from '../../constants';
 
@@ -9,6 +9,7 @@ interface HeaderProps {
   currentPhase: Phase | undefined;
   selectedPersona: AIPersona;
   onPersonaSelect: (persona: AIPersona) => void;
+  onSignOut: () => void;
 }
 
 export default function Header({
@@ -17,7 +18,8 @@ export default function Header({
   currentModule,
   currentPhase,
   selectedPersona,
-  onPersonaSelect
+  onPersonaSelect,
+  onSignOut
 }: HeaderProps) {
   const selectedPersonaData = AI_PERSONAS.find(p => p.id === selectedPersona) || AI_PERSONAS[0];
 
@@ -67,8 +69,18 @@ export default function Header({
           </div>
         </div>
 
-        <div className="w-8 h-8 rounded-full bg-nava-plum border border-nava-plum flex items-center justify-center text-white font-bold text-xs shadow-sm">
-          CT
+        <div className="flex items-center gap-2 pl-1 border-l border-gray-200">
+          <div className="w-8 h-8 rounded-full bg-nava-plum border border-nava-plum flex items-center justify-center text-white font-bold text-xs shadow-sm">
+            CT
+          </div>
+          <button
+            onClick={onSignOut}
+            title="Sign out"
+            aria-label="Sign out"
+            className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-nava-plum transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </header>

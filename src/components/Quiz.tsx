@@ -1,15 +1,53 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { HelpCircle, Check, X, ShieldCheck, ChevronRight } from 'lucide-react';
 import { QUIZ_DATA } from '../constants';
+import { useAuth } from '../lib/auth';
+import { recordQuizAttempt, fetchQuizSummary, type QuizSummary } from '../lib/progress';
 
 export default function Quiz({ moduleId, onComplete }: { moduleId: string; onComplete: () => void }) {
+  const { user } = useAuth();
   const questions = QUIZ_DATA[moduleId] || [];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [score, setScore] = useState(0);
   const [showResults, setShowResults] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [summary, setSummary] = useState<QuizSummary | null>(null);
+
+  // Read back any prior attempts so we can show the learner their best score.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    fetchQuizSummary(user.id, moduleId)
+      .then((s) => {
+        if (!cancelled) setSummary(s);
+      })
+      .catch(() => {
+        // Read-back is non-essential; a failure just hides the best-score line.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, moduleId]);
+
+  // Persist the attempt once, when results are reached.
+  useEffect(() => {
+    if (!showResults || !user) return;
+    const passed = score === questions.length;
+    recordQuizAttempt(user.id, {
+      moduleId,
+      score,
+      maxScore: questions.length,
+      passed,
+      answers,
+    }).catch(() => {
+      // Score persistence is best-effort; the unlock flow still works locally.
+    });
+    // Only fire on the transition into results.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showResults]);
 
   if (questions.length === 0) return null;
 
@@ -29,6 +67,7 @@ export default function Quiz({ moduleId, onComplete }: { moduleId: string; onCom
 
   const handleSubmit = () => {
     setIsSubmitted(true);
+    setAnswers(prev => ({ ...prev, [String(currentIndex)]: selected! }));
     if (isCorrect) setScore(prev => prev + 1);
   };
 
@@ -46,8 +85,14 @@ export default function Quiz({ moduleId, onComplete }: { moduleId: string; onCom
         <div className="space-y-2">
           <h3 className="text-2xl font-bold">Checkpoint Result</h3>
           <p className="text-gray-500">You scored {score} out of {questions.length}</p>
+          {summary?.best && (
+            <p className="text-xs text-gray-400">
+              Best so far: {summary.best.score}/{summary.best.maxScore}
+              {summary.best.passed ? ' — passed' : ''}
+            </p>
+          )}
         </div>
-        
+
         {passing ? (
           <div className="space-y-6">
             <p className="text-green-700 font-medium bg-green-50 p-4 rounded-xl">
@@ -72,6 +117,7 @@ export default function Quiz({ moduleId, onComplete }: { moduleId: string; onCom
                 setIsSubmitted(false);
                 setScore(0);
                 setShowResults(false);
+                setAnswers({});
               }}
               className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-black transition-all"
             >

@@ -14,3 +14,6 @@ dist
 # Supabase local temp artifacts
 supabase/.branches
 supabase/.temp
+
+.vscode
+pnpm-lock.yaml
