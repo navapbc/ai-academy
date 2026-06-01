@@ -1,10 +1,13 @@
+import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion } from 'motion/react';
-import { CheckCircle, ExternalLink, PlayCircle, Library } from 'lucide-react';
+import { CheckCircle, ExternalLink, PlayCircle, Library, Award } from 'lucide-react';
 import { Module, AIPersona } from '../types';
 import { GLOSSARY_TERMS, QUIZ_DATA } from '../constants';
 import { BRANDING, injectBranding } from '../branding';
+import { useAuth } from '../lib/auth';
+import { fetchQuizSummary, type QuizResult } from '../lib/progress';
 import PrivacySimulator from './PrivacySimulator';
 import PromptLab from './PromptLab';
 import Quiz from './Quiz';
@@ -22,11 +25,34 @@ function toYouTubeEmbed(url: string): string {
 }
 
 export default function ModuleRenderer({ module, selectedPersona, onComplete }: Props) {
+  const { user } = useAuth();
   // A content/lesson module can carry a scored quiz. When it does, the quiz
   // renders after the lesson and is the completion gate — the standalone
   // "I've completed this section" button is suppressed (passing == complete).
   // Quiz-type modules already render their quiz via renderInteractive().
   const hasInlineQuiz = module.type !== 'quiz' && (QUIZ_DATA[module.id]?.length ?? 0) > 0;
+  const hasQuiz = (QUIZ_DATA[module.id]?.length ?? 0) > 0;
+
+  // Surface the learner's best recorded score for this module's quiz. Stays
+  // null (badge hidden) until an attempt exists; read-back failures are silent.
+  const [quizBest, setQuizBest] = useState<QuizResult | null>(null);
+  useEffect(() => {
+    if (!user || !hasQuiz) {
+      setQuizBest(null);
+      return;
+    }
+    let cancelled = false;
+    fetchQuizSummary(user.id, module.id)
+      .then((s) => {
+        if (!cancelled) setQuizBest(s.best);
+      })
+      .catch(() => {
+        // Best-score is a nicety; a failed read just hides the badge.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, module.id, hasQuiz]);
 
   const renderInteractive = () => {
     switch (module.type) {
@@ -58,6 +84,20 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
       exit={{ opacity: 0, y: -20 }}
       className="space-y-12 pb-24"
     >
+      {quizBest && (
+        <div className="flex justify-end -mb-6">
+          <span
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+              quizBest.passed ? 'bg-nava-mint text-nava-green' : 'bg-orange-50 text-orange-700'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5" />
+            Best score {quizBest.score}/{quizBest.maxScore}
+            {quizBest.passed ? ' · Passed' : ''}
+          </span>
+        </div>
+      )}
+
       {module.videoUrl ? (
         <div className="aspect-video rounded-3xl overflow-hidden border border-gray-800 shadow-2xl">
           <iframe
