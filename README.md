@@ -34,12 +34,15 @@ Function (`supabase/functions/chat`). The `ANTHROPIC_API_KEY` is held
 browser — the client only ever calls the Edge Function.
 
 ```bash
-# 1. Start the local Supabase stack (first run pulls Docker images).
-npx supabase start
-
-# 2. Copy the printed API URL + anon key into your .env.
+# 1. Copy the env template (it is gitignored) and fill in values below.
 cp .env.example .env
-#   then set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY from the output.
+
+# 2. Start the local Supabase stack (first run pulls Docker images).
+#    Run from the repo root so the CLI auto-loads .env (it needs GOOGLE_CLIENT_ID
+#    / GOOGLE_SECRET to enable Google sign-in — see "Google SSO" below).
+npx supabase start
+#    Copy the printed API URL + anon key into VITE_SUPABASE_URL and
+#    VITE_SUPABASE_ANON_KEY in .env.
 
 # 3. Set your Anthropic API key for the Edge Function (server-side only).
 cp supabase/functions/.env.example supabase/functions/.env
@@ -51,6 +54,35 @@ npx supabase functions serve --env-file supabase/functions/.env
 # 5. In another terminal, run the app.
 npm run dev
 ```
+
+### Google SSO (sign-in)
+
+Sign-in is **Google SSO restricted to `@navapbc.com`**. Access is enforced in two
+layers that don't trust the browser: a client guard in `src/lib/auth.tsx` that
+signs out any non-`navapbc.com` session, and a `before insert on auth.users`
+database trigger (the `restrict_auth_email_domain` migration) that rejects the
+row outright. Google's `hd` hint is UX only, not a boundary.
+
+To enable Google sign-in locally:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials),
+   create an **OAuth 2.0 Client ID** of type **Web application**. A personal/dev
+   Google Cloud project is fine for local work; the production client lives in
+   the Nava Google org and is wired up at deploy time.
+2. Add this **Authorized redirect URI**:
+   `http://127.0.0.1:54321/auth/v1/callback` (the local Supabase auth endpoint).
+3. Put the client id/secret in your gitignored `.env`:
+   ```bash
+   GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
+   GOOGLE_SECRET=your-google-oauth-client-secret
+   ```
+   The Supabase CLI substitutes these into `supabase/config.toml`
+   (`[auth.external.google]`) on `supabase start`. `GOOGLE_SECRET` is server-side
+   only — never VITE-prefix it; it is never exposed to the browser.
+
+**Local dev fallback:** the email/password form (shown only in dev) signs in the
+seeded demo user `demo@navapbc.com` / `demo-password`, so you can work locally
+without configuring Google.
 
 Get an Anthropic API key from
 [console.anthropic.com](https://console.anthropic.com/settings/keys). The

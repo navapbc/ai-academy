@@ -7,7 +7,10 @@
 -- derived from the email). We then add a little sample progress + quiz data.
 --
 -- This runs on `supabase db reset` against a freshly created local database.
--- Demo credentials: demo@nava.dev / demo-password
+-- The demo email is @navapbc.com so it passes the enforce_allowed_email_domain
+-- trigger (see restrict_auth_email_domain migration). Tests key on the user id,
+-- not the email, so they're unaffected by this address.
+-- Demo credentials: demo@navapbc.com / demo-password
 -- ===========================================================================
 
 -- Demo auth user. crypt/gen_salt come from pgcrypto in the extensions schema.
@@ -24,7 +27,7 @@ values (
   '00000000-0000-0000-0000-000000000001',
   'authenticated',
   'authenticated',
-  'demo@nava.dev',
+  'demo@navapbc.com',
   extensions.crypt('demo-password', extensions.gen_salt('bf')),
   now(), now(), now(),
   '{"provider":"email","providers":["email"]}',
@@ -40,7 +43,7 @@ insert into auth.identities (
 values (
   '00000000-0000-0000-0000-000000000001',
   '00000000-0000-0000-0000-000000000001',
-  '{"sub":"00000000-0000-0000-0000-000000000001","email":"demo@nava.dev","email_verified":true}',
+  '{"sub":"00000000-0000-0000-0000-000000000001","email":"demo@navapbc.com","email_verified":true}',
   'email',
   now(), now(), now()
 );
