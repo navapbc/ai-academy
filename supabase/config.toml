@@ -151,11 +151,13 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "http://127.0.0.1:3000"
+site_url = "http://localhost:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# The app's signInWithOAuth call uses window.location.origin as redirectTo, which is
+# http://localhost:3000 in dev; 127.0.0.1 is listed too in case the app is opened that way.
+additional_redirect_urls = ["http://localhost:3000", "http://127.0.0.1:3000"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -314,6 +316,21 @@ max_frequency = "5s"
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
+# Google SSO. The production client lives in the Nava Google org (deploy-time);
+# for local dev a personal/dev Google Cloud OAuth 2.0 Web client is fine. Set the
+# authorized redirect URI to http://127.0.0.1:54321/auth/v1/callback. The client
+# id/secret come from a gitignored local env (see .env.example / README); the
+# `hd` query param the app passes is only a UX hint — the real @navapbc.com
+# restriction is enforced by the client guard in auth.tsx and the DB trigger in
+# the restrict_auth_email_domain migration.
+[auth.external.google]
+enabled = true
+client_id = "env(GOOGLE_CLIENT_ID)"
+# DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
+secret = "env(GOOGLE_SECRET)"
+# Required for local sign in with Google auth (Google does not return a nonce here).
+skip_nonce_check = true
+
 [auth.external.apple]
 enabled = false
 client_id = ""
