@@ -98,6 +98,30 @@ export async function recordQuizAttempt(
   if (error) throw error;
 }
 
+export interface LabSubmissionInput {
+  labId: string;
+  /** Free-form record of the lab run — e.g. { brief, prompt, response }. */
+  transcript: unknown;
+  status: string;
+}
+
+/** Inserts one lab submission (append-only; RLS owner-only). */
+export async function recordLabSubmission(
+  userId: string,
+  submission: LabSubmissionInput,
+): Promise<void> {
+  const { error } = await getSupabaseClient()
+    .from('lab_submissions')
+    .insert({
+      user_id: userId,
+      lab_id: submission.labId,
+      transcript: submission.transcript,
+      status: submission.status,
+    });
+
+  if (error) throw error;
+}
+
 /** Returns the best (highest score) and latest (most recent) attempts. */
 export async function fetchQuizSummary(
   userId: string,

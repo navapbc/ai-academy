@@ -1,5 +1,6 @@
 import { Module, Phase } from '../types';
 import contentP14 from '../content/1.4.md?raw';
+import contentP21 from '../content/2.1.md?raw';
 
 // P2.1 — Matrix-aligned curriculum shell.
 // The curriculum now mirrors the Nava AI Literacy Matrix: three stages listing
@@ -10,6 +11,8 @@ import contentP14 from '../content/1.4.md?raw';
 interface CellSpec {
   id: string;
   title: string;
+  /** Cells default to a content lesson; a few graduate to interactive types. */
+  type?: Module['type'];
 }
 
 // Real lessons land here as cells graduate from stub to full content (P2.2+).
@@ -17,6 +20,7 @@ interface CellSpec {
 // "Coming soon" placeholder.
 const REAL_CONTENT: Record<string, string> = {
   '1.4': contentP14,
+  '2.1': contentP21,
 };
 
 /** Build a content module for a matrix cell — real lesson if authored, else a stub. */
@@ -25,7 +29,7 @@ function stub(phaseId: string, stageName: string, cell: CellSpec): Module {
     id: cell.id,
     phaseId,
     title: cell.title,
-    type: 'content',
+    type: cell.type ?? 'content',
     content: REAL_CONTENT[cell.id] ?? `## ${cell.title}\n\n*Coming soon.* Part of ${stageName}.`,
   };
 }
@@ -50,7 +54,7 @@ const STAGE_1B: CellSpec[] = [
 ];
 
 const STAGE_2: CellSpec[] = [
-  { id: '2.1', title: 'Prompt construction as a craft' },
+  { id: '2.1', title: 'Prompt construction as a craft', type: 'lab' },
   { id: '2.2', title: 'Output validation as a verifiable skill' },
   { id: '2.3', title: 'Counteracting the polished-output trap' },
   { id: '2.4', title: 'Iteration as the literate behavior' },
