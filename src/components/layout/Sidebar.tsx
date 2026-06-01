@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { BarChart3, X, Lock, CheckCircle2, LifeBuoy, PlayCircle, Terminal } from 'lucide-react';
-import { Phase, UserProgress } from '../../types';
-import { PHASES, RECOMMENDED_RESOURCES } from '../../constants';
+import { BarChart3, X, CheckCircle2, LifeBuoy, Terminal } from 'lucide-react';
+import { UserProgress } from '../../types';
+import { PHASES } from '../../constants';
 import { BRANDING } from '../../branding';
 
 interface SidebarProps {
@@ -71,56 +71,51 @@ export default function Sidebar({ isOpen, onClose, progress, onModuleSelect, ove
 
             <div className="border-t border-gray-100 my-2 mx-3" />
 
-            {PHASES.map((phase, pIdx) => {
-              const isPhaseLocked = pIdx > 0 && !PHASES[pIdx-1].modules.every(m => progress.completedModuleIds.includes(m.id));
-              
-              return (
-                <div key={phase.id} className="space-y-2">
-                  <div className="px-3 flex items-center justify-between mb-2">
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-bold text-nava-green tracking-widest uppercase">{phase.week}</span>
-                      <h2 className={`font-semibold text-sm truncate ${isPhaseLocked ? 'text-gray-400' : 'text-gray-900'}`}>{phase.title}</h2>
-                    </div>
-                    {isPhaseLocked && <Lock className="w-3.5 h-3.5 text-gray-300 shrink-0" />}
-                  </div>
-
-                  <div className="space-y-0.5">
-                    {phase.modules.map((module) => {
-                      const isCompleted = progress.completedModuleIds.includes(module.id);
-                      const isActive = progress.currentModuleId === module.id;
-                      
-                      return (
-                        <button
-                          key={module.id}
-                          disabled={isPhaseLocked}
-                          onClick={() => onModuleSelect(module.id)}
-                          className={`
-                            w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all group
-                            ${isActive ? 'bg-nava-mint text-nava-green border-l-4 border-nava-green shadow-sm' : 'hover:bg-gray-50 text-gray-600'}
-                            ${isPhaseLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                          `}
-                          id={`module-${module.id}`}
-                        >
-                          <div className={`
-                            flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border transition-colors
-                            ${isCompleted ? 'bg-nava-green border-nava-green' : 'border-gray-300 group-hover:border-nava-green/30'}
-                          `}>
-                            {isCompleted ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                            ) : (
-                              <div className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-nava-green/20" />
-                            )}
-                          </div>
-                          <span className={`text-xs font-medium truncate ${isActive ? 'font-bold' : ''}`}>
-                            {module.title}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+            {PHASES.map((phase) => (
+              <div key={phase.id} className="space-y-2">
+                <div className="px-3 mb-2">
+                  <span className="text-[10px] font-bold text-nava-green tracking-widest uppercase">{phase.week}</span>
+                  <h2 className="font-semibold text-sm text-gray-900">{phase.title}</h2>
                 </div>
-              );
-            })}
+
+                <div className="space-y-0.5">
+                  {phase.modules.map((module) => {
+                    const isCompleted = progress.completedModuleIds.includes(module.id);
+                    const isActive = progress.currentModuleId === module.id;
+
+                    return (
+                      <button
+                        key={module.id}
+                        onClick={() => onModuleSelect(module.id)}
+                        className={`
+                          w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all group cursor-pointer
+                          ${isActive ? 'bg-nava-mint text-nava-green border-l-4 border-nava-green shadow-sm' : 'hover:bg-gray-50 text-gray-600'}
+                        `}
+                        id={`module-${module.id}`}
+                      >
+                        <div className={`
+                          flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border transition-colors
+                          ${isCompleted ? 'bg-nava-green border-nava-green' : 'border-gray-300 group-hover:border-nava-green/30'}
+                        `}>
+                          {isCompleted ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                          ) : (
+                            <div className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-nava-green/20" />
+                          )}
+                        </div>
+                        <span className="flex-shrink-0 text-[10px] font-bold tabular-nums text-gray-400 w-7">{module.id}</span>
+                        <span className={`flex-1 min-w-0 text-xs font-medium truncate ${isActive ? 'font-bold' : ''}`}>
+                          {module.title}
+                        </span>
+                        <span className="flex-shrink-0 text-[9px] font-bold uppercase tracking-wide text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5">
+                          Soon
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="p-4 border-t border-gray-100 bg-gray-50/50 space-y-4">
