@@ -223,6 +223,7 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
         <LocalTutorFAB
           selectedPersona={selectedPersona}
           currentModule={currentModule}
+          phases={phases}
         />
       )}
     </div>
