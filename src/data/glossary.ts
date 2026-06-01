@@ -44,9 +44,5 @@ export const GLOSSARY_TERMS = [
   {
     term: 'Automation Bias',
     definition: 'The tendency for humans to over-trust automated outputs even when they are wrong. A critical risk when AI is used in eligibility or case management decisions.'
-  },
-  {
-    term: 'GGUF',
-    definition: 'A file format for storing quantized LLM weights, used by Ollama and LM Studio to run models efficiently on consumer hardware.'
   }
 ];
