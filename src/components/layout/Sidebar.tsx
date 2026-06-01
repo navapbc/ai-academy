@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart3, X, CheckCircle2, LifeBuoy, Terminal } from 'lucide-react';
 import { UserProgress } from '../../types';
-import { PHASES } from '../../constants';
+import { PHASES, LIVE_MODULE_IDS } from '../../constants';
 import { BRANDING } from '../../branding';
 
 interface SidebarProps {
@@ -16,6 +16,15 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen, onClose, progress, onModuleSelect, overallProgress, onOpenSupport, activeView, onViewChange }: SidebarProps) {
+  const completed = new Set(progress.completedModuleIds);
+  const totalModules = PHASES.reduce((n, p) => n + p.modules.length, 0);
+  // Count only completed ids that are still in the curriculum, so the headline
+  // count can't exceed the total.
+  const completedCount = PHASES.reduce(
+    (n, p) => n + p.modules.filter(m => completed.has(m.id)).length,
+    0,
+  );
+
   return (
     <AnimatePresence mode="wait">
       {isOpen && (
@@ -71,10 +80,15 @@ export default function Sidebar({ isOpen, onClose, progress, onModuleSelect, ove
 
             <div className="border-t border-gray-100 my-2 mx-3" />
 
-            {PHASES.map((phase) => (
+            {PHASES.map((phase) => {
+              const phaseCompleted = phase.modules.filter(m => completed.has(m.id)).length;
+              return (
               <div key={phase.id} className="space-y-2">
                 <div className="px-3 mb-2">
-                  <span className="text-[10px] font-bold text-nava-green tracking-widest uppercase">{phase.week}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-nava-green tracking-widest uppercase">{phase.week}</span>
+                    <span className="text-[10px] font-bold tabular-nums text-gray-400">{phaseCompleted}/{phase.modules.length}</span>
+                  </div>
                   <h2 className="font-semibold text-sm text-gray-900">{phase.title}</h2>
                 </div>
 
@@ -107,15 +121,18 @@ export default function Sidebar({ isOpen, onClose, progress, onModuleSelect, ove
                         <span className={`flex-1 min-w-0 text-xs font-medium truncate ${isActive ? 'font-bold' : ''}`}>
                           {module.title}
                         </span>
-                        <span className="flex-shrink-0 text-[9px] font-bold uppercase tracking-wide text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5">
-                          Soon
-                        </span>
+                        {!LIVE_MODULE_IDS.has(module.id) && (
+                          <span className="flex-shrink-0 text-[9px] font-bold uppercase tracking-wide text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5">
+                            Soon
+                          </span>
+                        )}
                       </button>
                     );
                   })}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="p-4 border-t border-gray-100 bg-gray-50/50 space-y-4">
@@ -125,12 +142,15 @@ export default function Sidebar({ isOpen, onClose, progress, onModuleSelect, ove
                 <span>{overallProgress}%</span>
               </div>
               <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                <motion.div 
+                <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${overallProgress}%` }}
                   className="h-full bg-nava-plum"
                 />
               </div>
+              <p className="mt-2 text-[11px] font-medium text-gray-500 tabular-nums">
+                {completedCount} of {totalModules} complete
+              </p>
             </div>
 
             <button 

@@ -1,6 +1,16 @@
 import { Menu, ChevronRight, UserCircle, LogOut } from 'lucide-react';
 import { Phase, Module, AIPersona } from '../../types';
 import { AI_PERSONAS } from '../../constants';
+import { useAuth } from '../../lib/auth';
+
+/** Two-letter avatar initials from an email's local part (e.g. jane.doe -> JD). */
+function initialsFromEmail(email: string | undefined): string {
+  if (!email) return '?';
+  const local = email.split('@')[0] ?? '';
+  const parts = local.split(/[.\-_]+/).filter(Boolean);
+  const letters = parts.length >= 2 ? parts[0][0] + parts[1][0] : local.slice(0, 2);
+  return letters.toUpperCase() || '?';
+}
 
 interface HeaderProps {
   isSidebarOpen: boolean;
@@ -21,6 +31,7 @@ export default function Header({
   onPersonaSelect,
   onSignOut
 }: HeaderProps) {
+  const { user } = useAuth();
   const selectedPersonaData = AI_PERSONAS.find(p => p.id === selectedPersona) || AI_PERSONAS[0];
 
   return (
@@ -69,17 +80,24 @@ export default function Header({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 pl-1 border-l border-gray-200">
-          <div className="w-8 h-8 rounded-full bg-nava-plum border border-nava-plum flex items-center justify-center text-white font-bold text-xs shadow-sm">
-            CT
+        <div className="flex items-center gap-2.5 pl-3 border-l border-gray-200">
+          <div
+            className="w-8 h-8 rounded-full bg-nava-plum border border-nava-plum flex items-center justify-center text-white font-bold text-xs shadow-sm shrink-0"
+            title={user?.email ?? undefined}
+          >
+            {initialsFromEmail(user?.email ?? undefined)}
           </div>
+          <span className="hidden md:inline text-xs font-medium text-gray-600 truncate max-w-[180px]">
+            {user?.email}
+          </span>
           <button
             onClick={onSignOut}
             title="Sign out"
             aria-label="Sign out"
-            className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-nava-plum transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-100 hover:text-nava-plum transition-colors shrink-0"
           >
             <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Sign out</span>
           </button>
         </div>
       </div>

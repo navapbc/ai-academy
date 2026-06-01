@@ -23,6 +23,11 @@ const REAL_CONTENT: Record<string, string> = {
   '2.1': contentP21,
 };
 
+// Cells with authored content are "live"; everything else is still a stub and
+// wears the "Soon" badge in the nav. Derived from REAL_CONTENT so the two never
+// drift apart.
+export const LIVE_MODULE_IDS = new Set(Object.keys(REAL_CONTENT));
+
 /** Build a content module for a matrix cell — real lesson if authored, else a stub. */
 function stub(phaseId: string, stageName: string, cell: CellSpec): Module {
   return {
