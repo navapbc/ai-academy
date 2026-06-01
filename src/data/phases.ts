@@ -1,4 +1,5 @@
 import { Module, Phase } from '../types';
+import contentP14 from '../content/1.4.md?raw';
 
 // P2.1 — Matrix-aligned curriculum shell.
 // The curriculum now mirrors the Nava AI Literacy Matrix: three stages listing
@@ -11,14 +12,21 @@ interface CellSpec {
   title: string;
 }
 
-/** Build a stub content module for a matrix cell. */
+// Real lessons land here as cells graduate from stub to full content (P2.2+).
+// A cell present in this map renders its authored lesson instead of the
+// "Coming soon" placeholder.
+const REAL_CONTENT: Record<string, string> = {
+  '1.4': contentP14,
+};
+
+/** Build a content module for a matrix cell — real lesson if authored, else a stub. */
 function stub(phaseId: string, stageName: string, cell: CellSpec): Module {
   return {
     id: cell.id,
     phaseId,
     title: cell.title,
     type: 'content',
-    content: `## ${cell.title}\n\n*Coming soon.* Part of ${stageName}.`,
+    content: REAL_CONTENT[cell.id] ?? `## ${cell.title}\n\n*Coming soon.* Part of ${stageName}.`,
   };
 }
 
