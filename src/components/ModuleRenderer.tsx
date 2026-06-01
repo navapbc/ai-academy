@@ -3,7 +3,7 @@ import remarkGfm from 'remark-gfm';
 import { motion } from 'motion/react';
 import { CheckCircle, ExternalLink, PlayCircle, Library } from 'lucide-react';
 import { Module, AIPersona } from '../types';
-import { GLOSSARY_TERMS } from '../constants';
+import { GLOSSARY_TERMS, QUIZ_DATA } from '../constants';
 import { BRANDING, injectBranding } from '../branding';
 import PrivacySimulator from './PrivacySimulator';
 import PromptLab from './PromptLab';
@@ -22,6 +22,12 @@ function toYouTubeEmbed(url: string): string {
 }
 
 export default function ModuleRenderer({ module, selectedPersona, onComplete }: Props) {
+  // A content/lesson module can carry a scored quiz. When it does, the quiz
+  // renders after the lesson and is the completion gate — the standalone
+  // "I've completed this section" button is suppressed (passing == complete).
+  // Quiz-type modules already render their quiz via renderInteractive().
+  const hasInlineQuiz = module.type !== 'quiz' && (QUIZ_DATA[module.id]?.length ?? 0) > 0;
+
   const renderInteractive = () => {
     switch (module.type) {
       case 'simulator':
@@ -80,6 +86,8 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
 
       {renderInteractive()}
 
+      {hasInlineQuiz && <Quiz moduleId={module.id} onComplete={onComplete} />}
+
       {module.resources && module.resources.length > 0 && (
         <div className="bg-gray-50 rounded-3xl p-8 border border-gray-100">
           <div className="flex items-center gap-2 mb-6">
@@ -103,7 +111,7 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         </div>
       )}
 
-      {(module.type === 'content' || module.type === 'glossary') && (
+      {(module.type === 'content' || module.type === 'glossary') && !hasInlineQuiz && (
         <div className="flex justify-center pt-8 border-t border-gray-100">
           <button
             onClick={onComplete}
