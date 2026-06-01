@@ -1,60 +1,96 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Send, Shield, Terminal, CheckCircle, FlaskConical, Lightbulb, MousePointer2, Info } from 'lucide-react';
+import { Sparkles, Play, Terminal, CheckCircle, FlaskConical, Lightbulb, Target, ChevronDown, Save } from 'lucide-react';
 import { streamChat } from '../lib/llm';
 import { CLAUDE_MODELS, DEFAULT_MODEL_ID } from '../lib/models';
-import { AI_PERSONAS } from '../constants';
+import { recordLabSubmission } from '../lib/progress';
+import { useAuth } from '../lib/auth';
 import { AIPersona } from '../types';
 
-const EXAMPLE_PROMPTS = [
-  "Does Nava policy allow AI to make benefit determinations?",
-  "What reading level is required for Nava AI responses?",
-  "Who is the final authority on policy verification according to the snippet?",
-  "How should the assistant handle questions not covered in the grounding context?"
+const LAB_ID = '2.1';
+
+// The realistic task the learner writes a prompt for. Shown verbatim in the UI
+// and saved as part of the transcript so a submission is self-describing.
+const BRIEF = {
+  task:
+    'A caseworker needs a plain-language note explaining a SNAP recertification deadline to a client.',
+  constraints: [
+    '≤120 words',
+    '~8th-grade reading level',
+    'warm, respectful tone',
+    'no jargon',
+    'ends with one clear next step',
+  ],
+};
+
+// Light scaffolding — the four parts of a strong prompt from the lesson. Shown
+// as collapsible tips; we deliberately do NOT pre-fill the editor.
+const SCAFFOLD_HINTS = [
+  { label: 'Role & context', hint: 'Who should Claude act as, and what background does it need?' },
+  { label: 'Task & constraints', hint: 'State the exact output and its limits up front (length, reading level, tone).' },
+  { label: 'Format / example', hint: 'Describe the shape you want — a short note, a template, a sample of "good".' },
+  { label: 'Definition of done', hint: 'What does a finished, correct answer look like?' },
 ];
 
 interface PromptLabProps {
   onComplete: () => void;
-  selectedPersona: AIPersona;
+  // Kept for renderer-call compatibility; the construction lab is persona-agnostic.
+  selectedPersona?: AIPersona;
 }
 
-export default function PromptLab({ onComplete, selectedPersona }: PromptLabProps) {
-  const [userInput, setUserInput] = useState('');
+export default function PromptLab({ onComplete }: PromptLabProps) {
+  const { user } = useAuth();
+  const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [exampleIdx, setExampleIdx] = useState(0);
   const [model, setModel] = useState<string>(DEFAULT_MODEL_ID);
+  const [showTips, setShowTips] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setExampleIdx(prev => (prev + 1) % EXAMPLE_PROMPTS.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
+  const briefText = `Task: ${BRIEF.task}\nTarget output: ${BRIEF.constraints.join(' · ')}.`;
+  const hasRun = response.trim().length > 0 && !isLoading;
 
-  const policySnippet = `NAVA POLICY RE: LLM GROUNDING
-- Models MUST NOT speculate on eligibility for specific benefits.
-- Responses MUST include a disclaimer that final policy verification happens via human caseworker.
-- Plain language is mandatory (8th grade level).`;
-
-  const persona = AI_PERSONAS.find(p => p.id === selectedPersona) || AI_PERSONAS[0];
-  const systemInstructions = `${persona.promptPrefix} \n\nCRITICAL: Ground your answers ONLY in the following policy snippet: \n${policySnippet}. If you don't know something based on this snippet, say you don't know. Do NOT use outside knowledge.`;
-
-  const handleSend = async () => {
-    if (!userInput.trim() || isLoading) return;
+  const handleRun = async () => {
+    if (!prompt.trim() || isLoading) return;
     setIsLoading(true);
     setResponse('');
+    setSaved(false);
+    setSaveError(null);
 
     try {
       await streamChat(
-        [{ role: 'user', content: userInput }],
-        { system: systemInstructions, model },
+        [{ role: 'user', content: prompt }],
+        { model },
         (chunk) => { setResponse(prev => prev + chunk); },
       );
     } catch (err) {
       setResponse(`Error: ${err instanceof Error ? err.message : 'Request to Claude failed.'}`);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!user) {
+      setSaveError('Please sign in to save your work.');
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await recordLabSubmission(user.id, {
+        labId: LAB_ID,
+        transcript: { brief: briefText, prompt, response },
+        status: 'submitted',
+      });
+      setSaved(true);
+      onComplete();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Could not save your submission.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -66,8 +102,8 @@ export default function PromptLab({ onComplete, selectedPersona }: PromptLabProp
             <FlaskConical className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold">Prompt Lab: Grounding Exercises</h3>
-            <p className="text-xs text-gray-400">Master the art of providing context to models.</p>
+            <h3 className="font-bold">Lab: Prompt Construction</h3>
+            <p className="text-xs text-gray-400">Write a constraint-first prompt and run it against Claude.</p>
           </div>
         </div>
 
@@ -87,103 +123,135 @@ export default function PromptLab({ onComplete, selectedPersona }: PromptLabProp
       </div>
 
       <div className="flex-1 p-6 space-y-6">
-        {!userInput && !response && (
-          <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-6 relative overflow-hidden">
-            <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
-              <Lightbulb className="w-3.5 h-3.5 text-nava-gold" />
-              Try a prompt
-            </div>
-            <AnimatePresence mode="wait">
-              <motion.button
-                key={exampleIdx}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                onClick={() => setUserInput(EXAMPLE_PROMPTS[exampleIdx])}
-                className="text-left w-full group"
-              >
-                <div className="text-sm text-gray-600 italic leading-relaxed pr-8 py-2 border-l-2 border-nava-gold pl-4 bg-white/50 rounded-r-xl">
-                  "{EXAMPLE_PROMPTS[exampleIdx]}"
-                </div>
-                <div className="mt-3 flex items-center gap-1.5 text-[10px] font-bold text-nava-plum opacity-0 group-hover:opacity-100 transition-opacity">
-                  <MousePointer2 className="w-3 h-3" />
-                  Click to use this prompt
-                </div>
-              </motion.button>
-            </AnimatePresence>
+        {/* The brief, shown prominently */}
+        <div className="bg-nava-plum/5 border-2 border-nava-plum/20 rounded-2xl p-5 space-y-3">
+          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-nava-plum">
+            <Target className="w-3.5 h-3.5" />
+            Your Brief
           </div>
-        )}
-
-        <div className="p-4 rounded-xl space-y-2 border-2 bg-gray-50 border-gray-100 relative group">
-          <div className="flex items-center justify-between relative z-10">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-400">
-              <Shield className="w-3 h-3" />
-              Active Grounding Context
-            </div>
-            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md border shadow-sm transition-all bg-white text-gray-400 border-gray-100 group-hover:text-nava-plum">
-              <Info className="w-3 h-3" />
-              Source of Truth
-            </div>
-          </div>
-          <pre className="text-[10px] font-mono whitespace-pre-wrap leading-relaxed text-gray-500 relative z-10">
-            {policySnippet}
-          </pre>
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
-            <div className="bg-gray-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-xl whitespace-nowrap">
-              The model will ONLY use this content to answer
-            </div>
+          <p className="text-sm text-gray-800 font-medium leading-relaxed">
+            <span className="font-bold">Task:</span> {BRIEF.task}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-gray-500">Target output:</span>
+            {BRIEF.constraints.map((c) => (
+              <span key={c} className="text-[11px] font-semibold bg-white border border-nava-plum/20 text-nava-plum rounded-full px-2.5 py-1">
+                {c}
+              </span>
+            ))}
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="relative">
-            <textarea
-              value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleSend();
-              }}
-              placeholder="Ask a question about Nava policies..."
-              className="w-full h-32 bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-nava-green focus:border-transparent outline-none transition-all resize-none"
-            />
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Prompt editor + run */}
+          <div className="lg:col-span-3 space-y-4">
+            <div>
+              <button
+                onClick={() => setShowTips(s => !s)}
+                className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 hover:text-nava-plum uppercase tracking-widest transition-colors"
+              >
+                <Lightbulb className="w-3.5 h-3.5 text-nava-gold" />
+                Scaffolding tips
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showTips ? 'rotate-180' : ''}`} />
+              </button>
+              <AnimatePresence>
+                {showTips && (
+                  <motion.ul
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-3 space-y-2 overflow-hidden"
+                  >
+                    {SCAFFOLD_HINTS.map((h) => (
+                      <li key={h.label} className="text-xs text-gray-600 leading-relaxed">
+                        <span className="font-bold text-gray-800">{h.label}</span> — {h.hint}
+                      </li>
+                    ))}
+                  </motion.ul>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <div className="relative">
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleRun();
+                }}
+                placeholder={'Write your prompt here.\n\nLead with the role and core task, state your constraints up front (length · reading level · tone · no jargon · one next step), and describe what a finished note looks like.'}
+                className="w-full h-56 bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-nava-green focus:border-transparent outline-none transition-all resize-none"
+              />
+            </div>
+
             <button
-              onClick={handleSend}
-              disabled={isLoading || !userInput.trim()}
-              className="absolute bottom-4 right-4 p-3 bg-nava-green text-white rounded-xl shadow-lg hover:bg-nava-plum disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
+              onClick={handleRun}
+              disabled={isLoading || !prompt.trim()}
+              className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg hover:bg-nava-plum disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
             >
               {isLoading
-                ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Sparkles className="w-5 h-5" /></motion.div>
-                : <Send className="w-5 h-5" />}
+                ? <><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Sparkles className="w-4 h-4" /></motion.div> Running…</>
+                : <><Play className="w-4 h-4" /> Run prompt</>}
             </button>
           </div>
 
-          <AnimatePresence>
-            {response && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-gray-50 border border-gray-200 rounded-2xl p-6 space-y-3"
-              >
-                <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  <Terminal className="w-3.5 h-3.5" />
-                  Model Output
-                </div>
-                <div className="text-sm text-gray-700 leading-relaxed font-mono whitespace-pre-wrap">
-                  {response}
-                </div>
-                <div className="pt-4 flex justify-end">
-                  <button
-                    onClick={onComplete}
-                    className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg font-bold text-sm hover:bg-green-700"
-                  >
-                    Found a grounded answer
-                    <CheckCircle className="w-4 h-4" />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Self-check list */}
+          <div className="lg:col-span-2">
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 space-y-3">
+              <div className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                Self-check
+              </div>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Read the output against the brief. Does it hit every target?
+              </p>
+              <ul className="space-y-2 pt-1">
+                {BRIEF.constraints.map((c) => (
+                  <li key={c} className="flex items-start gap-2 text-sm text-gray-700">
+                    <CheckCircle className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
+                    <span>{c}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </div>
+
+        {/* Output */}
+        <AnimatePresence>
+          {(response || isLoading) && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gray-50 border border-gray-200 rounded-2xl p-6 space-y-3"
+            >
+              <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                <Terminal className="w-3.5 h-3.5" />
+                Claude's Output
+              </div>
+              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {response || <span className="text-gray-400 italic">Waiting for Claude…</span>}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Save & complete */}
+        {hasRun && (
+          <div className="pt-2 border-t border-gray-100 flex flex-col items-end gap-2">
+            {saveError && <p className="text-xs text-red-600 font-medium">{saveError}</p>}
+            <button
+              onClick={handleSave}
+              disabled={saving || saved}
+              className="flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 disabled:opacity-50 transition-all active:scale-95"
+            >
+              {saved
+                ? <>Saved & completed <CheckCircle className="w-4 h-4" /></>
+                : saving
+                  ? <><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Sparkles className="w-4 h-4" /></motion.div> Saving…</>
+                  : <><Save className="w-4 h-4" /> Save & complete</>}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
