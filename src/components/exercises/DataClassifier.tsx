@@ -226,7 +226,7 @@ export default function DataClassifier({ config, labId }: Props) {
         })}
       </div>
 
-      {saveError && <p className="text-xs text-red-600 font-medium">{saveError}</p>}
+      {saveError && <p role="alert" className="text-xs text-red-600 font-medium">{saveError}</p>}
 
       {graded ? (
         <div className="flex items-center justify-between border-t border-gray-100 pt-6">

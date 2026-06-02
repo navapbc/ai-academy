@@ -44,6 +44,8 @@ describe('Quiz', () => {
     expect(screen.getByRole('radio', { name: 'Public info' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Personal info' })).toBeInTheDocument();
     expect(screen.getByText('Question 1 of 2')).toBeInTheDocument();
+    // A11Y-08: the question progress bar is a semantic progressbar.
+    expect(screen.getByRole('progressbar', { name: /Quiz progress/i })).toBeInTheDocument();
   });
 
   test('exposes selection via aria-checked and announces feedback (A11Y-01/03)', async () => {

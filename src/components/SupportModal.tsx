@@ -71,15 +71,18 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-bold text-gray-700">Description</label>
+                    <label htmlFor="support-desc" className="text-sm font-bold text-gray-700">Description</label>
                     {showWarning && (
-                      <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">Too short (min 10 chars)</span>
+                      <span id="support-desc-warning" role="alert" className="text-[10px] font-bold text-red-500 uppercase tracking-wider">Too short (min 10 chars)</span>
                     )}
                   </div>
-                  <textarea 
+                  <textarea
+                    id="support-desc"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     onBlur={() => setTouched(true)}
+                    aria-invalid={showWarning}
+                    aria-describedby={showWarning ? 'support-desc-warning' : undefined}
                     className={`w-full bg-gray-50 border-2 rounded-xl px-4 py-3 h-32 focus:ring-2 outline-none transition-all resize-none text-sm ${showWarning ? 'border-red-100 focus:ring-red-200' : 'border-gray-50 focus:ring-nava-green'}`}
                     placeholder="Describe the bug or share your feedback..."
                   />
@@ -87,21 +90,27 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
               </div>
 
               <div className="mt-8 flex gap-3">
-                <a 
-                  href={isValid ? githubUrl : '#'}
-                  target={isValid ? "_blank" : "_self"}
-                  rel="noreferrer"
-                  onClick={(e) => {
-                    if (!isValid) {
-                      e.preventDefault();
-                      setTouched(true);
-                    }
-                  }}
-                  className={`flex-1 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg ${isValid ? 'bg-gray-900 text-white hover:bg-black shadow-black/10' : 'bg-gray-100 text-gray-500 cursor-not-allowed shadow-none'}`}
-                >
-                  <Send className="w-4 h-4" />
-                  GitHub Issue
-                </a>
+                {isValid ? (
+                  <a
+                    href={githubUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg bg-gray-900 text-white hover:bg-black shadow-black/10"
+                  >
+                    <Send className="w-4 h-4" aria-hidden="true" />
+                    GitHub Issue
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    aria-describedby="support-desc-warning"
+                    className="flex-1 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all bg-gray-100 text-gray-500 cursor-not-allowed shadow-none"
+                  >
+                    <Send className="w-4 h-4" aria-hidden="true" />
+                    GitHub Issue
+                  </button>
+                )}
                 <button 
                   onClick={onClose}
                   className="flex-1 bg-white border-2 border-gray-100 text-gray-600 font-bold py-4 rounded-xl hover:bg-gray-50 transition-colors"

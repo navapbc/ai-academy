@@ -58,8 +58,8 @@ export default function Login() {
         </div>
 
         {displayedError && (
-          <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div role="alert" className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
             <span>{displayedError}</span>
           </div>
         )}
@@ -68,10 +68,12 @@ export default function Login() {
           type="button"
           onClick={handleGoogle}
           disabled={googleSubmitting}
+          aria-label="Sign in with Google"
+          aria-busy={googleSubmitting}
           className="w-full py-3.5 bg-nava-green text-white rounded-xl font-bold shadow-lg shadow-nava-green/20 hover:bg-nava-plum disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-2"
         >
           {googleSubmitting ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
           ) : (
             <>
               <GoogleMark className="w-5 h-5" />

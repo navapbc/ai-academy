@@ -142,7 +142,7 @@ export default function SignoffChecklist({ config, labId }: Props) {
         </div>
       </div>
 
-      {saveError && <p className="text-xs text-red-600 font-medium">{saveError}</p>}
+      {saveError && <p role="alert" className="text-xs text-red-600 font-medium">{saveError}</p>}
 
       <div className="flex justify-end border-t border-gray-100 pt-6">
         <button

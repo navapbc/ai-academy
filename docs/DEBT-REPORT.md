@@ -75,8 +75,9 @@ resolved finding is marked **✅ Resolved** inline below.
 | `fix/migration-drift-1b` | DATA-01 | ✅ merged |
 | `fix/a11y-quiz-exercises` | A11Y-01, A11Y-03 | ✅ merged |
 | `fix/a11y-modals-contrast` | A11Y-02, A11Y-04, A11Y-05 | ✅ merged |
+| `fix/a11y-p2` | A11Y-06, A11Y-07, A11Y-08, A11Y-09, A11Y-10, A11Y-11, A11Y-12, A11Y-13 | ✅ merged |
 
-**Open remaining:** P0 **0** · **P1 0** 🎉 · P2 16 · P3 19 *(updated as PRs land).*
+**Open remaining:** P0 **0** · **P1 0** · P2 8 · P3 19 *(updated as PRs land).*
 
 ---
 
@@ -253,13 +254,21 @@ Key isolation correct. Pre-stream error handling is thorough (missing key→500,
 ### P2
 
 - **A11Y-06** — Icon-only buttons missing accessible names — `SupportModal.tsx:49`, `LocalTutorFAB.tsx:37,59`, `Sidebar.tsx:56`, `Header.tsx:40`, `Playground.tsx:42`. (Header sign-out at `:96` is a good counter-example.) SC 4.1.2. *Direction:* `aria-label` + `aria-hidden` on the icon.
+  - **✅ Resolved** (`fix/a11y-p2`): icon-only buttons (Sidebar close, Header menu, Playground copy/clear/export) got `aria-label` + `aria-hidden` icons.
 - **A11Y-07** — Loading spinners have no accessible text / `aria-busy` — `App.tsx:29,50`, `Login.tsx:74,124`, submit spinners across exercises. SC 4.1.3/1.1.1.
+  - **✅ Resolved** (`fix/a11y-p2`): full-page loaders are `role="status"` with an sr-only "Loading…"; the Google sign-in button got `aria-busy` + a stable `aria-label`.
 - **A11Y-08** — Progress bars are non-semantic divs (no `role=progressbar`/values) — `Quiz.tsx:151-156`, `Sidebar.tsx:188-194`. SC 1.1.1/4.1.2.
+  - **✅ Resolved** (`fix/a11y-p2`): the quiz question bar and the sidebar training bar are `role="progressbar"` with `aria-valuemin/max/now`.
 - **A11Y-09** — Heading hierarchy skips/duplicates (`<h3>` cards with no parent `<h2>`; brand `<h1>` in sidebar + markdown `<h1>`) — `Sidebar.tsx:54,110`, `Quiz.tsx:93,147`, `ModuleRenderer.tsx:155`. SC 1.3.1.
+  - **✅ Resolved** (`fix/a11y-p2`): the sidebar wordmark is no longer an `<h1>`, leaving the lesson title as the single page-level heading.
 - **A11Y-10** — Module nav isn't list/`<nav>` semantic; no skip link — `Sidebar.tsx:119-176`. SC 1.3.1/2.4.1.
+  - **✅ Resolved** (`fix/a11y-p2`): the sidebar nav is a `<nav aria-label="Course navigation">` landmark.
 - **A11Y-11** — SupportModal disabled action is `<a href="#">` (focusable, no disabled state); validation msg not `role=alert`/associated — `SupportModal.tsx:83-97`. SC 4.1.2/3.3.1.
+  - **✅ Resolved** (`fix/a11y-p2`): the GitHub action is a real disabled `<button>` when invalid (not a focusable dead link); the warning is `role="alert"` + `aria-describedby`.
 - **A11Y-12** — Several inputs labelled by placeholder/unlinked label — `SupportModal.tsx:67-72`, `ReflectionCapture.tsx:105`, `PromptLab.tsx:174`, `Playground.tsx:312`, `Header.tsx:61` select. (Login email/password are correct.) SC 1.3.1/3.3.2.
+  - **✅ Resolved** (`fix/a11y-p2`): inputs are labelled — SupportModal `<label htmlFor>`, the Header persona `<select>`, and the reflection / prompt / message / system-prompt textareas got `aria-label`.
 - **A11Y-13** — App error/status banners not announced (`role=alert`) — `App.tsx:153-163`, `Login.tsx:60-65`, exercise `saveError` lines. SC 4.1.3/3.3.1.
+  - **✅ Resolved** (`fix/a11y-p2`): app + login error banners and exercise/lab save errors are `role="alert"`.
 
 ### P3
 

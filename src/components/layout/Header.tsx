@@ -38,8 +38,8 @@ export default function Header({
     <header className="h-16 border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-10 flex items-center justify-between px-6">
       <div className="flex items-center gap-4">
         {!isSidebarOpen && (
-          <button onClick={onOpenSidebar} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
-            <Menu className="w-5 h-5" />
+          <button onClick={onOpenSidebar} aria-label="Open menu" className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+            <Menu className="w-5 h-5" aria-hidden="true" />
           </button>
         )}
         <nav className="flex items-center text-sm text-gray-500 gap-2">
@@ -61,6 +61,7 @@ export default function Header({
           <select
             value={selectedPersona}
             onChange={(e) => onPersonaSelect(e.target.value as AIPersona)}
+            aria-label="AI persona"
             className="bg-transparent border-none outline-none text-gray-900 pr-1 cursor-pointer hover:text-nava-plum transition-colors font-bold"
           >
             {AI_PERSONAS.map(p => (
