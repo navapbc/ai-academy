@@ -29,7 +29,7 @@ export default function HarmRubric({ config, labId }: Props) {
   };
 
   const handleSubmit = async () => {
-    if (!allAnswered || graded) return;
+    if (!allAnswered || graded || saving) return; // guard the async-save window (DATA-04)
     setGraded(true);
     setSaveError(null);
     if (!user) {

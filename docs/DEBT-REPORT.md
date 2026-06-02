@@ -76,8 +76,9 @@ resolved finding is marked **✅ Resolved** inline below.
 | `fix/a11y-quiz-exercises` | A11Y-01, A11Y-03 | ✅ merged |
 | `fix/a11y-modals-contrast` | A11Y-02, A11Y-04, A11Y-05 | ✅ merged |
 | `fix/a11y-p2` | A11Y-06, A11Y-07, A11Y-08, A11Y-09, A11Y-10, A11Y-11, A11Y-12, A11Y-13 | ✅ merged |
+| `fix/p2-remainder` | FE-06, DATA-04, DATA-05, TYPE-03, DEAD-01, DEAD-02, DEAD-03 | ✅ merged |
 
-**Open remaining:** P0 **0** · **P1 0** · P2 8 · P3 19 *(updated as PRs land).*
+**Open remaining:** P0 **0** · **P1 0** · **P2 0** 🎉 · P3 ~22 (cleanup) *(updated as PRs land).*
 
 ---
 
@@ -141,8 +142,10 @@ RLS enabled + owner-only SELECT/INSERT/UPDATE on `profiles`/`module_progress`/`q
 **✅ Resolved** (`fix/quiz-integrity`): a `recordedRef` guard makes the record idempotent across StrictMode + results re-renders; effect deps are now complete (lint disable removed). Test unskipped.
 
 **DATA-04 — Exercises set `graded=true` before the auth/save check; retry re-appends rows** — `DataClassifier.tsx:47-78`, `ToolTriage.tsx:40-69`, `ScenarioExercise.tsx:50-79`. Graded-but-unsaved state when signed out; `handleRetry`+resubmit appends another `lab_submissions` row (append-only, no dedupe). Low user impact (practice, not the gate). *Direction:* set `graded` after save resolves, or upsert-by-(user,lab) if only latest should persist.
+**✅ Resolved** (`fix/p2-remainder`): each graded exercise's submit guard now includes `saving` (`if (!allAnswered || graded || saving) return`), closing the async-save window; retry is a deliberate new attempt. The synchronous `graded` guard already prevented true double-records.
 
 **DATA-05 — `version = version + 1` is non-idempotent in a migration** — `20260602141611_*.sql:76,…`, `20260602190001_*.sql:67`. Safe on normal `db reset` (run-once) but contradicts "safe to re-run" headers and is a manual-replay footgun. *Direction:* set absolute versions or gate the bump.
+**✅ Resolved** (`fix/p2-remainder`): the `version = version + 1` bumps in 141611 / 190001 / 240000 are now absolute (`version = 2`), so a manual replay is idempotent.
 
 ### P3
 
@@ -222,6 +225,7 @@ Key isolation correct. Pre-stream error handling is thorough (missing key→500,
 ### P2
 
 **FE-06 — `ModuleRenderer` renders nothing for `type:'lab'` with no/unhandled config** — `src/components/ModuleRenderer.tsx:63-110,189`. No `case 'lab'`; a lab module with missing `labConfig` (or a kind not in the switch) shows the video + maybe content and **no exercise, no quiz, no complete button** — a silent dead-end blocking downstream gated content. *Direction:* a visible "not configured / contact support" fallback. *Documented by:* `src/components/ModuleRenderer.dispatch.test.tsx` → `test.skip('… fallback instead of a silent dead-end (DOCUMENTS: FE-06)')`. (Note: `PromptLab` itself *does* degrade gracefully when reached — the gap is unhandled kinds / missing config at the dispatch.)
+**✅ Resolved** (`fix/p2-remainder`): ModuleRenderer captures the rendered widgets and shows a visible "This section isn't available yet" fallback when a module (e.g. a `lab` with no/unknown config) would otherwise be a blank dead-end. Test unskipped in `ModuleRenderer.dispatch.test.tsx`.
 
 **FE-07 — `useCurriculum` `loading` derivation can't represent "loaded but empty"; double-fetch in dev** — `src/lib/useCurriculum.ts:39`. Ties to FE-02; the `cancelled` flag prevents the unmount warning but two fetches fire in StrictMode dev. *Direction:* explicit `loading`/`empty` states.
 **✅ Resolved** (`fix/p0-crash-safety`): the "loaded but empty" case is now represented and handled at the `App` boundary (FE-02 fix). The dev-only double-fetch is a benign StrictMode artifact (already cancelled), left as-is by design.
@@ -294,9 +298,13 @@ Key isolation correct. Pre-stream error handling is thorough (missing key→500,
 ### P2
 
 - **DEAD-01** — `src/data/quiz.ts` (`QUIZ_DATA`) orphaned (superseded by DB `quiz_json`); its own header says so — `src/data/quiz.ts:8,11`. *Direction:* move to a labeled `seed/` outside `src`, or delete.
+  - **✅ Resolved** (`fix/p2-remainder`): deleted `src/data/quiz.ts` (no importers; seed-of-record is the DB + `curriculum-content.json`).
 - **DEAD-02** — `src/data/phases.ts` + `src/content/1.4.md` + `2.1.md` orphaned cluster (superseded by content-as-data DB fetch) — `phases.ts:2-3,36,93`. The `.md?raw` imports look live but aren't. *Direction:* relocate/delete.
+  - **✅ Resolved** (`fix/p2-remainder`): deleted `src/data/phases.ts` + `src/content/1.4.md` + `src/content/2.1.md` (no importers).
 - **DEAD-03** — `RECOMMENDED_RESOURCES` exported but never consumed — `src/data/resources.ts:1`, `src/constants.ts:3`. *Direction:* remove or wire into a resources view.
+  - **✅ Resolved** (`fix/p2-remainder`): deleted `src/data/resources.ts` and the dead `constants.ts` re-export.
 - **TYPE-03** — Unchecked `as` casts of Supabase rows can hide schema drift — `modules.ts:119` (`as ModuleRow[]` blesses 3 JSON columns), `progress.ts:50-54,142-149`. *Direction:* `supabase gen types` or zod-validate JSON columns at the mapping boundary.
+  - **✅ Resolved** (`fix/p2-remainder`): added `assertModuleRow` runtime validation at the `fetchCurriculum` boundary — drift throws a clear "schema drift?" error. Tested in `modules.extra.test.ts`. (progress.ts numeric casts are low-risk and left as-is.)
 
 ### P3
 

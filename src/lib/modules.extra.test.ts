@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { mapRowToModule, groupIntoPhases, isModuleLive } from './modules';
+import { mapRowToModule, groupIntoPhases, isModuleLive, assertModuleRow } from './modules';
 import type { Module, Stage } from '../types';
 
 // Pure helpers (no Supabase) — these complement the existing modules.test.ts
@@ -82,6 +82,24 @@ describe('groupIntoPhases', () => {
     const phases = groupIntoPhases([]);
     expect(phases).toHaveLength(3);
     expect(phases.every((p) => p.modules.length === 0)).toBe(true);
+  });
+});
+
+describe('assertModuleRow (TYPE-03 — schema-drift guard)', () => {
+  const good = row();
+  test('accepts a well-formed row', () => {
+    expect(() => assertModuleRow(good)).not.toThrow();
+  });
+  test('throws a clear error on a renamed/missing required field', () => {
+    const { cell_id, ...missingCellId } = good;
+    void cell_id;
+    expect(() => assertModuleRow(missingCellId)).toThrow(/cell_id|schema drift/i);
+  });
+  test('throws on an unknown stage', () => {
+    expect(() => assertModuleRow({ ...good, stage: '9z' })).toThrow(/stage|schema drift/i);
+  });
+  test('throws on a non-object', () => {
+    expect(() => assertModuleRow(null)).toThrow(/schema drift/i);
   });
 });
 
