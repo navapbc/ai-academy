@@ -6,20 +6,21 @@ import { CLAUDE_MODELS, DEFAULT_MODEL_ID } from '../lib/models';
 import { recordLabSubmission } from '../lib/progress';
 import { useAuth } from '../lib/auth';
 import { AIPersona, LabConfig } from '../types';
+import { labHeader } from './labHeader';
 
-const LAB_ID = '2.1';
-
-interface PromptLabProps {
+interface LabProps {
   onComplete: () => void;
+  // The cell id this lab belongs to (e.g. '2.1'); lab_submissions are keyed on it.
+  labId: string;
   // The lab's brief/constraints/scaffold tips, sourced from the module's
   // lab_config_json (content-as-data, P3.2.3b). Optional so a misconfigured
   // module degrades to a clear message instead of crashing.
-  labConfig?: LabConfig;
+  config?: LabConfig;
   // Kept for renderer-call compatibility; the construction lab is persona-agnostic.
   selectedPersona?: AIPersona;
 }
 
-export default function PromptLab({ onComplete, labConfig }: PromptLabProps) {
+export default function Lab({ onComplete, labId, config }: LabProps) {
   const { user } = useAuth();
   const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState('');
@@ -35,7 +36,7 @@ export default function PromptLab({ onComplete, labConfig }: PromptLabProps) {
 
   // Graceful fallback: if the module has no (or an unexpected) lab config, show
   // a clear message instead of crashing. All hooks run above this guard.
-  if (labConfig?.kind !== 'prompt-construction') {
+  if (config?.kind !== 'prompt-construction') {
     return (
       <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm text-center space-y-2" id="prompt-lab">
         <FlaskConical className="w-8 h-8 mx-auto text-gray-300" />
@@ -47,8 +48,9 @@ export default function PromptLab({ onComplete, labConfig }: PromptLabProps) {
     );
   }
 
-  const brief = labConfig.brief;
-  const scaffoldHints = labConfig.scaffoldHints;
+  const brief = config.brief;
+  const scaffoldHints = config.scaffoldHints;
+  const { title, subtitle } = labHeader(config);
 
   const briefText = `Task: ${brief.task}\nTarget output: ${brief.constraints.join(' · ')}.`;
   const hasRun = response.trim().length > 0 && !isLoading;
@@ -86,7 +88,7 @@ export default function PromptLab({ onComplete, labConfig }: PromptLabProps) {
     setSaveError(null);
     try {
       await recordLabSubmission(user.id, {
-        labId: LAB_ID,
+        labId,
         transcript: { brief: briefText, prompt, response },
         status: 'submitted',
       });
@@ -107,8 +109,8 @@ export default function PromptLab({ onComplete, labConfig }: PromptLabProps) {
             <FlaskConical className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold">Lab: Prompt Construction</h3>
-            <p className="text-xs text-gray-400">Write a constraint-first prompt and run it against Claude.</p>
+            <h3 className="font-bold">{title}</h3>
+            <p className="text-xs text-gray-400">{subtitle}</p>
           </div>
         </div>
 

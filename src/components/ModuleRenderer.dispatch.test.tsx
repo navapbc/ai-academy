@@ -15,7 +15,7 @@ vi.mock('../lib/progress', () => ({ fetchQuizSummary: vi.fn(async () => ({ best:
 // Inline factories (no shared helper) so nothing is referenced during the
 // hoisted vi.mock execution.
 vi.mock('./PrivacySimulator', () => ({ default: () => <div>STUB:PrivacySimulator</div> }));
-vi.mock('./PromptLab', () => ({ default: () => <div>STUB:PromptLab</div> }));
+vi.mock('./Lab', () => ({ default: () => <div>STUB:Lab</div> }));
 vi.mock('./Quiz', () => ({ default: () => <div>STUB:Quiz</div> }));
 vi.mock('./UseCaseLib', () => ({ default: () => <div>STUB:UseCaseLib</div> }));
 vi.mock('./ScenarioSorter', () => ({ default: () => <div>STUB:ScenarioSorter</div> }));
@@ -64,7 +64,7 @@ describe('renderInteractive — dispatch by module.type', () => {
 
 describe('renderExercise — dispatch by labConfig.kind', () => {
   const kinds: [LabConfig['kind'], string][] = [
-    ['prompt-construction', 'STUB:PromptLab'],
+    ['prompt-construction', 'STUB:Lab'],
     ['data-classifier', 'STUB:DataClassifier'],
     ['tool-triage', 'STUB:ToolTriage'],
     ['failure-spotter', 'STUB:FailureSpotter'],
