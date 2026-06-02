@@ -3,6 +3,11 @@ import { QuizQuestion } from '../types';
 // Quizzes are reintroduced per-cell starting in P2.2. Each key maps a module id
 // to its scored multiple-choice questions; a passing (100%) score records an
 // attempt to Supabase and marks the cell complete.
+//
+// As of P3.2.3a the app renders quizzes from the modules table's quiz_json
+// column (content-as-data) — no app code imports QUIZ_DATA anymore. This file
+// is retained as the seed source-of-record referenced by the P3.2.1 migration,
+// the same way src/data/phases.ts is kept for the curriculum seed.
 export const QUIZ_DATA: Record<string, QuizQuestion[]> = {
   '1.4': [
     {

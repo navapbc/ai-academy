@@ -40,6 +40,7 @@ export interface Module {
   selfReportValidity: SelfReportValidity;
   masteryAnchor?: string; // authored later with content (P3.3/P3.4/P4.11) — leave unset
   emergentAnchor?: string; // ditto
+  quiz?: QuizQuestion[]; // scored questions, read from the DB quiz_json column (P3.2.3a)
 }
 
 export interface Phase {
