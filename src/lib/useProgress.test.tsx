@@ -70,24 +70,54 @@ describe('sync-failure handling', () => {
     await waitFor(() => expect(result.current.error).toBeTruthy());
   });
 
-  // DOCUMENTS: DATA-02 — completeModule's catch message promises "It will retry
-  // later," but there is NO retry/outbox anywhere. On the next mount the
-  // reconcile effect REPLACES local state with the server snapshot, silently
-  // dropping the failed completion (and possibly re-locking gated content).
-  // Unskip once a real retry/flush-on-reconnect (or a merge-not-replace
-  // reconcile) exists.
-  test.skip('a failed completion is retried/flushed so it is not silently lost (DOCUMENTS: DATA-02)', async () => {
+  // DATA-02 — a failed completion is parked in the outbox and retried on the
+  // next reconcile (and merged, not dropped), so it is never silently lost.
+  test('a failed completion is retried on the next reconcile and not dropped (DATA-02)', async () => {
+    // The optimistic write fails; the reconcile-time retry then succeeds.
     setModuleStatus.mockRejectedValueOnce(new Error('offline'));
-    const { result, rerender } = renderHook(() => useProgress('u1', ALL));
+    const { result, rerender } = renderHook(({ ids }) => useProgress('u1', ids), {
+      initialProps: { ids: ALL },
+    });
     await waitFor(() => expect(result.current.progress.currentModuleId).toBe('m0'));
-    act(() => result.current.completeModule('m0'));
 
-    // Desired contract: the pending write is retried (e.g. on next reconcile).
+    act(() => result.current.completeModule('m0'));
+    expect(result.current.progress.completedModuleIds).toContain('m0');
+    await waitFor(() => expect(result.current.error).toBeTruthy());
+
+    // From now on writes succeed; re-running the reconcile effect (new ids
+    // array ref) flushes the outbox.
     setModuleStatus.mockResolvedValue(undefined);
-    rerender();
+    rerender({ ids: [...ALL] });
+
     const calls = setModuleStatus.mock.calls as unknown as Array<[string, string, string]>;
     await waitFor(() =>
       expect(calls.filter((c) => c[1] === 'm0' && c[2] === 'completed').length).toBeGreaterThan(1),
     );
+    // The completion survives reconcile (merge, not replace).
+    expect(result.current.progress.completedModuleIds).toContain('m0');
+  });
+});
+
+describe('gating-aware advance (FE-03)', () => {
+  test('completeModule skips a locked next module and lands on the first unlocked one', async () => {
+    // m2 is "locked" until m0 AND m1 are both complete; completing m0 must not
+    // advance onto m2 — it should land on m1 (the next unlocked module).
+    const isLocked = (id: string, completed: string[]) =>
+      id === 'm2' && !(completed.includes('m0') && completed.includes('m1'));
+
+    const { result } = renderHook(() => useProgress('u1', ALL, isLocked));
+    await waitFor(() => expect(result.current.progress.currentModuleId).toBe('m0'));
+
+    act(() => result.current.completeModule('m0'));
+    expect(result.current.progress.currentModuleId).toBe('m1');
+  });
+
+  test('advancing past the last unlocked module stays put rather than landing on a locked one', async () => {
+    // Everything after m0 is locked → cursor stays on m0.
+    const isLocked = (id: string) => id !== 'm0';
+    const { result } = renderHook(() => useProgress('u1', ALL, isLocked));
+    await waitFor(() => expect(result.current.progress.currentModuleId).toBe('m0'));
+    act(() => result.current.completeModule('m0'));
+    expect(result.current.progress.currentModuleId).toBe('m0');
   });
 });
