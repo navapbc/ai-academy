@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BarChart3, X, CheckCircle2, LifeBuoy, Terminal } from 'lucide-react';
+import { BarChart3, X, CheckCircle2, LifeBuoy, Terminal, Lock } from 'lucide-react';
 import { Phase, UserProgress } from '../../types';
 import { isModuleLive } from '../../lib/modules';
+import { isModuleLocked } from '../../lib/gating';
 import { BRANDING } from '../../branding';
 
 interface SidebarProps {
@@ -15,9 +16,13 @@ interface SidebarProps {
   onOpenSupport: () => void;
   activeView: 'learning' | 'playground';
   onViewChange: (view: 'learning' | 'playground') => void;
+  /** Stage gating (P3.11): whether all of Stage 1a is complete (unlocks Stage 2). */
+  stage1aDone: boolean;
+  stage1aCompleted: number;
+  stage1aTotal: number;
 }
 
-export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSelect, overallProgress, onOpenSupport, activeView, onViewChange }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSelect, overallProgress, onOpenSupport, activeView, onViewChange, stage1aDone, stage1aCompleted, stage1aTotal }: SidebarProps) {
   const completed = new Set(progress.completedModuleIds);
   const totalModules = phases.reduce((n, p) => n + p.modules.length, 0);
   // Count only completed ids that are still in the curriculum, so the headline
@@ -90,6 +95,11 @@ export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSel
 
             {phases.map((phase) => {
               const phaseCompleted = phase.modules.filter(m => completed.has(m.id)).length;
+              // A phase is locked when all of its modules are gated (i.e. Stage 2
+              // before Stage 1a is done). Stage 1a/1b never lock.
+              const phaseLocked =
+                phase.modules.length > 0 &&
+                phase.modules.every(m => isModuleLocked(m, stage1aDone));
               return (
               <div key={phase.id} className="space-y-2">
                 <div className="px-3 mb-2">
@@ -98,12 +108,38 @@ export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSel
                     <span className="text-[10px] font-bold tabular-nums text-gray-400">{phaseCompleted}/{phase.modules.length}</span>
                   </div>
                   <h2 className="font-semibold text-sm text-gray-900">{phase.title}</h2>
+                  {phaseLocked && (
+                    <p className="mt-1 flex items-center gap-1 text-[10px] font-medium text-gray-400">
+                      <Lock className="w-3 h-3 shrink-0" />
+                      Locked — complete Stage 1a ({stage1aCompleted}/{stage1aTotal}) to unlock
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-0.5">
                   {phase.modules.map((module) => {
                     const isCompleted = progress.completedModuleIds.includes(module.id);
                     const isActive = progress.currentModuleId === module.id;
+                    const locked = isModuleLocked(module, stage1aDone);
+
+                    // Locked Stage-2 rows render as a non-interactive, muted row
+                    // with a Lock icon — not a button, so they can't be selected.
+                    if (locked) {
+                      return (
+                        <div
+                          key={module.id}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-gray-300 cursor-not-allowed select-none"
+                          id={`module-${module.id}`}
+                          aria-disabled="true"
+                        >
+                          <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border border-gray-200">
+                            <Lock className="w-3 h-3 text-gray-300" />
+                          </div>
+                          <span className="flex-shrink-0 text-[10px] font-bold tabular-nums text-gray-300 w-7">{module.id}</span>
+                          <span className="flex-1 min-w-0 text-xs font-medium truncate">{module.title}</span>
+                        </div>
+                      );
+                    }
 
                     return (
                       <button
