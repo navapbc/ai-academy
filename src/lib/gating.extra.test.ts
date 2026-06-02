@@ -29,20 +29,15 @@ describe('gating — Stage 2 lock interaction', () => {
     expect(stage1aProgress(phases, ['1.3', '1.8']).done).toBe(false);
   });
 
-  // DOCUMENTS: FE-03 — useProgress.completeModule advances currentModuleId to
-  // allModuleIds[index+1] with no gating awareness. Completing the Stage-1b
-  // module '1.8' (allowed while Stage 1a is incomplete) advances the cursor to
-  // '2.1', which is LOCKED — bouncing the learner to LockedNotice on a normal
-  // "Continue". The advance should skip locked modules. This test encodes that
-  // contract against the same next-index logic; unskip once the advance is
-  // gating-aware.
-  test.skip('advancing past a Stage-1b module must not land on a locked Stage-2 module (DOCUMENTS: FE-03)', () => {
-    const completed = ['1.8']; // Stage 1a NOT done → Stage 2 locked
-    const stage1aDone = stage1aProgress(phases, completed).done;
-    // The exact computation completeModule uses today:
+  // FE-03 is now fixed in useProgress.completeModule (gating-aware advance via
+  // resolveNextModuleId + an injected isLocked predicate) and verified in
+  // src/lib/useProgress.test.tsx → "gating-aware advance (FE-03)". This pure
+  // assertion just confirms the precondition the fix relies on: '2.1' is locked
+  // while Stage 1a is incomplete, so the advance must skip it.
+  test('the Stage-2 module that follows 1.8 is locked while Stage 1a is incomplete (FE-03 precondition)', () => {
+    const stage1aDone = stage1aProgress(phases, ['1.8']).done;
     const nextId = flatIds[flatIds.indexOf('1.8') + 1]; // '2.1'
     const next = phases.flatMap((p) => p.modules).find((m) => m.id === nextId)!;
-    // Desired: the module we advance to is never locked.
-    expect(isModuleLocked(next, stage1aDone)).toBe(false);
+    expect(isModuleLocked(next, stage1aDone)).toBe(true);
   });
 });

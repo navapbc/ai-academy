@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { AIPersona, Phase } from './types';
 import { BRANDING } from './branding';
@@ -87,10 +87,24 @@ function AcademyApp({ userId, onSignOut }: { userId: string; onSignOut: () => vo
 function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: string; onSignOut: () => void }) {
   const allModules = useMemo(() => phases.flatMap(p => p.modules), [phases]);
   const allModuleIds = useMemo(() => allModules.map(m => m.id), [allModules]);
+  const moduleById = useMemo(() => new Map(allModules.map(m => [m.id, m])), [allModules]);
+
+  // Gating predicate for completeModule's advance (FE-03): a candidate module is
+  // locked if it's a Stage-2 module and Stage 1a isn't done given the *new*
+  // completed set (so completing the gating module unlocks the next one).
+  const isLocked = useCallback(
+    (moduleId: string, completedIds: string[]) => {
+      const m = moduleById.get(moduleId);
+      if (!m) return false;
+      return isModuleLocked(m, stage1aProgress(phases, completedIds).done);
+    },
+    [moduleById, phases],
+  );
 
   const { progress, completeModule, selectModule, error, dismissError } = useProgress(
     userId,
     allModuleIds,
+    isLocked,
   );
 
   const [view, setView] = useState<'learning' | 'playground'>('learning');

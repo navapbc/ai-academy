@@ -70,8 +70,9 @@ resolved finding is marked **✅ Resolved** inline below.
 | `fix/chat-edge-hardening` | SEC-01, SEC-02, SEC-03, SEC-04, SEC-05, LLM-01, LLM-02, LLM-03, LLM-04, LLM-06, LLM-07, LLM-08, LLM-12 + closes the "Edge Function SSE parser untested" coverage gap | ✅ merged |
 | `fix/stream-cancellation` | LLM-05 | ✅ merged |
 | `chore/strict-ts-eslint` | TYPE-01, TYPE-02 | ✅ merged |
+| `fix/progress-reliability` | DATA-02, FE-03 | ✅ merged |
 
-**Open remaining:** P0 **0** · P1 10 · P2 17 · P3 19 *(updated as PRs land).*
+**Open remaining:** P0 **0** · P1 8 · P2 17 · P3 19 *(updated as PRs land).*
 
 ---
 
@@ -126,6 +127,7 @@ RLS enabled + owner-only SELECT/INSERT/UPDATE on `profiles`/`module_progress`/`q
 *Impact:* `completeModule` updates local state then fires `setModuleStatus(...).catch(...)` with a message promising a retry — but **no retry exists**. The reconcile effect only *reads*, and on next load **replaces** local state with the server snapshot, so a failed write disappears (and with gating, can re-lock passed content).
 *Direction:* a real outbox (persist pending writes, flush on reconnect) or a merge-not-replace reconcile; at minimum fix the misleading message.
 *Documented by:* `src/lib/useProgress.test.tsx` → `test.skip('… retried/flushed … (DOCUMENTS: DATA-02)')`.
+**✅ Resolved** (`fix/progress-reliability`): added a localStorage outbox (`src/lib/pendingWrites.ts`) — a failed completion write is parked and retried on the next reconcile, and reconcile now **unions** server + local + pending completions (never regresses). Message corrected to "retry automatically." Test unskipped.
 
 ### P2
 
@@ -202,6 +204,7 @@ Key isolation correct. Pre-stream error handling is thorough (missing key→500,
 ### P1
 
 **FE-03 — `completeModule` can advance the cursor into a locked Stage-2 module** — `src/lib/useProgress.ts:84-100` × `gating.ts:32`. Advance is `allModuleIds[index+1]` with no gating awareness; completing a Stage-1b cell that precedes a Stage-2 cell (while Stage 1a is incomplete) bounces the learner to `LockedNotice` on a normal "Continue." *Direction:* skip locked modules when advancing (pass a selectable predicate into `useProgress`). *Documented by:* `src/lib/gating.extra.test.ts` → `test.skip('… must not land on a locked Stage-2 module (DOCUMENTS: FE-03)')`.
+**✅ Resolved** (`fix/progress-reliability`): `useProgress` takes an `isLocked` predicate; `resolveNextModuleId` advances to the first *unlocked* later module (or stays put), and `App` supplies the gating predicate. Tests: `useProgress.test.tsx` → "gating-aware advance (FE-03)".
 
 **FE-04 — Quiz double-records under StrictMode (suppressed exhaustive-deps is load-bearing)** — `src/components/Quiz.tsx:43-57`. (Same defect as DATA-03, frontend framing.) *Documented by:* the same `Quiz.test.tsx` skip marked `DOCUMENTS: DATA-03 / FE-04`.
 
@@ -341,8 +344,8 @@ and should be un-skipped by the fix that resolves the finding.
 | Test (file → name) | Documents | What it asserts (the desired contract) |
 |---|---|---|
 | ~~`src/lib/llm.test.ts` → `describe.skip('streamChat — cancellation …')`~~ | **LLM-05** | ✅ **Resolved & unskipped** (`fix/stream-cancellation`) — now an active passing test |
-| `src/lib/useProgress.test.tsx` → `test.skip('… retried/flushed …')` | **DATA-02** | a failed completion write is retried/flushed, not silently lost |
-| `src/lib/gating.extra.test.ts` → `test.skip('… not land on a locked Stage-2 module')` | **FE-03** | advancing past a Stage-1b cell never lands on a locked Stage-2 cell |
+| ~~`src/lib/useProgress.test.tsx` → `test.skip('… retried/flushed …')`~~ | **DATA-02** | ✅ **Resolved & unskipped** (`fix/progress-reliability`) |
+| ~~`src/lib/gating.extra.test.ts` → `test.skip('… not land on a locked Stage-2 module')`~~ | **FE-03** | ✅ **Resolved** (`fix/progress-reliability`) — now covered by `useProgress.test.tsx` |
 | `src/components/Quiz.test.tsx` → `test.skip('… exactly one attempt … StrictMode')` | **DATA-03 / FE-04** | one completed run records exactly one `quiz_attempts` row under StrictMode |
 | `src/components/ModuleRenderer.dispatch.test.tsx` → `test.skip('… fallback instead of a silent dead-end')` | **FE-06** | a `type:'lab'` module with no config shows a fallback, not nothing |
 
