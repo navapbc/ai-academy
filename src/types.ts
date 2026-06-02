@@ -141,11 +141,32 @@ export interface FailureSpotterConfig {
   }[];
 }
 
+/**
+ * 1.9 disclosure-builder / 1.10 regulatory-check (P3.8): both are single-select
+ * scenario exercises that share ONE component (ScenarioExercise). For each item
+ * the learner reads a prompt, picks one of four options, and is graded against
+ * `correctIndex`. After grading, the component compiles the CORRECT option text
+ * of every item into a keepable `takeaway` panel — a cheat-sheet (1.9) or model
+ * client response (1.10) the learner walks away with. The two `kind`s differ
+ * only in their seeded content, not their shape.
+ */
+export interface ScenarioExerciseConfig {
+  kind: 'disclosure-builder' | 'regulatory-check';
+  items: {
+    prompt: string;
+    options: string[]; // exactly 4
+    correctIndex: number;
+    why: string;
+  }[];
+  takeaway: { title: string; intro: string };
+}
+
 export type LabConfig =
   | PromptConstructionConfig
   | DataClassifierConfig
   | ToolTriageConfig
-  | FailureSpotterConfig;
+  | FailureSpotterConfig
+  | ScenarioExerciseConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];
