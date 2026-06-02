@@ -3,7 +3,7 @@
 -- before ("Prompt Construction"). Additive jsonb_set; touches nothing else.
 update public.modules
 set lab_config_json = jsonb_set(
-      jsonb_set(lab_config_json, '{title}', '"Prompt Construction"'::jsonb, true),
+      jsonb_set(lab_config_json, '{title}', '"Lab: Prompt Construction"'::jsonb, true),
       '{subtitle}', '"Write a constraint-first prompt and run it against Claude."'::jsonb, true
     ),
     updated_at = now()
