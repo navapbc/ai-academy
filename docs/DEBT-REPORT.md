@@ -56,8 +56,19 @@ places:
 | **Total** | **2** | **18** | **24** | **23** | **67** |
 
 P0 = crash / data-loss / unusable for a user group · P1 = serious · P2 = moderate
-· P3 = minor. Severities are the auditing agents' assessments; "suggested
-direction" is guidance for a later fix pass, **not implemented here**.
+· P3 = minor. The table above is the **as-found baseline**. Severities are the
+auditing agents' assessments; "suggested direction" was guidance for the fix pass.
+
+### Resolution log
+
+Findings are now being fixed in priority order, one PR per coherent group; each
+resolved finding is marked **✅ Resolved** inline below.
+
+| PR | Items closed | Status |
+|----|--------------|--------|
+| `fix/p0-crash-safety` | FE-01, FE-02, FE-07 | ✅ merged |
+
+**Open remaining:** P0 **0** · P1 18 · P2 24 · P3 20 *(updated as PRs land).*
 
 ---
 
@@ -173,8 +184,10 @@ Key isolation correct. Pre-stream error handling is thorough (missing key→500,
 ### P0 — crash / white-screen
 
 **FE-01 — No error boundary anywhere; any render throw white-screens the app** — `src/main.tsx:6-13` (and absence across `src/`). The carefully-built loading/error states only cover the curriculum *fetch*, not render-time throws. *Direction:* a top-level `ErrorBoundary` wrapping `<App/>` with a reload/contact fallback.
+**✅ Resolved** (`fix/p0-crash-safety`): added `src/components/ErrorBoundary.tsx` (class boundary with `getDerivedStateFromError`/`componentDidCatch` + reload fallback), wrapping `<App/>` in `main.tsx`. Tests: `src/components/ErrorBoundary.test.tsx`.
 
 **FE-02 — Empty curriculum crashes `Academy` (the `!phases` guard never fires)** — `src/App.tsx:54,90-91`; root cause `src/lib/modules.ts:89-94`. `groupIntoPhases` always returns 3 Phase objects, so `phases` is never `null`/`[]`; with an empty `modules` table `allModules[0]` is `undefined` and `currentModule.phaseId` throws (white-screen, compounded by FE-01). *Direction:* treat an empty curriculum as the error/empty state; guard `currentModule` before dereferencing. *Documented by:* `src/lib/modules.extra.test.ts` (the "always 3 stages" test pins the precondition).
+**✅ Resolved** (`fix/p0-crash-safety`): `AcademyApp` now computes `isEmpty = phases.every(p => p.modules.length === 0)` and renders the friendly empty-state instead of mounting `Academy`. Tests: `src/App.empty.test.tsx`.
 
 ### P1
 
@@ -189,6 +202,7 @@ Key isolation correct. Pre-stream error handling is thorough (missing key→500,
 **FE-06 — `ModuleRenderer` renders nothing for `type:'lab'` with no/unhandled config** — `src/components/ModuleRenderer.tsx:63-110,189`. No `case 'lab'`; a lab module with missing `labConfig` (or a kind not in the switch) shows the video + maybe content and **no exercise, no quiz, no complete button** — a silent dead-end blocking downstream gated content. *Direction:* a visible "not configured / contact support" fallback. *Documented by:* `src/components/ModuleRenderer.dispatch.test.tsx` → `test.skip('… fallback instead of a silent dead-end (DOCUMENTS: FE-06)')`. (Note: `PromptLab` itself *does* degrade gracefully when reached — the gap is unhandled kinds / missing config at the dispatch.)
 
 **FE-07 — `useCurriculum` `loading` derivation can't represent "loaded but empty"; double-fetch in dev** — `src/lib/useCurriculum.ts:39`. Ties to FE-02; the `cancelled` flag prevents the unmount warning but two fetches fire in StrictMode dev. *Direction:* explicit `loading`/`empty` states.
+**✅ Resolved** (`fix/p0-crash-safety`): the "loaded but empty" case is now represented and handled at the `App` boundary (FE-02 fix). The dev-only double-fetch is a benign StrictMode artifact (already cancelled), left as-is by design.
 
 ### P3
 
