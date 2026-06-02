@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll } from 'vitest';
-import { getSupabaseClient } from './supabaseClient';
+import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient';
 import {
   fetchModuleProgress,
   setModuleStatus,
@@ -8,8 +8,16 @@ import {
 } from './progress';
 
 // Integration tests against the LOCAL Supabase stack. Require `npx supabase
-// start` and the seeded demo user (demo@nava.dev / demo-password). RLS is
-// owner-only, so we sign in first and every read/write is scoped to that user.
+// start` and the seeded demo user (demo@navapbc.com / demo-password — the
+// address is @navapbc.com so it passes the enforce_allowed_email_domain
+// trigger). RLS is owner-only, so we sign in first and every read/write is
+// scoped to that user.
+//
+// These tests only run when a live stack is reachable. Without config (e.g. CI)
+// or with the stack down, they SKIP rather than fail — the pure unit suites
+// (progressCache, resolveCurrentModuleId) always run. So `npm run test:run` is
+// green everywhere; the integration coverage kicks in once a seeded local stack
+// is up.
 //
 // The schema defines no delete policy, so test rows cannot be removed as the
 // demo user. To stay deterministic we use a fixed module id for the upsert
@@ -17,11 +25,43 @@ import {
 // append-only quiz tests (each run only sees its own attempts). `supabase db
 // reset` clears accumulation.
 
-const DEMO_EMAIL = 'demo@nava.dev';
+const DEMO_EMAIL = 'demo@navapbc.com';
 const DEMO_PASSWORD = 'demo-password';
 const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
 
+/**
+ * True only when a local Supabase stack is actually reachable. Covers both the
+ * no-config case (CI) and the configured-but-down case (forgot `supabase
+ * start`): any HTTP answer from the REST endpoint means the stack is up; a
+ * network error or timeout means it isn't.
+ */
+async function detectLiveStack(): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const url = import.meta.env.VITE_SUPABASE_URL as string;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+  try {
+    const res = await fetch(`${url}/rest/v1/`, {
+      headers: { apikey: key },
+      signal: AbortSignal.timeout(2000),
+    });
+    return res.status < 500;
+  } catch {
+    return false;
+  }
+}
+
+const hasLiveStack = await detectLiveStack();
+
+if (!hasLiveStack) {
+  console.info(
+    '[progress.test] Skipping Supabase integration tests: no reachable local stack. ' +
+      'Set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY and run `npx supabase start` to enable them.',
+  );
+}
+
 beforeAll(async () => {
+  // No-op when skipping, so a missing/down stack never throws here.
+  if (!hasLiveStack) return;
   const { error } = await getSupabaseClient().auth.signInWithPassword({
     email: DEMO_EMAIL,
     password: DEMO_PASSWORD,
@@ -29,7 +69,7 @@ beforeAll(async () => {
   if (error) throw error;
 });
 
-describe('setModuleStatus + fetchModuleProgress', () => {
+describe.skipIf(!hasLiveStack)('setModuleStatus + fetchModuleProgress', () => {
   test('upserts a module to completed and surfaces it as completed (idempotent)', async () => {
     const moduleId = 'test-mp-complete';
 
@@ -54,7 +94,7 @@ describe('setModuleStatus + fetchModuleProgress', () => {
   });
 });
 
-describe('recordQuizAttempt + fetchQuizSummary', () => {
+describe.skipIf(!hasLiveStack)('recordQuizAttempt + fetchQuizSummary', () => {
   test('records attempts and returns the best and latest', async () => {
     const moduleId = `test-quiz-${Date.now()}`;
 
