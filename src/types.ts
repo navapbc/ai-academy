@@ -41,6 +41,7 @@ export interface Module {
   masteryAnchor?: string; // authored later with content (P3.3/P3.4/P4.11) — leave unset
   emergentAnchor?: string; // ditto
   quiz?: QuizQuestion[]; // scored questions, read from the DB quiz_json column (P3.2.3a)
+  labConfig?: LabConfig; // interactive-lab config, read from the DB lab_config_json column (P3.2.3b)
 }
 
 export interface Phase {
@@ -56,6 +57,19 @@ export interface QuizQuestion {
   options: string[];
   correctIndex: number;
   explanation: string;
+}
+
+/**
+ * Config for an interactive lab, read from the module's lab_config_json column
+ * (content-as-data, P3.2.3b). `kind` is a discriminator so future lab types can
+ * be added with their own config shape.
+ */
+export interface LabConfig {
+  kind: 'prompt-construction';
+  /** The realistic task + target-output constraints shown in the brief. */
+  brief: { task: string; constraints: string[] };
+  /** Collapsible scaffolding tips — the parts of a strong prompt. */
+  scaffoldHints: { label: string; hint: string }[];
 }
 
 export interface UserProgress {

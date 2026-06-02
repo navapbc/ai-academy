@@ -5,40 +5,21 @@ import { streamChat } from '../lib/llm';
 import { CLAUDE_MODELS, DEFAULT_MODEL_ID } from '../lib/models';
 import { recordLabSubmission } from '../lib/progress';
 import { useAuth } from '../lib/auth';
-import { AIPersona } from '../types';
+import { AIPersona, LabConfig } from '../types';
 
 const LAB_ID = '2.1';
 
-// The realistic task the learner writes a prompt for. Shown verbatim in the UI
-// and saved as part of the transcript so a submission is self-describing.
-const BRIEF = {
-  task:
-    'A caseworker needs a plain-language note explaining a SNAP recertification deadline to a client.',
-  constraints: [
-    '≤120 words',
-    '~8th-grade reading level',
-    'warm, respectful tone',
-    'no jargon',
-    'ends with one clear next step',
-  ],
-};
-
-// Light scaffolding — the four parts of a strong prompt from the lesson. Shown
-// as collapsible tips; we deliberately do NOT pre-fill the editor.
-const SCAFFOLD_HINTS = [
-  { label: 'Role & context', hint: 'Who should Claude act as, and what background does it need?' },
-  { label: 'Task & constraints', hint: 'State the exact output and its limits up front (length, reading level, tone).' },
-  { label: 'Format / example', hint: 'Describe the shape you want — a short note, a template, a sample of "good".' },
-  { label: 'Definition of done', hint: 'What does a finished, correct answer look like?' },
-];
-
 interface PromptLabProps {
   onComplete: () => void;
+  // The lab's brief/constraints/scaffold tips, sourced from the module's
+  // lab_config_json (content-as-data, P3.2.3b). Optional so a misconfigured
+  // module degrades to a clear message instead of crashing.
+  labConfig?: LabConfig;
   // Kept for renderer-call compatibility; the construction lab is persona-agnostic.
   selectedPersona?: AIPersona;
 }
 
-export default function PromptLab({ onComplete }: PromptLabProps) {
+export default function PromptLab({ onComplete, labConfig }: PromptLabProps) {
   const { user } = useAuth();
   const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState('');
@@ -49,7 +30,24 @@ export default function PromptLab({ onComplete }: PromptLabProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const briefText = `Task: ${BRIEF.task}\nTarget output: ${BRIEF.constraints.join(' · ')}.`;
+  // Graceful fallback: if the module has no (or an unexpected) lab config, show
+  // a clear message instead of crashing. All hooks run above this guard.
+  if (labConfig?.kind !== 'prompt-construction') {
+    return (
+      <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm text-center space-y-2" id="prompt-lab">
+        <FlaskConical className="w-8 h-8 mx-auto text-gray-300" />
+        <h3 className="font-bold text-gray-800">Lab not configured</h3>
+        <p className="text-sm text-gray-500">
+          This lab is missing its configuration. Please check back later.
+        </p>
+      </div>
+    );
+  }
+
+  const brief = labConfig.brief;
+  const scaffoldHints = labConfig.scaffoldHints;
+
+  const briefText = `Task: ${brief.task}\nTarget output: ${brief.constraints.join(' · ')}.`;
   const hasRun = response.trim().length > 0 && !isLoading;
 
   const handleRun = async () => {
@@ -130,11 +128,11 @@ export default function PromptLab({ onComplete }: PromptLabProps) {
             Your Brief
           </div>
           <p className="text-sm text-gray-800 font-medium leading-relaxed">
-            <span className="font-bold">Task:</span> {BRIEF.task}
+            <span className="font-bold">Task:</span> {brief.task}
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold text-gray-500">Target output:</span>
-            {BRIEF.constraints.map((c) => (
+            {brief.constraints.map((c) => (
               <span key={c} className="text-[11px] font-semibold bg-white border border-nava-plum/20 text-nava-plum rounded-full px-2.5 py-1">
                 {c}
               </span>
@@ -162,7 +160,7 @@ export default function PromptLab({ onComplete }: PromptLabProps) {
                     exit={{ opacity: 0, height: 0 }}
                     className="mt-3 space-y-2 overflow-hidden"
                   >
-                    {SCAFFOLD_HINTS.map((h) => (
+                    {scaffoldHints.map((h) => (
                       <li key={h.label} className="text-xs text-gray-600 leading-relaxed">
                         <span className="font-bold text-gray-800">{h.label}</span> — {h.hint}
                       </li>
@@ -205,7 +203,7 @@ export default function PromptLab({ onComplete }: PromptLabProps) {
                 Read the output against the brief. Does it hit every target?
               </p>
               <ul className="space-y-2 pt-1">
-                {BRIEF.constraints.map((c) => (
+                {brief.constraints.map((c) => (
                   <li key={c} className="flex items-start gap-2 text-sm text-gray-700">
                     <CheckCircle className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
                     <span>{c}</span>

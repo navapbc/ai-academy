@@ -62,6 +62,7 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         return (
           <PromptLab
             onComplete={onComplete}
+            labConfig={module.labConfig}
             selectedPersona={selectedPersona}
           />
         );

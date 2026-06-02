@@ -1,6 +1,7 @@
 import type {
   Dimension,
   EvidenceType,
+  LabConfig,
   Module,
   ModuleType,
   Phase,
@@ -14,8 +15,8 @@ import { getSupabaseClient } from './supabaseClient';
 // `modules` table at runtime instead of the static src/data/phases.ts. Each row
 // is one matrix cell; this module maps rows -> the existing Module type and
 // groups them into the Phase[] shape the app already renders, so downstream
-// components barely change. Quizzes now come from the row's quiz_json column
-// (P3.2.3a); labs still resolve statically by type==='lab'.
+// components barely change. Quizzes come from the row's quiz_json column
+// (P3.2.3a) and lab config from lab_config_json (P3.2.3b).
 
 /** Stage-level metadata that lives in the app, not the modules table. */
 const STAGE_META: Record<Stage, Pick<Phase, 'id' | 'week' | 'title' | 'description'>> = {
@@ -55,10 +56,11 @@ interface ModuleRow {
   mastery_anchor: string | null;
   emergent_anchor: string | null;
   quiz_json: QuizQuestion[] | null;
+  lab_config_json: LabConfig | null;
 }
 
 const MODULE_COLUMNS =
-  'cell_id, stage, title, type, dimension, evidence_type, self_report_validity, body_md, mastery_anchor, emergent_anchor, quiz_json';
+  'cell_id, stage, title, type, dimension, evidence_type, self_report_validity, body_md, mastery_anchor, emergent_anchor, quiz_json, lab_config_json';
 
 /** Maps a DB row to the existing Module shape (cell_id -> id+cellId, body_md -> content). */
 export function mapRowToModule(row: ModuleRow): Module {
@@ -76,6 +78,7 @@ export function mapRowToModule(row: ModuleRow): Module {
     masteryAnchor: row.mastery_anchor ?? undefined,
     emergentAnchor: row.emergent_anchor ?? undefined,
     quiz: row.quiz_json ?? undefined,
+    labConfig: row.lab_config_json ?? undefined,
   };
 }
 
