@@ -12,6 +12,8 @@ import PrivacySimulator from './PrivacySimulator';
 import PromptLab from './PromptLab';
 import Quiz from './Quiz';
 import UseCaseLib from './UseCaseLib';
+import DataClassifier from './exercises/DataClassifier';
+import ToolTriage from './exercises/ToolTriage';
 
 interface Props {
   module: Module;
@@ -58,7 +60,26 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
     switch (module.type) {
       case 'simulator':
         return <PrivacySimulator onComplete={onComplete} />;
-      case 'lab':
+      case 'quiz':
+        return <Quiz moduleId={module.id} questions={module.quiz ?? []} onComplete={onComplete} />;
+      case 'use-case':
+        return <UseCaseLib onComplete={onComplete} />;
+      case 'glossary':
+        return <Glossary />;
+      default:
+        return null;
+    }
+  };
+
+  // Interactive exercises driven by the module's lab_config_json
+  // (content-as-data). One switch keyed off the config's `kind` discriminator so
+  // new exercise types are added additively (P3.5 'scenario-sorter', P3.6
+  // 'data-classifier' / 'tool-triage'). The prompt-construction lab is the
+  // module's completion gate; the classifier/triage exercises are graded
+  // practice that record a submission but leave completion to the inline quiz.
+  const renderExercise = () => {
+    switch (module.labConfig?.kind) {
+      case 'prompt-construction':
         return (
           <PromptLab
             onComplete={onComplete}
@@ -66,12 +87,10 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
             selectedPersona={selectedPersona}
           />
         );
-      case 'quiz':
-        return <Quiz moduleId={module.id} questions={module.quiz ?? []} onComplete={onComplete} />;
-      case 'use-case':
-        return <UseCaseLib onComplete={onComplete} />;
-      case 'glossary':
-        return <Glossary />;
+      case 'data-classifier':
+        return <DataClassifier config={module.labConfig} labId={module.cellId} />;
+      case 'tool-triage':
+        return <ToolTriage config={module.labConfig} labId={module.cellId} />;
       default:
         return null;
     }
@@ -126,6 +145,8 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
       )}
 
       {renderInteractive()}
+
+      {renderExercise()}
 
       {hasInlineQuiz && <Quiz moduleId={module.id} questions={module.quiz!} onComplete={onComplete} />}
 

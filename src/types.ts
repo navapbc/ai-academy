@@ -60,17 +60,48 @@ export interface QuizQuestion {
 }
 
 /**
- * Config for an interactive lab, read from the module's lab_config_json column
- * (content-as-data, P3.2.3b). `kind` is a discriminator so future lab types can
- * be added with their own config shape.
+ * Config for an interactive lab/exercise, read from the module's
+ * lab_config_json column (content-as-data, P3.2.3b). `kind` is the discriminator
+ * so each exercise type carries its own config shape. New kinds are added as
+ * additional members of the LabConfig union (P3.5/P3.6) — keep them additive so
+ * the ModuleRenderer switch and parallel PRs merge cleanly.
  */
-export interface LabConfig {
+export interface PromptConstructionConfig {
   kind: 'prompt-construction';
   /** The realistic task + target-output constraints shown in the brief. */
   brief: { task: string; constraints: string[] };
   /** Collapsible scaffolding tips — the parts of a strong prompt. */
   scaffoldHints: { label: string; hint: string }[];
 }
+
+/** A selectable approved-tool option, shared by the classifier/triage exercises. */
+export interface ExerciseTool {
+  id: string;
+  label: string;
+}
+
+/**
+ * 1.4 data-classifier (P3.6): for each item the learner picks a data class AND
+ * the right tool; both are auto-graded against the item's answer.
+ */
+export interface DataClassifierConfig {
+  kind: 'data-classifier';
+  tools: ExerciseTool[];
+  classes: string[];
+  items: { text: string; dataClass: string; tool: string; why: string }[];
+}
+
+/**
+ * 1.5 tool-triage (P3.6): for each case the learner picks the best tool, graded
+ * against the case's answer.
+ */
+export interface ToolTriageConfig {
+  kind: 'tool-triage';
+  tools: ExerciseTool[];
+  cases: { text: string; tool: string; why: string }[];
+}
+
+export type LabConfig = PromptConstructionConfig | DataClassifierConfig | ToolTriageConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];
