@@ -149,7 +149,7 @@ export default function ReflectionCapture({ config, labId }: Props) {
             </button>
           </div>
           {wordCount < MIN_SUBMIT_WORDS && (
-            <p className="text-xs text-gray-400 -mt-2 text-right">
+            <p className="text-xs text-gray-500 -mt-2 text-right">
               Write at least {MIN_SUBMIT_WORDS} words to submit.
             </p>
           )}

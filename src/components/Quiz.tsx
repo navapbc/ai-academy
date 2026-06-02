@@ -104,7 +104,7 @@ export default function Quiz({
           <h3 className="text-2xl font-bold">Checkpoint Result</h3>
           <p className="text-gray-500">You scored {score} out of {questions.length}</p>
           {summary?.best && (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500">
               Best so far: {summary.best.score}/{summary.best.maxScore}
               {summary.best.passed ? ' — passed' : ''}
             </p>

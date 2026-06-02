@@ -82,7 +82,7 @@ export default function Login() {
 
         {import.meta.env.DEV && (
           <div className="space-y-5 pt-2 border-t border-gray-100">
-            <p className="text-center text-xs font-medium uppercase tracking-wide text-gray-400">
+            <p className="text-center text-xs font-medium uppercase tracking-wide text-gray-500">
               Local dev sign-in
             </p>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -125,7 +125,7 @@ export default function Login() {
               </button>
             </form>
 
-            <p className="text-center text-xs text-gray-400">
+            <p className="text-center text-xs text-gray-500">
               Local demo: <span className="font-mono">demo@navapbc.com</span> /{' '}
               <span className="font-mono">demo-password</span>
             </p>

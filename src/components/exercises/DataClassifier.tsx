@@ -117,7 +117,7 @@ export default function DataClassifier({ config, labId }: Props) {
 
               {/* Data class */}
               <div className="space-y-2">
-                <div className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                <div className="text-[11px] font-black uppercase tracking-widest text-gray-500">
                   Data class
                 </div>
                 <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={`Data class for: ${item.text}`}>
@@ -153,7 +153,7 @@ export default function DataClassifier({ config, labId }: Props) {
 
               {/* Tool */}
               <div className="space-y-2">
-                <div className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                <div className="text-[11px] font-black uppercase tracking-widest text-gray-500">
                   Tool
                 </div>
                 <div className="flex flex-col gap-2" role="radiogroup" aria-label={`Tool for: ${item.text}`}>

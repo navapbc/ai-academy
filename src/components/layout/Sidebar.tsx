@@ -55,7 +55,7 @@ export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSel
             </div>
             <button 
               onClick={onClose}
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-400"
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-500"
             >
               <X className="w-5 h-5" />
             </button>
@@ -105,11 +105,11 @@ export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSel
                 <div className="px-3 mb-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold text-nava-green tracking-widest uppercase">{phase.week}</span>
-                    <span className="text-[10px] font-bold tabular-nums text-gray-400">{phaseCompleted}/{phase.modules.length}</span>
+                    <span className="text-[10px] font-bold tabular-nums text-gray-500">{phaseCompleted}/{phase.modules.length}</span>
                   </div>
                   <h2 className="font-semibold text-sm text-gray-900">{phase.title}</h2>
                   {phaseLocked && (
-                    <p className="mt-1 flex items-center gap-1 text-[10px] font-medium text-gray-400">
+                    <p className="mt-1 flex items-center gap-1 text-[10px] font-medium text-gray-500">
                       <Lock className="w-3 h-3 shrink-0" />
                       Locked — complete Stage 1a ({stage1aCompleted}/{stage1aTotal}) to unlock
                     </p>
@@ -128,14 +128,14 @@ export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSel
                       return (
                         <div
                           key={module.id}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-gray-300 cursor-not-allowed select-none"
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-gray-500 cursor-not-allowed select-none"
                           id={`module-${module.id}`}
                           aria-disabled="true"
                         >
                           <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border border-gray-200">
-                            <Lock className="w-3 h-3 text-gray-300" />
+                            <Lock className="w-3 h-3 text-gray-500" />
                           </div>
-                          <span className="flex-shrink-0 text-[10px] font-bold tabular-nums text-gray-300 w-7">{module.id}</span>
+                          <span className="flex-shrink-0 text-[10px] font-bold tabular-nums text-gray-500 w-7">{module.id}</span>
                           <span className="flex-1 min-w-0 text-xs font-medium truncate">{module.title}</span>
                         </div>
                       );
@@ -161,12 +161,12 @@ export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSel
                             <div className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-nava-green/20" />
                           )}
                         </div>
-                        <span className="flex-shrink-0 text-[10px] font-bold tabular-nums text-gray-400 w-7">{module.id}</span>
+                        <span className="flex-shrink-0 text-[10px] font-bold tabular-nums text-gray-500 w-7">{module.id}</span>
                         <span className={`flex-1 min-w-0 text-xs font-medium truncate ${isActive ? 'font-bold' : ''}`}>
                           {module.title}
                         </span>
                         {!liveModuleIds.has(module.id) && (
-                          <span className="flex-shrink-0 text-[9px] font-bold uppercase tracking-wide text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5">
+                          <span className="flex-shrink-0 text-[9px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 rounded-full px-1.5 py-0.5">
                             Soon
                           </span>
                         )}
@@ -199,7 +199,7 @@ export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSel
 
             <button 
               onClick={onOpenSupport}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold text-gray-400 hover:bg-white hover:text-gray-600 transition-all border border-transparent hover:border-gray-200 shadow-sm"
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold text-gray-500 hover:bg-white hover:text-gray-600 transition-all border border-transparent hover:border-gray-200 shadow-sm"
               id="report-issue-btn"
             >
               <LifeBuoy className="w-3.5 h-3.5" />

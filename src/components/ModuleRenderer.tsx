@@ -153,7 +153,7 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
           <PlayCircle className="w-16 h-16 text-white/40 group-hover:text-nava-gold group-hover:scale-110 transition-all" />
           <div className="text-center">
             <p className="font-bold text-lg">Lesson Walkthrough</p>
-            <p className="text-sm text-gray-400">Video coming soon</p>
+            <p className="text-sm text-gray-500">Video coming soon</p>
           </div>
         </div>
       )}
@@ -186,7 +186,7 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
                 className="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-200 hover:border-nava-plum hover:shadow-sm transition-all group"
               >
                 <span className="text-sm font-medium text-gray-600 group-hover:text-nava-plum">{res.title}</span>
-                <ExternalLink className="w-4 h-4 text-gray-300 group-hover:text-nava-plum" />
+                <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-nava-plum" />
               </a>
             ))}
           </div>
