@@ -1,0 +1,2109 @@
+-- load_curriculum_content (P3.2 content authoring): load the authored Stage 1-2
+-- curriculum (cited lessons + quizzes) into the existing public.modules table.
+--
+-- Source of truth: supabase/seed-data/curriculum-content.json (28 modules, each with
+-- a markdown lesson carrying inline citations + a ## Sources section, and a 3-4
+-- question quiz). This migration is GENERATED programmatically from that JSON; do
+-- not hand-edit the SQL below — regenerate it from the JSON if the content changes.
+--
+-- Mechanics: one UPDATE per cell_id, setting body_md + quiz_json (no schema change,
+-- no app-code change). Ordered AFTER the P3.2.1 modules seed so the rows exist.
+-- Idempotent: UPDATE-by-cell_id is safe to re-run on `supabase db reset`.
+--
+-- NOTE: this intentionally overwrites the original body_md/quiz for 1.4 and 2.1
+-- with the upgraded, cited versions, for consistency across all 28 cells.
+
+-- 1.3 — Recognizing when AI is appropriate vs. when human judgment is essential
+update public.modules
+   set body_md   = $md$You're staring at two tasks before lunch: summarize a 60-page state Medicaid policy, and decide whether one family's renewal gets denied. A teammate suggests AI for both. One of those is a good idea.
+
+## What it is
+
+This is the habit of sorting a task before you reach for a tool. Ask one question: is this mainly pattern-matching or synthesis, where speed and breadth help? Or is it a values, ethics, or accountability call, where a person's judgment is the actual point? AI is built to find and recombine patterns at scale. It cannot own a decision or answer for its consequences. That distinction decides whether AI belongs anywhere near the work.
+
+## Why it matters to you
+
+The worst civic-tech AI failures are not bad outputs. They are choosing to use AI on a task that should have stayed human. AI performs well inside its competence and quietly worse on tasks that only look similar, so the line between them is easy to miss ([Dell'Acqua et al., "Navigating the Jagged Technological Frontier"](https://pubsonline.informs.org/doi/10.1287/orsc.2025.21838)). When the task affects someone's benefits, discipline, or legal standing, getting that sorting wrong is not an editing problem. It is a harm to a real person who is counting on a fair, accountable decision.
+
+## How to do it / what to watch for
+
+Before delegating, name the task type. Keep these categories human-led, with AI doing background research at most:
+
+- Disciplinary or personnel decisions about a specific person
+- Sensitive client communications (denials, terminations, bad news)
+- Novel policy interpretation where no clear precedent exists
+- Life-affecting eligibility calls (benefits, housing, immigration status)
+
+For everything else, ask whether speed or breadth genuinely helps. Drafting, summarizing, and surfacing options are good fits, as long as a person verifies and signs off. The discernment to judge what should and should not be delegated is itself a core AI skill ([Anthropic's 4D AI Fluency](https://www.anthropic.com/learn/claude-for-you)). The red flag: deadline pressure pushing you to delegate the decision, not just the prep.
+
+## Example
+
+A caseworker faces a benefits-eligibility determination. The rule is human-only: a person's income, household, and access to support hang on it, and someone must be accountable for the call. But that same caseworker can hand AI the 60-page policy document and ask for a plain-language summary of the income rules, then read the cited sections to confirm. Same morning, two tasks, one line drawn correctly. AI accelerates the reading. The human makes the determination.
+
+## In practice
+
+Delegate the prep, never the judgment. If a person must answer for the outcome, a person makes the call.
+
+## Sources
+
+- [Anthropic, 4D AI Fluency](https://www.anthropic.com/learn/claude-for-you)
+- [Dell'Acqua et al., "Navigating the Jagged Technological Frontier," Organization Science](https://pubsonline.informs.org/doi/10.1287/orsc.2025.21838)$md$,
+       quiz_json = $json$[
+  {
+    "question": "A program manager is behind on two items: writing a formal denial letter to a SNAP applicant, and condensing three vendor reports into a briefing. Where does AI assistance fit?",
+    "options": [
+      "Use AI to condense the vendor reports, but write the denial yourself and own its content.",
+      "Use AI for both; the denial is just a letter and clear writing is clear writing.",
+      "Use AI for the denial since the rules are fixed, and write the briefing yourself.",
+      "Avoid AI for both; any client-adjacent work is too risky to touch."
+    ],
+    "correctIndex": 0,
+    "explanation": "Condensing reports is synthesis, where breadth and speed help. A denial is a sensitive, accountable communication to a person whose benefits are at stake, so it stays human-led. Option 2 is the trap: a denial reads like 'just writing,' but its consequences make it a judgment task, not a drafting task. Delegate the prep, never the judgment."
+  },
+  {
+    "question": "Your team wants to interpret an ambiguous new Medicaid eligibility rule that has no clear precedent yet. A colleague suggests asking an AI tool to 'tell us what the rule means.' What's the better move?",
+    "options": [
+      "Accept the AI's interpretation if it cites a regulation section by number.",
+      "Ask the AI to interpret it, since it has read more policy text than any one person.",
+      "Have AI propose three readings of the rule, then have your policy lead decide and document the interpretation.",
+      "Run the question through two AI tools and adopt the answer they agree on."
+    ],
+    "correctIndex": 2,
+    "explanation": "Novel policy interpretation is a human-led category: someone must be accountable for the reading. AI can surface candidate interpretations to consider, but the call belongs to a person. The correct option keeps AI in the prep role and the human in the decision role. The other options mistake confidence or agreement for correctness, which is exactly the failure that hurts people on jagged-frontier tasks."
+  },
+  {
+    "question": "A caseworker needs to decide a single family's eligibility today and also wants help understanding a dense 60-page policy doc. Which approach respects the line between AI-appropriate and human-only work?",
+    "options": [
+      "Let AI draft the eligibility decision and the policy summary, then skim both before sending.",
+      "Make the eligibility call yourself; use AI to summarize the policy doc, then verify the cited sections.",
+      "Use AI for the eligibility call because it applies the rules more consistently than a tired human.",
+      "Skip the policy summary and rely on the AI's eligibility recommendation to save time under deadline."
+    ],
+    "correctIndex": 1,
+    "explanation": "A life-affecting eligibility determination is human-only because a person must answer for it; summarizing a long document is a synthesis task where AI speeds up reading. Option 3 is tempting under time pressure, but 'more consistent' does not mean 'accountable,' and deadline pressure is the red flag that you're about to delegate a decision you shouldn't. Delegate the prep, never the judgment."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '1.3';
+
+-- 1.4 — Data classification and privacy hygiene for prompts
+update public.modules
+   set body_md   = $md$A caseworker is summarizing a tricky appeal and pastes the full case notes, name and all, into a personal ChatGPT account to get a cleaner write-up. The summary is good. The paste was a problem.
+
+## What it is
+
+Data classification is sorting information by how sensitive it is before you do anything with it. A common ladder runs from public (already released to anyone) to internal (routine work, not for outsiders) to confidential (would harm Nava or a client if exposed) to regulated. Regulated data includes personally identifiable information (PII), protected health information (PHI), and controlled unclassified information (CUI). The class you're holding decides which tools, if any, you may paste it into.
+
+## Why it matters to you
+
+One careless paste can end a contract and break trust with the people whose data you exposed. Federal acquisition rules now bar vendors from training commercial AI models on non-public government data without contractual authorization, and they require clarity on who owns the data and outputs ([OMB M-25-22, issued April 3, 2025](https://www.whitehouse.gov/wp-content/uploads/2025/02/M-25-22-Driving-Efficient-Acquisition-of-Artificial-Intelligence-in-Government.pdf)). That obligation binds the work Nava does for agencies. When you paste client data into an unsanctioned tool, you may be handing it to a model's training set or another vendor's systems, outside any agreement your client signed.
+
+## How to do it / what to watch for
+
+Before you paste anything, classify it, then apply one test:
+
+- Would I be fine if this exact text showed up in a vendor's training set?
+- Would I be fine if it leaked in a breach?
+- Would I be fine if it surfaced in another customer's AI response?
+
+If any answer is no, it does not go in an unsanctioned tool. Keep these off-limits in personal or unapproved accounts no matter how convenient: client PII and PHI, a contractor's proprietary data, unreleased solicitations, and personnel records. The red flag is reaching for a personal account because the approved one is slower. Strip identifiers when you can, but stripping is not a license to use the wrong tool.
+
+## Example
+
+The caseworker's instinct, a cleaner summary, was fine. The execution was not. Those case notes are regulated PII tied to a real person and a government program. Pasting them into a personal ChatGPT account sends them outside every agreement the client signed and possibly into training data the client never authorized. The fix is not to abandon AI. It is to use the firm-sanctioned tool cleared for that data class, or to summarize from de-identified notes that carry no name or case number.
+
+## In practice
+
+Classify before you paste. If you'd flinch seeing it in a leak or a stranger's AI answer, it doesn't go in an unsanctioned tool.
+
+## Sources
+
+- [OMB M-25-22, Driving Efficient Acquisition of AI in Government](https://www.whitehouse.gov/wp-content/uploads/2025/02/M-25-22-Driving-Efficient-Acquisition-of-Artificial-Intelligence-in-Government.pdf)$md$,
+       quiz_json = $json$[
+  {
+    "question": "You're drafting a summary of a Medicaid appeal and want AI help. The case file has the claimant's name, address, and medical history. What's the right way to proceed?",
+    "options": [
+      "Paste it into your personal ChatGPT to move fast, then delete the chat afterward.",
+      "Use the firm-sanctioned tool cleared for regulated data, or summarize from de-identified notes.",
+      "Paste it into any AI tool as long as you turn off chat history first.",
+      "Email it to yourself first so there's a record, then paste it into a free AI tool."
+    ],
+    "correctIndex": 1,
+    "explanation": "Name, address, and medical history are regulated PII and PHI, which never belong in an unsanctioned or personal account. Option 1 is the classic mistake: deleting the chat afterward does nothing about data that may already be retained or used. The fix is the approved tool for that data class, or stripping identifiers first. Classify before you paste."
+  },
+  {
+    "question": "A teammate wants to use a free AI assistant to clean up a draft of an unreleased federal solicitation Nava is preparing. They argue it's 'just formatting.' What should you tell them?",
+    "options": [
+      "Formatting is low-risk, so a free tool is fine for this.",
+      "It's okay if they remove the agency's name from the document first.",
+      "Don't; an unreleased solicitation is off-limits in unsanctioned tools regardless of the task.",
+      "It's fine as long as they paste only one section at a time."
+    ],
+    "correctIndex": 2,
+    "explanation": "Unreleased solicitations are explicitly off-limits in unapproved tools, and the task being 'just formatting' doesn't change the sensitivity of the content. Option 1 confuses the simplicity of the task with the sensitivity of the data, which is the trap. Splitting it into pieces or stripping a name doesn't make confidential procurement material safe to expose. If you'd flinch seeing it in a leak, it doesn't go in an unsanctioned tool."
+  },
+  {
+    "question": "Before pasting a chunk of internal text into an AI tool, which question best captures the privacy test you should apply?",
+    "options": [
+      "Would I be comfortable if this exact text appeared in a vendor's training set, a leak, or another customer's AI response?",
+      "Has anyone on my team pasted something like this before without getting in trouble?",
+      "Is the AI tool popular and widely used by other professionals?",
+      "Can I paste it quickly before the end of the day so I stay on schedule?"
+    ],
+    "correctIndex": 0,
+    "explanation": "The privacy test asks you to imagine the worst plausible exposure: training data, a breach, or another customer's output. If any of those would bother you, the text doesn't belong in an unsanctioned tool. Option 2 substitutes 'no one got caught' for actual risk thinking, which is how careless habits spread. Popularity and your deadline have nothing to do with whether the data is safe to share."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '1.4';
+
+-- 1.5 — Approved-tool literacy
+update public.modules
+   set body_md   = $md$A colleague needs a quick summary of a public benefits handbook and a separate one of a confidential client dataset. They reach for the same free chatbot for both, because it's open in their browser. For one task, that's the wrong tool.
+
+## What it is
+
+Approved-tool literacy means knowing which AI tools Nava sanctioned, for which purposes and which data classes, and how to escalate when you're unsure. "AI" is not one thing. It's a portfolio of tools with different capabilities, different data terms, and different risk levels. A tool cleared for public information may be wrong for regulated client data, and vice versa. Knowing the map, and the escalation path when a task falls outside it, is the skill.
+
+## Why it matters to you
+
+Without that map, people default to the most convenient tool, which is usually the one with the worst data terms and the least oversight. Public bodies that deploy AI are expected to ensure staff have a sufficient level of AI literacy for their role, an expectation already live across the EU ([EU AI Act, Article 4](https://artificialintelligenceact.eu/article/4/)). Federal guidance similarly pushes agencies, and the contractors who serve them, toward governed, accountable AI use rather than ad hoc tool-grabbing ([OMB M-25-21, issued April 3, 2025](https://www.whitehouse.gov/wp-content/uploads/2025/02/M-25-21-Accelerating-Federal-Use-of-AI-through-Innovation-Governance-and-Public-Trust.pdf)). Picking the wrong tool isn't a small slip. It can expose data your client never agreed to share.
+
+## How to do it / what to watch for
+
+Treat tool choice as a deliberate step, not a reflex:
+
+- Match the data class to the tool: public data has more options; regulated data goes only in tools cleared for it.
+- Match the task to the tool's strengths, not just what's already open in your browser.
+- When a task doesn't fit any approved tool, escalate instead of improvising.
+
+The official EU AI literacy guidance frames literacy as practical, role-based competence, not a one-time training you forget ([EU AI Office, AI literacy Q&A](https://digital-strategy.ec.europa.eu/en/faqs/ai-literacy-questions-answers)). The red flag is the phrase "I'll just use the one I already have open." Convenience is the most common reason the wrong tool gets used.
+
+## Example
+
+The colleague with two summaries has two correct answers, not one. The public benefits handbook is already released to anyone, so a broader set of approved tools is fair game. The confidential client dataset is a different matter: it goes only in the tool Nava cleared for that data class, under the client's agreement. Same person, same afternoon, two tools. The judgment isn't "which AI is best" in the abstract. It's "which approved tool fits this data and this task," answered fresh each time.
+
+## In practice
+
+There's no single "AI." Match the approved tool to the data class and the task, and escalate when nothing fits.
+
+## Sources
+
+- [EU AI Act, Article 4 (AI literacy)](https://artificialintelligenceact.eu/article/4/)
+- [OMB M-25-21, Accelerating Federal Use of AI](https://www.whitehouse.gov/wp-content/uploads/2025/02/M-25-21-Accelerating-Federal-Use-of-AI-through-Innovation-Governance-and-Public-Trust.pdf)
+- [EU AI Office, AI literacy Questions and Answers](https://digital-strategy.ec.europa.eu/en/faqs/ai-literacy-questions-answers)$md$,
+       quiz_json = $json$[
+  {
+    "question": "You have two tasks: summarize a publicly posted SNAP eligibility handbook, and analyze a confidential dataset of client case outcomes. How should you choose tools?",
+    "options": [
+      "Use the same general-purpose tool for both to keep your workflow simple.",
+      "Use a broader set of approved tools for the public handbook, but only the tool cleared for that data class for the confidential dataset.",
+      "Use whichever tool is already open in your browser for both.",
+      "Use the most capable tool available for both, since capability matters most."
+    ],
+    "correctIndex": 1,
+    "explanation": "Public data has more approved options; confidential client data goes only in a tool cleared for that class. Option 1 treats 'AI' as one thing and ignores that the two tasks carry very different data terms. The choice isn't about which tool is most capable in the abstract; it's about matching the approved tool to the data class and the task. Escalate when nothing fits."
+  },
+  {
+    "question": "A task involves regulated client PHI, and none of the AI tools you're approved to use are cleared for that data class. What's the right next step?",
+    "options": [
+      "Use the closest-fitting approved tool and note the limitation in your file.",
+      "Use a personal account just this once, since it's a one-off.",
+      "Escalate to whoever owns tool approvals instead of improvising a workaround.",
+      "Strip the most obvious identifiers and proceed with an approved public-data tool."
+    ],
+    "correctIndex": 2,
+    "explanation": "When a task falls outside every approved tool's clearance, the move is to escalate, not to improvise. Option 4 is the trap: stripping 'obvious' identifiers doesn't reliably de-identify PHI, and a public-data tool was never cleared for this. Approved-tool literacy includes knowing the escalation path for exactly these gaps, rather than reaching for the most convenient option."
+  },
+  {
+    "question": "Why is 'I'll just use the AI tool I already have open' a risky default for civic-tech work?",
+    "options": [
+      "The convenient tool is often the one with the worst data terms and least oversight.",
+      "Open tools run slower, which wastes time on deadline.",
+      "It's fine as long as the tool is popular among other government contractors.",
+      "Switching tools mid-task always produces lower-quality output."
+    ],
+    "correctIndex": 0,
+    "explanation": "Defaulting to convenience usually means defaulting to the tool with the weakest data protections, which can expose data a client never agreed to share. Option 3 is tempting because popularity feels like a safety signal, but other vendors' habits don't determine whether a tool is approved for your data. There's no single 'AI'; match the approved tool to the data class and the task."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '1.5';
+
+-- 1.6 — Setup and access
+update public.modules
+   set body_md   = $md$Two new hires get the same AI tool license on day one. Three weeks later, one is drafting summaries with it daily. The other never got past the login screen and has quietly stopped trying. The license was identical. The setup wasn't.
+
+## What it is
+
+Setup and access is the unglamorous work of actually turning a license into a working tool. It means signing in through single sign-on (SSO), turning on multi-factor authentication (MFA), checking your settings and data controls, opening the sanctioned tool, and running a real first prompt. It also means knowing where to get help when a step breaks. None of this is about prompting skill. It's the gate everything else depends on.
+
+## Why it matters to you
+
+Adoption stalls in the gap between getting a license and the first real use. Structured, hands-on onboarding matters because the person who "never got it working" can't build the skills that come later, and tends to disengage entirely ([DOL AI Literacy Framework, ETA TEN 07-25](https://www.dol.gov/agencies/eta/advisories/ten-07-25)). That framework, while voluntary, treats practical access and hands-on practice as core to real literacy. For your own work, finishing setup is what separates a tool you use from a tab you ignore. The cost of a half-done setup isn't visible on day one. It shows up three weeks later as a colleague who fell behind.
+
+## How to do it / what to watch for
+
+Work a simple first-run checklist and don't skip steps:
+
+- Sign in through SSO with your Nava credentials, not a personal email.
+- Turn on MFA and confirm it actually prompts you on next login.
+- Open settings and check data controls (history, training opt-outs) before your first prompt.
+- Run one real prompt on non-sensitive work to confirm the tool responds.
+- Bookmark the help channel or support contact before you need it.
+
+The red flag is treating "I have the license" as "I'm set up." They're not the same. If a step fails, ask for help that day. The person who quietly waits is the person who never starts.
+
+## Example
+
+A new hire on a CMS project gets her license Monday. Instead of bookmarking the tool for later, she runs the checklist: SSO sign-in, MFA confirmed, data controls reviewed, then a throwaway first prompt asking the tool to summarize a public press release. It works. She notes the support channel in case something breaks. Ten minutes, start to finish. By the time real work lands, the tool is a habit, not a hurdle. The teammate who skipped this is still stuck at login, and now embarrassed to ask.
+
+## In practice
+
+A license is not access. Finish the setup, run one real prompt, and find the help channel before you need it.
+
+## Sources
+
+- [DOL AI Literacy Framework, ETA TEN 07-25](https://www.dol.gov/agencies/eta/advisories/ten-07-25)$md$,
+       quiz_json = $json$[
+  {
+    "question": "You just received your AI tool license on your first day. What's the best way to make sure it actually becomes usable?",
+    "options": [
+      "Save the link and wait until a real task requires the tool.",
+      "Run the full setup now: SSO sign-in, MFA, data-controls check, and one real test prompt.",
+      "Sign in once to confirm the license works, then close it until needed.",
+      "Forward the license email to your manager so it's documented."
+    ],
+    "correctIndex": 1,
+    "explanation": "Adoption stalls in the gap between getting a license and first real use, so completing setup and running an actual prompt turns the license into a working habit. Option 1 is the most common trap: 'I'll set it up when I need it' is exactly how people end up stuck at the login screen under deadline pressure. A license is not access; finish the setup before you need the tool."
+  },
+  {
+    "question": "During first-run setup, which step most directly protects you from accidentally exposing data later?",
+    "options": [
+      "Bookmarking the help channel for support questions.",
+      "Confirming the tool returns a response to your first prompt.",
+      "Checking the settings and data controls, like history and training opt-outs, before your first prompt.",
+      "Choosing a memorable display name in your profile."
+    ],
+    "correctIndex": 2,
+    "explanation": "Reviewing data controls before you start determines whether your inputs are retained or used for training, which is the setting that affects data exposure. Option 2 confirms the tool works but says nothing about what happens to what you type into it. Setup isn't just 'does it respond'; it includes verifying the controls that govern your data from the first prompt on."
+  },
+  {
+    "question": "A teammate three weeks into the job admits they never got the AI tool working and have stopped trying. What does this best illustrate?",
+    "options": [
+      "Some people simply aren't suited to using AI tools.",
+      "The license must have been provisioned incorrectly by IT.",
+      "The tool is probably too hard for non-technical staff to use.",
+      "A half-finished setup quietly blocks someone from building the skills that come later."
+    ],
+    "correctIndex": 3,
+    "explanation": "The person who 'never got it working' can't engage with later skills and tends to disengage entirely, which is why hands-on setup matters as a first step. Option 1 blames the individual rather than the gap in onboarding, missing the real lesson. Finishing setup and asking for help the day a step breaks is what keeps someone from silently falling behind."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '1.6';
+
+-- 1.9 — Disclosure norms and practices
+update public.modules
+   set body_md   = $md$You used AI to draft a client-facing report. It reads well. The client never asked how it was made, and mentioning AI feels like it might undercut the work. So do you say anything? The answer depends on what the work is.
+
+## What it is
+
+Disclosure is telling the people who rely on your work when and how AI helped produce it. It runs on a spectrum. Low-stakes internal use, like AI tidying your own meeting notes, rarely needs a flag. Client deliverables, public-facing material, and legal work are different: there, disclosure is expected, and silence can read as concealment. The skill is knowing where a given piece of work sits and matching your transparency to the stakes.
+
+## Why it matters to you
+
+Undisclosed AI in a client deliverable is both a contract risk and a relationship risk. If a client later learns AI wrote something you presented as your own analysis, the damage is to trust, which is harder to rebuild than any single document. Organizations are responsible for what their AI tells people; a tribunal held an airline liable for its chatbot's invented policy, rejecting the idea that the bot was a separate entity ([Moffatt v. Air Canada, a BC Civil Resolution Tribunal decision](https://www.canlii.org/en/bc/bccrt/doc/2024/2024bccrt149/2024bccrt149.html)). Owning your AI use up front is part of owning the output. The diligence to be transparent about how work was made is a core AI fluency skill ([Anthropic's 4D AI Fluency](https://www.anthropic.com/learn/claude-for-you)).
+
+## How to do it / what to watch for
+
+Calibrate disclosure to the stakes, and err toward telling when unsure:
+
+- Internal, low-stakes use (your own drafts, notes): usually no disclosure needed.
+- Client deliverables, public material, legal filings: disclose that AI assisted, and how.
+- When you're not sure which bucket applies, disclose. The cost of over-disclosing is small.
+
+Watch for the disclosure paradox: people sometimes trust disclosed AI work a little less, which tempts you to stay quiet. But undisclosed AI, once discovered, erodes trust catastrophically, far worse than the small upfront discount. The red flag is rationalizing silence because "no one asked." Not being asked is not the same as not needing to tell.
+
+## Example
+
+You drafted a benefits-outreach report for a state Medicaid client using AI, then verified every figure yourself. Because it's a client deliverable, you add a short, honest note: AI assisted with the first draft; all data and conclusions were reviewed and confirmed by the team. Contrast that with the internal version of your own notes from the same project, which AI cleaned up for your eyes only. No note needed there. Same tool, two contexts, two different disclosure calls, both made on purpose rather than by avoidance.
+
+## In practice
+
+Match disclosure to the stakes, and when unsure, disclose. Undisclosed AI in client work costs far more than the awkward note would have.
+
+## Sources
+
+- [Anthropic, 4D AI Fluency](https://www.anthropic.com/learn/claude-for-you)
+- [Moffatt v. Air Canada, 2024 BCCRT 149](https://www.canlii.org/en/bc/bccrt/doc/2024/2024bccrt149/2024bccrt149.html)$md$,
+       quiz_json = $json$[
+  {
+    "question": "You used AI to draft a report you're delivering to a state agency client, then checked every fact yourself. The client didn't ask about your process. What should you do?",
+    "options": [
+      "Say nothing; you verified everything, so the process doesn't matter.",
+      "Mention it only if the client raises questions later.",
+      "Include a brief, honest note that AI assisted the draft and the team reviewed all data and conclusions.",
+      "Rewrite the whole thing from scratch so disclosure becomes unnecessary."
+    ],
+    "correctIndex": 2,
+    "explanation": "A client deliverable is a high-stakes context where disclosure is expected, so a short, honest note matches the stakes and protects the relationship. Option 1 is the trap: verifying the facts is necessary but separate from being transparent about how the work was made, and 'no one asked' isn't a reason to stay silent. When unsure, disclose; undisclosed AI in client work costs far more than the note."
+  },
+  {
+    "question": "A teammate worries that disclosing AI assistance on a client memo will make the client trust the work less, so they want to leave it out. What's the strongest response?",
+    "options": [
+      "They're right; if disclosure lowers trust, omitting it protects the relationship.",
+      "Disclosed AI is sometimes trusted a bit less, but undisclosed AI erodes trust catastrophically when discovered.",
+      "It doesn't matter either way, since clients rarely find out how work was made.",
+      "Only disclose if a competitor is likely to point it out first."
+    ],
+    "correctIndex": 1,
+    "explanation": "This is the disclosure paradox: disclosure can shave a little trust upfront, but discovery of hidden AI use does far worse and lasting damage. Option 1 mistakes the small upfront cost for the bigger hidden risk, which is exactly the rationalization to avoid. Organizations are held responsible for what their AI produces, so owning the disclosure up front is part of owning the work."
+  },
+  {
+    "question": "Which of these uses most clearly does NOT require disclosing AI assistance?",
+    "options": [
+      "A public-facing FAQ AI helped write for a government program's website.",
+      "AI cleaning up the grammar of your own internal meeting notes for your reference.",
+      "A legal filing where AI drafted portions of the argument.",
+      "A deliverable report sent to an agency client."
+    ],
+    "correctIndex": 1,
+    "explanation": "Tidying your own internal notes is low-stakes use that stays with you, so disclosure generally isn't expected. The other three are client-facing, public, or legal work, where stakeholders rely on the output and disclosure is expected. Match disclosure to the stakes: internal-only drafts sit at the low end, while anything reaching a client or the public sits at the high end."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '1.9';
+
+-- 1.10 — Regulatory floor awareness
+update public.modules
+   set body_md   = $md$Mid-procurement, an agency client asks a direct question: are your staff trained on AI against any recognized framework? "We use AI carefully" is not an answer that wins the contract. Knowing the floor is.
+
+## What it is
+
+The regulatory floor is the set of recognized frameworks and rules that shape responsible AI use, especially for public-sector work. The main ones to know by name: the EU AI Act's AI-literacy duty (Article 4), the US Department of Labor's AI Literacy Framework, three OMB memos (M-25-21, M-25-22, and M-26-04), and the NIST AI Risk Management Framework with its Generative AI Profile. You don't need to memorize them. You need to know which apply to your work and where to find authoritative guidance.
+
+## Why it matters to you
+
+Clients increasingly ask, in procurement and audits, whether your staff are trained against recognized frameworks. "Aware and aligned" is a defensible answer. A blank look is not. Several of these are voluntary rather than mandates, and that distinction matters when you describe your posture. The NIST framework is voluntary, organized around Govern, Map, Measure, and Manage ([NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)). Its Generative AI Profile is also voluntary guidance and names 12 risk categories, including confabulation, the technical term for hallucination ([NIST Generative AI Profile, AI 600-1](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf)). The DOL framework is voluntary too ([DOL AI Literacy Framework, ETA TEN 07-25](https://www.dol.gov/agencies/eta/advisories/ten-07-25)).
+
+## How to do it / what to watch for
+
+Know which floor applies and state it accurately:
+
+- EU AI Act Article 4: the AI-literacy duty applied since 2 February 2025; enforcement powers begin 2 August 2026, so treat the duty as already live ([EU AI Act, Article 4](https://artificialintelligenceact.eu/article/4/)).
+- OMB M-25-21 and M-25-22: both issued 3 April 2025, covering federal AI use and AI acquisition ([M-25-21](https://www.whitehouse.gov/wp-content/uploads/2025/02/M-25-21-Accelerating-Federal-Use-of-AI-through-Innovation-Governance-and-Public-Trust.pdf), [M-25-22](https://www.whitehouse.gov/wp-content/uploads/2025/02/M-25-22-Driving-Efficient-Acquisition-of-Artificial-Intelligence-in-Government.pdf)).
+- OMB M-26-04: issued 11 December 2025, implementing Executive Order 14319 on unbiased AI ([M-26-04](https://www.whitehouse.gov/wp-content/uploads/2025/12/M-26-04-Increasing-Public-Trust-in-Artificial-Intelligence-Through-Unbiased-AI-Principles-1.pdf)).
+
+The red flag is overclaiming. Don't call voluntary guidance a mandate, and don't misstate a date. Precision is what makes "aware and aligned" credible.
+
+## Example
+
+An agency client asks whether Nava meets EU Article 4 and DOL expectations. A strong answer is specific: staff complete AI-literacy training aligned to recognized frameworks; the team treats the EU Article 4 duty as live now, ahead of August 2026 enforcement; and practices map to the voluntary NIST and DOL guidance rather than claiming those are legal mandates. That answer survives a follow-up question. "We're careful" does not. The judgment is in being accurate about what binds you and what merely guides you.
+
+## In practice
+
+Know the floor by name, know which rules bind you versus guide you, and never call voluntary guidance a mandate.
+
+## Sources
+
+- [EU AI Act, Article 4 (AI literacy)](https://artificialintelligenceact.eu/article/4/)
+- [OMB M-25-21, Accelerating Federal Use of AI](https://www.whitehouse.gov/wp-content/uploads/2025/02/M-25-21-Accelerating-Federal-Use-of-AI-through-Innovation-Governance-and-Public-Trust.pdf)
+- [OMB M-25-22, Driving Efficient Acquisition of AI](https://www.whitehouse.gov/wp-content/uploads/2025/02/M-25-22-Driving-Efficient-Acquisition-of-Artificial-Intelligence-in-Government.pdf)
+- [OMB M-26-04, Unbiased AI Principles](https://www.whitehouse.gov/wp-content/uploads/2025/12/M-26-04-Increasing-Public-Trust-in-Artificial-Intelligence-Through-Unbiased-AI-Principles-1.pdf)
+- [DOL AI Literacy Framework, ETA TEN 07-25](https://www.dol.gov/agencies/eta/advisories/ten-07-25)
+- [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
+- [NIST Generative AI Profile, AI 600-1](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf)$md$,
+       quiz_json = $json$[
+  {
+    "question": "An agency client asks during procurement whether Nava staff are trained against recognized AI frameworks. Which response is both accurate and defensible?",
+    "options": [
+      "\"We use AI very carefully and responsibly on every project.\"",
+      "\"Our staff complete AI-literacy training aligned to recognized frameworks, including the EU AI Act Article 4 duty and the voluntary NIST and DOL guidance.\"",
+      "\"We fully comply with all AI laws, including the mandatory NIST and DOL requirements.\"",
+      "\"We don't need framework training because we follow internal best practices.\""
+    ],
+    "correctIndex": 1,
+    "explanation": "A defensible answer names specific frameworks and states their status accurately, which survives a follow-up question. Option 3 is the trap: it sounds strong but calls voluntary NIST and DOL guidance 'mandatory,' an overclaim that collapses under audit. 'We're careful' (option 1) names nothing recognizable. Know the floor by name, and never call voluntary guidance a mandate."
+  },
+  {
+    "question": "A colleague says, \"The EU AI Act's AI-literacy duty doesn't matter until enforcement powers start in August 2026.\" How should you correct this?",
+    "options": [
+      "They're right; there's nothing to do until the 2026 enforcement date.",
+      "The duty doesn't apply to US-based firms at all.",
+      "The Article 4 literacy duty has applied since February 2025; only the enforcement powers begin in August 2026, so the duty is already live.",
+      "The duty only applies once a client formally requests compliance."
+    ],
+    "correctIndex": 2,
+    "explanation": "Article 4's AI-literacy duty applied from 2 February 2025; the August 2026 date is when enforcement powers begin, not when the obligation starts. Option 1 confuses the enforcement date with the effective date, which leads firms to wrongly delay action. Treat the duty as live now, and be precise about dates, because precision is what makes 'aware and aligned' credible."
+  },
+  {
+    "question": "Which statement about these AI frameworks is accurate?",
+    "options": [
+      "The NIST AI Risk Management Framework is a legally binding mandate for all contractors.",
+      "OMB M-25-21 and M-25-22 were both issued in February 2025.",
+      "OMB M-26-04 implements Executive Order 14179.",
+      "The NIST Generative AI Profile is voluntary guidance and defines 12 generative-AI risk categories."
+    ],
+    "correctIndex": 3,
+    "explanation": "The NIST Generative AI Profile is voluntary and names 12 risk categories, including confabulation. Option 1 wrongly calls the voluntary NIST framework a binding mandate. M-25-21 and M-25-22 were issued April 3, 2025, not February, and M-26-04 implements EO 14319, not 14179. Getting these facts exactly right is what separates a credible 'aware and aligned' posture from an overclaim that fails an audit."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '1.10';
+
+-- 1.13 — Non-practitioner-involved-in-AI literacy
+update public.modules
+   set body_md   = $md$A contracts officer is asked to sign off on a vendor's statement of work for an AI tool. She didn't build the model and isn't an engineer. But her signature puts Nava's name on it, which makes the AI partly her responsibility.
+
+## What it is
+
+A "non-practitioner involved in AI" is someone who reviews, approves, or is accountable for AI work they didn't build. Federal guidance names this role and expects these people to have a baseline of AI literacy ([OMB M-25-21, issued April 3, 2025](https://www.whitehouse.gov/wp-content/uploads/2025/02/M-25-21-Accelerating-Federal-Use-of-AI-through-Innovation-Governance-and-Public-Trust.pdf)). You're in this role if you're a contracts officer reviewing an AI-vendor SOW, a project manager approving an AI use case, or an executive approving a deployment. You don't have to write code. You have to understand enough to ask the right questions before you sign.
+
+## Why it matters to you
+
+This is the compliance hook that reaches most of Nava beyond Engineering. Nava's clients, including the VA, CMS, SSA, and state Medicaid agencies, operate under federal AI guidance, and the people approving AI work are expected to be literate enough to do it responsibly. Hands-on, role-appropriate AI literacy is treated as core for exactly these roles, not just for builders, in the voluntary DOL framework ([DOL AI Literacy Framework, ETA TEN 07-25](https://www.dol.gov/agencies/eta/advisories/ten-07-25)). If you sign off without understanding what you're approving, you've taken on accountability for a system you can't speak to. That's a hard place to be in an audit or after something goes wrong.
+
+## How to do it / what to watch for
+
+Before you sign off on AI work, ask the questions a literate reviewer would:
+
+- What does this AI system actually do, and what decisions does it influence?
+- Where does its data come from, who owns the data and outputs, and is training on non-public data authorized?
+- How are errors caught, and who is accountable when it's wrong?
+- Does a human stay in the loop for any decision affecting a person's benefits or rights?
+
+The red flag is approving on trust alone because "the technical team handled it." Your signature is your accountability, not theirs. If you can't get clear answers, that's a reason to pause, not to sign.
+
+## Example
+
+The contracts officer reviewing the AI-vendor SOW doesn't need to evaluate the model's architecture. She needs to confirm the contract answers the accountability questions: who owns the data and outputs, whether the vendor may train on government data, how errors get caught, and where a human stays in the loop. When the SOW is vague on data ownership, she sends it back rather than signing. She didn't build the system, but she made sure the agreement she's accountable for actually protects the agency and the people it serves.
+
+## In practice
+
+If you sign off on AI you didn't build, you own it. Ask the accountability questions first, and don't sign what you can't explain.
+
+## Sources
+
+- [OMB M-25-21, Accelerating Federal Use of AI](https://www.whitehouse.gov/wp-content/uploads/2025/02/M-25-21-Accelerating-Federal-Use-of-AI-through-Innovation-Governance-and-Public-Trust.pdf)
+- [DOL AI Literacy Framework, ETA TEN 07-25](https://www.dol.gov/agencies/eta/advisories/ten-07-25)$md$,
+       quiz_json = $json$[
+  {
+    "question": "A project manager is asked to approve an AI use case for a CMS project. She's not an engineer and feels unqualified to judge it. What's the right framing?",
+    "options": [
+      "She should defer entirely to the technical team, since they understand the model.",
+      "As the approver, she's a non-practitioner involved in AI and is accountable, so she must ask the right questions before signing.",
+      "She should decline to be involved, since approval should rest only with engineers.",
+      "She can approve it now and review the details if a problem comes up later."
+    ],
+    "correctIndex": 1,
+    "explanation": "Approving an AI use case puts her in the 'non-practitioner involved in AI' role, which carries accountability and a literacy expectation even without coding skills. Option 1 is the trap: deferring entirely to the technical team doesn't transfer her accountability to them. If you sign off on AI you didn't build, you own it, so ask the accountability questions first."
+  },
+  {
+    "question": "A contracts officer reviews an AI-vendor statement of work. Which question is most important for her to get answered before signing?",
+    "options": [
+      "Which programming language the vendor used to build the model.",
+      "How fast the model returns results during peak hours.",
+      "Who owns the data and outputs, whether training on government data is authorized, and how errors are caught.",
+      "Whether the vendor's interface matches Nava's brand guidelines."
+    ],
+    "correctIndex": 2,
+    "explanation": "A non-practitioner reviewer doesn't evaluate model architecture; she confirms the contract answers the accountability questions, like data ownership, authorized training use, and error handling. Option 1 is a builder's concern that her signature doesn't actually depend on. Don't sign what you can't explain, and the accountability terms are exactly what your signature makes you responsible for."
+  },
+  {
+    "question": "While reviewing an AI deployment for approval, an executive can't get a clear answer on how the system's errors are caught or who is accountable when it's wrong. What should he do?",
+    "options": [
+      "Approve it and trust the team to sort out the details after launch.",
+      "Approve it on the condition that someone documents the answers eventually.",
+      "Pause and withhold approval until the accountability questions are answered clearly.",
+      "Approve it since error-handling is a technical detail outside his role."
+    ],
+    "correctIndex": 2,
+    "explanation": "If a reviewer can't get clear answers to the accountability questions, that's a reason to pause, not to sign, because the signature transfers accountability to him. Option 1 approves on trust alone, which is the exact red flag this role is meant to catch. Don't sign what you can't explain; unclear answers are a stop signal, not a formality to resolve later."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '1.13';
+
+-- 1.1 — Mechanical mental model of how LLMs work
+update public.modules
+   set body_md   = $md$A teammate says the chatbot "looked up" the SNAP income limit and got it wrong, so the database must be out of date. There is no database. Knowing what the model actually does is the difference between trusting it and checking it.
+
+## What it is
+
+A large language model is a next-token predictor. It was trained on a huge pile of text to guess the next chunk of text, called a token (roughly part of a word; figure about [1.5 tokens per word](https://www.ibm.com/think/topics/context-window)). It holds only a limited amount of text at once, its [context window](https://www.ibm.com/think/topics/context-window), which acts like working memory. When it answers, it is completing a pattern, not pulling a fact from a stored record.
+
+## Why it matters to you
+
+If you think the model retrieves facts, you cannot reason about when it fails. You will treat a wrong Medicaid figure as a lookup glitch instead of what it is: a plausible guess. The mechanical model is the foundation under every other skill. A [validated literacy test](https://arxiv.org/abs/2411.00283) found that what people actually know about these systems predicts how well they use them far better than how confident they feel. Memorized rules break the first time a new situation appears; a working model travels.
+
+## How to do it / what to watch for
+
+Hold four facts in mind whenever you use a model:
+
+- It predicts text. It is not searching a fact database, so "it looked it up" is the wrong picture.
+- Its memory is finite. Long threads and big documents can push earlier content out of the context window.
+- The same prompt can give different answers, because the model samples from probabilities rather than returning one fixed result.
+- Sounding sure is not the same as being right. The model has no internal signal for "I don't know."
+
+The red flag is any moment you catch yourself saying the model "knows" or "remembers" something. That language hides the machine and leads you to skip verification on exactly the claims that need it.
+
+## Example
+
+You run the same prompt twice, asking a model to summarize a state's Medicaid renewal rule. The two answers differ in wording, and one adds a deadline the other left out. A colleague calls it a bug. It is not. Because the model samples its next token from a [range of probabilities](https://www.ibm.com/think/topics/context-window), repeated runs vary by design. The right response is not to pick the version you like. It is to verify the deadline against the official rule, since neither run is a retrieval.
+
+## In practice
+
+The model completes patterns; it does not look things up. Verify any fact it states.
+
+## Sources
+
+- [GLAT: GenAI Literacy Assessment Test (arXiv 2411.00283)](https://arxiv.org/abs/2411.00283)
+- [IBM, What is a context window?](https://www.ibm.com/think/topics/context-window)
+- [NIST Generative AI Profile (AI 600-1)](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf)$md$,
+       quiz_json = $json$[
+  {
+    "question": "A teammate tells you the chatbot \"searched its records\" and returned the wrong 2026 Medicaid income limit, so the records need updating. How should you correct the picture?",
+    "options": [
+      "File a ticket to refresh the model's outdated fact database.",
+      "Lower the model's temperature so it stops searching badly.",
+      "Reassure them the next model version will store more accurate records.",
+      "Explain there is no database; it predicted text, so check the official rule."
+    ],
+    "correctIndex": 3,
+    "explanation": "A language model completes a likely pattern; it does not retrieve from a stored fact database, so a wrong figure is a plausible guess, not a lookup glitch. The trap is accepting the \"records\" picture and chasing a fix that does not exist. The right move is to verify the number against the source of record."
+  },
+  {
+    "question": "You give the same prompt to the same model twice and get two slightly different summaries of a benefits notice. What is the most accurate read?",
+    "options": [
+      "Variation is normal; it samples from probabilities, so verify the facts.",
+      "The model is malfunctioning and the bug should be reported to vendors.",
+      "One run reached the live database and the other run missed it.",
+      "The second run is more accurate because the model has now warmed up."
+    ],
+    "correctIndex": 0,
+    "explanation": "Models sample the next token from a probability distribution, so repeated runs can differ by design rather than by error. Reading this as a malfunction misses normal behavior. Because neither run is a retrieval, you verify any factual claim against the official source instead of choosing the version you prefer."
+  },
+  {
+    "question": "A long chat thread analyzing a 90-page policy starts dropping details you pasted near the top. What best explains this?",
+    "options": [
+      "The model deleted the pasted file to save space in storage.",
+      "The model is punishing you for opening a thread that is too long.",
+      "Earlier text fell out of the finite context window as the thread grew.",
+      "The policy text was never actually relevant to the model's answer."
+    ],
+    "correctIndex": 2,
+    "explanation": "The context window is the limited amount of text the model can hold at once, so a long thread plus a large document can crowd out content you added earlier. The tempting wrong read imagines a deletion that does not happen. Knowing memory is finite tells you to re-supply key passages rather than assume the model still has them."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '1.1';
+
+-- 1.2 — Hallucination as a structural feature, not a bug
+update public.modules
+   set body_md   = $md$An AI draft of a legal memo cites a court case with a name, a year, and a docket number. It reads perfectly. The case does not exist. Treating that as a rare glitch, instead of the model doing its normal job, is how a fake citation reaches a client.
+
+## What it is
+
+Hallucination, which [NIST calls confabulation](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf), is when a model produces fluent, confident output that is wrong. It is not a defect bolted onto an otherwise truthful machine. It follows directly from the training goal: predict the next fluent token. A confident, wrong answer is the model succeeding at that goal. Fluency and factual accuracy are separate properties, and the model optimizes the first.
+
+## Why it matters to you
+
+If you think of hallucination as a temporary glitch that newer models will fix, you under-verify. You let the smooth ones through. In the [2025 Stack Overflow Developer Survey](https://survey.stackoverflow.co/2025/ai), the top frustration with AI was output that is "almost right, but not quite," and more developers distrusted accuracy (46%) than trusted it (33%). The danger grows because polish disarms you. Anthropic's [AI Fluency Index](https://www.anthropic.com/research/AI-fluency-index) found that when output looked more polished, people questioned its reasoning less and noticed missing context less. The better it reads, the harder you should look.
+
+## How to do it / what to watch for
+
+Keep a default verification posture for anything high-stakes:
+
+- Expect hallucination on every task, not just hard ones. Fluent does not mean checked.
+- Verify specifics against a source of record: names, dates, dollar amounts, citations, statute sections.
+- Be most suspicious when the output is most polished, since smoothness is when your guard drops.
+- Trace any cited source before you rely on it. If you cannot find it, treat it as invented.
+
+The red flag is the feeling "this looks solid, ship it." That feeling tracks fluency, not truth. The two come apart constantly, and a fabricated detail can pass plausibility while failing fact.
+
+## Example
+
+You ask a model to support a benefits-appeal argument, and it returns a quotation from a named regulation, complete with a section number. The wording is exactly what you hoped to find. You search the regulation and that section does not say it. Some regulations do not even reach that number. The model generated a [confabulation](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf): a plausible citation that was never real. You drop it and cite only text you confirmed yourself.
+
+## In practice
+
+Expect confident, fluent, wrong. Verify every specific in any high-stakes output before it leaves your hands.
+
+## Sources
+
+- [NIST Generative AI Profile (AI 600-1)](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf)
+- [Anthropic AI Fluency Index (Education Report, Feb 2026)](https://www.anthropic.com/research/AI-fluency-index)
+- [Stack Overflow 2025 Developer Survey (AI)](https://survey.stackoverflow.co/2025/ai)$md$,
+       quiz_json = $json$[
+  {
+    "question": "A model drafts a legal brief that quotes a named regulation with a precise section number, and the wording fits your argument perfectly. Before relying on it, what is the right move?",
+    "options": [
+      "Use it; a precise section number signals the model found a real source.",
+      "Reword the quote more formally so it reads as more authoritative.",
+      "Find that exact section and confirm the wording; if missing, treat it as invented.",
+      "Run the prompt again and keep whichever citation comes back cleaner."
+    ],
+    "correctIndex": 2,
+    "explanation": "Models optimize for fluent text, so a confident, well-formatted citation can be confabulated and still read perfectly. The trap is letting precision and polish stand in for proof. Verifying the section against the actual regulation, and dropping anything you cannot find, is the only safe path."
+  },
+  {
+    "question": "Two AI summaries of a policy come back. One is rough but flagged \"I am unsure of the deadline\"; the other is smooth and states the deadline confidently. Which deserves more scrutiny on the deadline?",
+    "options": [
+      "The rough one, since admitting uncertainty means it is more likely wrong.",
+      "Neither; a model's confidence is a reliable signal that it is correct.",
+      "Whichever option is longer, since more length tends to show more effort.",
+      "The smooth, confident one, since polish lowers your guard but not error."
+    ],
+    "correctIndex": 3,
+    "explanation": "Fluency and accuracy are independent, and research shows polished output makes people question reasoning and missing context less. The confident, smooth claim is exactly where verification slips, so it earns more scrutiny, not less. A hedge at least tells you where to look."
+  },
+  {
+    "question": "A colleague says hallucination is a known glitch that the next model release will fix, so heavy checking is a waste of time. How should you respond?",
+    "options": [
+      "Note hallucination follows from the objective, so keep verifying high-stakes work.",
+      "Agree, and reduce verification effort once the newer model finally ships.",
+      "Raise the temperature so that the model's errors become easier to spot.",
+      "Only use the model for tasks where factual accuracy does not really matter."
+    ],
+    "correctIndex": 0,
+    "explanation": "Producing fluent next tokens is the model's job, so confidently wrong output is structural, not a passing defect a release will eliminate. The under-verification trap is to relax checking because a new version shipped. The disposition that protects beneficiaries is to keep verifying specifics regardless of model version."
+  },
+  {
+    "question": "An AI-drafted Medicaid notice reads cleanly and lists a specific 30-day appeal window. What is the best next step before it reaches the client?",
+    "options": [
+      "Ship it; clear writing plus a specific number already reads as trustworthy.",
+      "Check the 30-day window against official policy; the number can be wrong.",
+      "Make the language more formal so the notice looks more official to clients.",
+      "Generate the notice again and send whichever version happens to read better."
+    ],
+    "correctIndex": 1,
+    "explanation": "A specific figure is precisely the kind of claim a model can render fluently and get wrong, so dates and windows must be checked against the source of record before reaching a beneficiary. The trap is mistaking fluency for proof. Polishing or regenerating changes the wording, not the accuracy."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '1.2';
+
+-- 1.7 — Recognizing AI bias, fairness, and accessibility blind spots
+update public.modules
+   set body_md   = $md$You ask a model to generate an intake form for a public benefits portal. The HTML works and looks clean. None of the fields have labels a screen reader can announce. Shipped as is, it locks out the people most likely to need the service.
+
+## What it is
+
+Models carry the biases in their training data and the choices their builders made. That shows up as which groups get served well by default, which languages and dialects degrade, and stereotyping by name or image. Summaries can flatten minority viewpoints into the majority's framing. Separately, AI-generated UI and code routinely omit [accessibility](https://www.section508.gov/manage/laws-and-policies/section-508-law/) basics: alt text, ARIA labels, color contrast, and a sensible focus order.
+
+## Why it matters to you
+
+At a firm building public services, a biased or inaccessible AI output does not stay a draft. It becomes a biased or inaccessible public artifact that a real person hits. Federal ICT must meet [Section 508](https://www.section508.gov/manage/laws-and-policies/section-508-law/), which points to WCAG 2.0 AA, so missing labels are not a style nit; they are a compliance and access failure. Federal procurement guidance now also sets [principles aimed at AI bias](https://www.whitehouse.gov/wp-content/uploads/2025/12/M-26-04-Increasing-Public-Trust-in-Artificial-Intelligence-Through-Unbiased-AI-Principles-1.pdf). And [NIST lists bias](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf) among standard generative-AI risks, which means it is expected, not exotic.
+
+## How to do it / what to watch for
+
+Treat bias and accessibility as normal failure modes to check in your own output:
+
+- Ask who this serves by default and who it leaves out, especially across language, dialect, and disability.
+- Test the other languages you actually support; quality often drops sharply outside English.
+- For any generated UI or code, check for labels, alt text, contrast, and keyboard focus order before it moves on.
+- When you summarize, ask whether a minority view got flattened into the majority framing.
+
+The red flag is output that works for the default user and is silent about everyone else. Silence is not safety; it is usually the blind spot.
+
+## Example
+
+The [Center for Democracy and Technology stress-tested chatbots](https://cdt.org/insights/brief-generating-confusion-stress-testing-ai-chatbot-responses-on-voting-with-a-disability/) on voting with a disability. More than a third of answers were wrong, and every model invented a fake law or organization at least once. The harm landed on people already facing barriers. Closer to your desk, a generated web form ships without field labels, so a screen-reader user cannot tell which box is the date of birth. Both pass a quick glance. Both fail the people the service exists for.
+
+## In practice
+
+Check who the output excludes, not just whether it works. Bias and missing accessibility are failure modes, not edge cases.
+
+## Sources
+
+- [NIST Generative AI Profile (AI 600-1)](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf)
+- [OMB M-26-04 (Unbiased AI Principles)](https://www.whitehouse.gov/wp-content/uploads/2025/12/M-26-04-Increasing-Public-Trust-in-Artificial-Intelligence-Through-Unbiased-AI-Principles-1.pdf)
+- [Section 508 (29 U.S.C. §794d)](https://www.section508.gov/manage/laws-and-policies/section-508-law/)
+- [CDT, "Generating Confusion" (Sept 2024)](https://cdt.org/insights/brief-generating-confusion-stress-testing-ai-chatbot-responses-on-voting-with-a-disability/)$md$,
+       quiz_json = $json$[
+  {
+    "question": "An AI generates a benefits intake form. The markup renders correctly, but the input fields have no labels a screen reader can announce. What should you do before it advances?",
+    "options": [
+      "Add field labels and check alt text, contrast, and focus order for Section 508.",
+      "Ship it; the markup renders correctly, so it already meets the requirement.",
+      "Add a note asking users with disabilities to call a help line for support.",
+      "Regenerate it at a higher quality setting and assume the labels then appear."
+    ],
+    "correctIndex": 0,
+    "explanation": "AI-generated UI routinely omits accessibility primitives, and Section 508 points to WCAG 2.0 AA, so missing labels are a compliance and access failure, not a style choice. The trap is mistaking \"renders\" for \"accessible.\" Fixing labels and checking contrast and focus order is the work the form needs."
+  },
+  {
+    "question": "Your team uses a model to write public guidance, and it works well in English. The service also supports Spanish and Haitian Creole. What is the responsible step?",
+    "options": [
+      "Trust the model equally in all three languages since English came out well.",
+      "Translate only the English version with the same model and then skip review.",
+      "Drop the non-English versions entirely so you can avoid the quality risk.",
+      "Test the Spanish and Creole output; models often degrade badly outside English."
+    ],
+    "correctIndex": 3,
+    "explanation": "Models reflect their training data, and quality commonly drops for less-represented languages and dialects, so English performance does not transfer. Assuming parity across languages is the trap. Dropping the non-English versions abandons the people the service is meant to reach, so you test what you actually support."
+  },
+  {
+    "question": "A model summarizes community feedback for a report and produces a clean summary that matches the majority view. What blind spot should you check?",
+    "options": [
+      "Whether the finished summary is short enough to fit inside the report.",
+      "Whether minority viewpoints got flattened into the majority framing and lost.",
+      "Whether the grammar is formal enough for a government reporting audience.",
+      "Whether it reused the same section headings as last quarter's report did."
+    ],
+    "correctIndex": 1,
+    "explanation": "Summarization can quietly collapse minority viewpoints into the dominant framing, which is a fairness failure when the report shapes a public service. The other checks are formatting concerns that do not touch whose voice survived. The real question is who got left out, not how it reads."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '1.7';
+
+-- 1.8 — Energy, environmental, and sovereignty conversation
+update public.modules
+   set body_md   = $md$A partner on a public-health project asks, over coffee, what Nava thinks about AI's environmental footprint and whether prompts about residents leave the country. You can dismiss it, you can catastrophize, or you can answer like someone who has actually thought about it.
+
+## What it is
+
+AI's costs are a real conversation with several threads. Training and running large models use electricity and water at data centers. Compute is concentrated among a few vendors. Sovereignty questions arise when prompts and data leave a jurisdiction or the country. And there are open questions about labor and where training data came from. Specific energy and water figures are genuinely contested, so the honest move is to engage with the issues without pretending to a precise number.
+
+## Why it matters to you
+
+Clients, partners, and colleagues will ask. "It's nothing" sounds evasive; "AI is boiling the planet" sounds unserious. Both end the conversation and dent your credibility. The literate answer is "here is what we know and here is what is contested." That posture lets a procurement officer or a community partner keep trusting you. On the labor thread, the evidence is still forming: a [Stanford study](https://digitaleconomy.stanford.edu/publication/canaries-in-the-coal-mine-six-facts-about-the-recent-employment-effects-of-artificial-intelligence/) found roughly a 13% relative employment decline for workers aged 22 to 25 in the most AI-exposed jobs, which is a signal worth naming honestly rather than a settled verdict.
+
+## How to do it / what to watch for
+
+When the topic comes up, aim for honest engagement:
+
+- Name the real threads: data-center energy and water, compute concentration, data sovereignty, and labor and training-data provenance.
+- Separate what is reasonably known from what is contested, and say which is which.
+- Avoid stating specific energy or water numbers as fact; the credible figures are disputed.
+- Do not dismiss the concern and do not catastrophize. Both signal you are not engaging.
+
+The red flag is reaching for a tidy one-liner in either direction. The goal is not to win the argument or to take a side; it is to show you take the costs seriously and know the limits of the evidence.
+
+## Example
+
+A partner asks Nava about AI's environmental footprint before agreeing to use it on a shared project. A weak answer waves it off or quotes a scary statistic from memory. A strong answer sounds like this: data centers do use meaningful energy and water, the exact figures are contested and depend heavily on assumptions, sovereignty matters because their residents' data may cross borders, and you would rather flag what is uncertain than overstate it. The partner leaves trusting your judgment, not your slogan.
+
+## In practice
+
+Engage honestly: name the costs, separate known from contested, and skip both the dismissal and the doom.
+
+## Sources
+
+- [Stanford, "Canaries in the Coal Mine" (2025)](https://digitaleconomy.stanford.edu/publication/canaries-in-the-coal-mine-six-facts-about-the-recent-employment-effects-of-artificial-intelligence/)$md$,
+       quiz_json = $json$[
+  {
+    "question": "A government partner asks what Nava thinks about AI's data-center energy and water use before agreeing to use it. What is the most credible response?",
+    "options": [
+      "Reassure them the impact is basically negligible so the project can proceed.",
+      "Cite a precise gallons-per-prompt figure from memory to sound well informed.",
+      "Say data centers use real energy and water, but the specific figures are contested.",
+      "Tell them AI is an environmental catastrophe and the concern may be unanswerable."
+    ],
+    "correctIndex": 2,
+    "explanation": "The honest, literate posture names the real cost while being clear that specific energy and water figures are contested. The trap is borrowed precision; quoting a number you cannot stand behind erodes trust the moment it is questioned. Waving the concern off or catastrophizing both shut down the conversation."
+  },
+  {
+    "question": "A colleague insists AI's environmental cost is a non-issue and another insists it is an unstoppable disaster. How should a literate practitioner frame it?",
+    "options": [
+      "Separate what is reasonably known from what is contested, avoiding both extremes.",
+      "Side with whichever colleague happens to hold the stronger personal conviction.",
+      "Refuse to discuss it at all because no exact figures have been settled yet.",
+      "Pick the more dramatic position so that the team takes the topic seriously."
+    ],
+    "correctIndex": 0,
+    "explanation": "Engaging honestly means separating known from contested and resisting tidy one-liners in either direction. Treating conviction as evidence is the trap. Refusing to engage abandons a question clients will keep asking; the literate move is to discuss it carefully even where numbers are disputed."
+  },
+  {
+    "question": "A client raises concern that prompts containing residents' information might leave the country when sent to a vendor's model. What is the right way to handle this?",
+    "options": [
+      "Dismiss the worry, since the data is only some text inside a prompt anyway.",
+      "Tell them it is impossible to know, so the question is not worth discussing.",
+      "Promise the data never leaves the country without checking how the vendor works.",
+      "Treat sovereignty as legitimate, name where data may cross borders, and engage."
+    ],
+    "correctIndex": 3,
+    "explanation": "Sovereignty is one of the real threads in the AI-cost conversation, and prompts about residents can carry sensitive data across borders. Dismissing it waves off a legitimate concern, and promising it never leaves makes a guarantee you have not verified. Engaging honestly means naming the issue and being clear about what you know."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '1.8';
+
+-- 1.11 — Honest framing of job-shape change
+update public.modules
+   set body_md   = $md$Your team is half-excited and half-anxious about AI. One engineer says it will replace half the work by next year; another says it is a toy that will not touch real engineering. Neither claim helps the team decide what to actually try. An honest read does.
+
+## What it is
+
+Honest framing means talking plainly about how AI is likely to change your work: what gets faster, what gets commodified, what stays human, and what is genuinely uncertain. It rejects both evangelism and denial. The evidence so far points to AI complementing people more than replacing them, while still showing real productivity effects and a skill divide that depends on the task and the person.
+
+## Why it matters to you
+
+People who cannot discuss this go to one of two unhelpful places. Some get defensive and disengage, so they never build the skill. Others over-invest in AI as identity and stop questioning it. Both make Stage 2 experimentation feel unsafe, because the conversation is about loyalty instead of evidence. There is a real signal worth taking seriously: a [Stanford study](https://digitaleconomy.stanford.edu/publication/canaries-in-the-coal-mine-six-facts-about-the-recent-employment-effects-of-artificial-intelligence/) found roughly a 13% relative employment decline for workers aged 22 to 25 in the most AI-exposed jobs. Honest framing lets your team hold that alongside the upside without panic or hype.
+
+## How to do it / what to watch for
+
+Keep the conversation grounded in evidence:
+
+- Read the productivity research carefully. In a [large study of support agents](https://academic.oup.com/qje/article/140/2/889/7990658), AI raised output about 14% overall, but roughly 34% for novices and near zero for experts.
+- Hold the counter-evidence too: [experienced open-source developers were about 19% slower with AI while believing they were faster](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/). Feeling fast is not the same as being fast.
+- Name what stays human in your role: judgment, accountability, and relationships with clients.
+- Avoid both "it changes nothing" and "it changes everything." Speak in specifics about your work.
+
+The red flag is any claim with no evidence behind it, in either direction. Strong feelings are not findings.
+
+## Example
+
+A team sits down to ask what AI actually changes in their specific role. Instead of debating whether AI is good or bad, they get concrete. First drafts of documentation get faster. Boilerplate gets commodified. Deciding what a client needs stays human. The newer engineers note they may gain the most, which matches the [novice finding](https://academic.oup.com/qje/article/140/2/889/7990658). They also agree to measure real time saved rather than trust the feeling of speed. The result is a list of things to try, not a verdict on AI.
+
+## In practice
+
+Talk specifics, not slogans. Let evidence, including where novices gain most, shape what your team tries next.
+
+## Sources
+
+- [Stanford, "Canaries in the Coal Mine" (2025)](https://digitaleconomy.stanford.edu/publication/canaries-in-the-coal-mine-six-facts-about-the-recent-employment-effects-of-artificial-intelligence/)
+- [Brynjolfsson, Li & Raymond, "Generative AI at Work," QJE (2025)](https://academic.oup.com/qje/article/140/2/889/7990658)
+- [METR, early-2025 AI developer productivity study (July 2025)](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/)$md$,
+       quiz_json = $json$[
+  {
+    "question": "In a team discussion, one engineer claims AI will replace half the work this year and another says it changes nothing. What is the most honest framing to offer?",
+    "options": [
+      "Get specific about what speeds up, what stays human, and what is uncertain here.",
+      "Side with the optimist, since AI quite clearly boosts everyone's productivity.",
+      "Side with the skeptic, since genuinely careful work still needs real people.",
+      "Avoid the topic entirely until the research on it is more fully settled."
+    ],
+    "correctIndex": 0,
+    "explanation": "Honest framing rejects both evangelism and denial and talks in specifics about your own work, backed by evidence. Picking either slogan skips the actual task. Avoiding the topic leaves the team in the loyalty debate that makes safe experimentation harder."
+  },
+  {
+    "question": "A study of customer-support agents found AI raised output most for novices and barely at all for experts. How should your team apply this?",
+    "options": [
+      "Conclude AI mainly helps experts, so hand it to senior staff before anyone else.",
+      "Conclude the gains are fake because the experts in the study saw little change.",
+      "Recognize newer staff may gain most, and let that shape who experiments first.",
+      "Assume every role will see the same 14% gain no matter their experience level."
+    ],
+    "correctIndex": 2,
+    "explanation": "The research showed roughly a 34% gain for novices and near zero for experts, so the benefit is uneven and skews toward less-experienced workers. Concluding it mainly helps experts inverts the finding. Assuming a flat gain for everyone ignores the skill divide; reading the evidence accurately means expecting different effects by experience."
+  },
+  {
+    "question": "Your developers feel noticeably faster using an AI assistant, so a lead wants to declare a productivity win. What does the evidence suggest you do?",
+    "options": [
+      "Declare the win, since the team's strong sense of speed is reliable evidence.",
+      "Assume the feeling of speed means a 14% gain and report that exact figure up.",
+      "Conclude AI never helps developers at all and drop the assistant from the team.",
+      "Measure actual time on tasks; experienced devs felt faster while being slower."
+    ],
+    "correctIndex": 3,
+    "explanation": "In a study of experienced open-source developers, AI made them about 19% slower even though they believed it sped them up, so the feeling of speed is not proof. Trusting that feeling is the trap. Concluding AI never helps overcorrects into denial; the honest response is to measure rather than assume in either direction."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '1.11';
+
+-- 1.12 — Civic-tech-specific AI harm patterns
+update public.modules
+   set body_md   = $md$An AI assistant on a benefits project drafts guidance telling a claimant they do not need to reapply. A caseworker, trusting it, edits it in quietly and moves on. If that guidance is wrong, a vulnerable person acts on it. In civic tech, that is an escalation event, not a tidy edit.
+
+## What it is
+
+Four failure shapes are distinctive to civic-tech work. First, wrong eligibility, benefits, or legal guidance that a vulnerable person acts on. Second, audit-failing artifacts that pass plausibility but miss the rationale, source, or decision lineage an auditor needs. Third, agency-policy bypass, where AI skips an internal escalation path it was never trained on. Fourth, voice flattening, where the needs of vulnerable populations get smoothed into a generic framing. [NIST lists these kinds of harms](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf) among standard generative-AI risks.
+
+## Why it matters to you
+
+Every Nava practitioner works in domains where these harms hit real people. The [NYC MyCity chatbot](https://themarkup.org/artificial-intelligence/2024/04/02/malfunctioning-nyc-ai-chatbot-still-active-despite-widespread-evidence-its-encouraging-illegal-behavior) told business owners they could break the law, and disclaimers did not fix it. The [Center for Democracy and Technology found chatbots giving wrong voting information](https://cdt.org/insights/brief-generating-confusion-stress-testing-ai-chatbot-responses-on-voting-with-a-disability/) to people with disabilities. Even liability can attach: in [Moffatt v. Air Canada](https://www.canlii.org/en/bc/bccrt/doc/2024/2024bccrt149/2024bccrt149.html), a tribunal held an airline responsible for its chatbot's wrong answer. That was a British Columbia tribunal, not US law, but it is a clear warning that the organization owns what its AI tells the public.
+
+## How to do it / what to watch for
+
+When you see any of the four shapes, escalate instead of quietly fixing it:
+
+- Wrong eligibility, benefits, or legal guidance a person might act on.
+- An artifact that reads fine but cannot show its rationale, source, or decision lineage.
+- AI output that skips an internal review or escalation step it never knew about.
+- A summary that flattens a vulnerable population's specific needs into generic language.
+
+The red flag is the urge to silently patch one of these and move on. A quiet edit hides a pattern that may be repeating elsewhere, so name it and route it up.
+
+## Example
+
+Illustrative scenario: an AI summarizes a SNAP case and states a slightly wrong income threshold while omitting a state deduction, so a Medicaid-eligible claimant looks ineligible. A caseworker under deadline pressure accepts it. The fix is not to quietly correct that one record. It is to escalate, because the same wrong threshold may be shaping other cases. The real incidents above show the stakes; this scenario shows the daily version you are likelier to meet.
+
+## In practice
+
+Treat wrong guidance, audit gaps, policy bypass, and voice flattening as escalation events. Do not quietly edit and move on.
+
+## Sources
+
+- [NYC MyCity chatbot (The Markup/THE CITY, 2024)](https://themarkup.org/artificial-intelligence/2024/04/02/malfunctioning-nyc-ai-chatbot-still-active-despite-widespread-evidence-its-encouraging-illegal-behavior)
+- [CDT, "Generating Confusion" (Sept 2024)](https://cdt.org/insights/brief-generating-confusion-stress-testing-ai-chatbot-responses-on-voting-with-a-disability/)
+- [Moffatt v. Air Canada, 2024 BCCRT 149 (CanLII)](https://www.canlii.org/en/bc/bccrt/doc/2024/2024bccrt149/2024bccrt149.html)
+- [NIST Generative AI Profile (AI 600-1)](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf)$md$,
+       quiz_json = $json$[
+  {
+    "question": "You notice an AI assistant drafted benefits guidance with a wrong eligibility rule that a claimant could act on. The quickest path is to correct that one message and continue. What should you do instead?",
+    "options": [
+      "Quietly fix that single message and move on, since the error is now corrected.",
+      "Escalate it; wrong eligibility guidance a person may act on may be repeating.",
+      "Add a disclaimer telling users to verify everything in the message themselves.",
+      "Lower the model's temperature so that it stops making these eligibility errors."
+    ],
+    "correctIndex": 1,
+    "explanation": "Wrong eligibility guidance is one of the civic-tech harm shapes and a vulnerable person can act on it, so it warrants escalation rather than a silent patch that hides a possibly repeating pattern. Adding a disclaimer fails because, as the NYC MyCity case showed, disclaimers do not fix bad answers. A quiet edit leaves the underlying problem in place."
+  },
+  {
+    "question": "An AI-generated eligibility determination reads cleanly and reaches a reasonable-looking result, but it cannot show which rule or source it relied on. Why is this a problem in civic tech?",
+    "options": [
+      "It is not a problem at all as long as the determination looks reasonable.",
+      "The only real issue is that the determination should be written more formally.",
+      "It just needs a numeric confidence score added to the bottom of the output.",
+      "It is an audit-failing artifact: plausible, but missing rationale and lineage."
+    ],
+    "correctIndex": 3,
+    "explanation": "Audit-failing artifacts are a distinct civic-tech harm: they look plausible but cannot show rationale, source, or decision lineage, which government work must be able to produce. Trusting appearance over accountability is the trap. Formatting or a confidence score does not supply the missing lineage an auditor needs."
+  },
+  {
+    "question": "A partner cites Moffatt v. Air Canada to argue your team is automatically liable under US law for any chatbot error. How should you characterize that case accurately?",
+    "options": [
+      "Agree that it sets binding US precedent for organizational chatbot liability.",
+      "Dismiss it as completely irrelevant simply because it happened in Canada.",
+      "Note it was a BC tribunal, not US law, but a warning that you own AI output.",
+      "Say it proves a disclaimer fully protects an organization from any liability."
+    ],
+    "correctIndex": 2,
+    "explanation": "Moffatt was decided by a British Columbia Civil Resolution Tribunal, so it is persuasive and illustrative rather than binding US precedent, yet it still shows organizations are held responsible for their chatbots. Overstating its legal force is one error, and dismissing it ignores a relevant warning. The case stands for ownership of AI output, not for disclaimer immunity."
+  },
+  {
+    "question": "An AI summary of community input for a public service smooths the distinct needs of a vulnerable group into generic language. Which harm shape is this, and what is the right response?",
+    "options": [
+      "Voice flattening; escalate it rather than accept the smoothed-over summary.",
+      "An audit failure; just add a citation to the summary and then move on.",
+      "A policy bypass; the fix is to raise the model's temperature setting.",
+      "No real harm at all, since the summary reads as clear and nicely concise."
+    ],
+    "correctIndex": 0,
+    "explanation": "Flattening a vulnerable population's specific needs into generic framing is the voice-flattening harm, and it deserves escalation because the summary will shape a public service. Calling it harmless mistakes a clean read for a faithful one. The other options misname the shape and apply fixes that do not restore the lost detail."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '1.12';
+
+-- 2.1 — Prompt construction as a craft
+update public.modules
+   set body_md   = $md$You need a plain-language note explaining a Medicaid renewal to claimants. You type "write something about renewing Medicaid," hit enter, and get three paragraphs of generic filler. Now you're rewriting from scratch. The prompt, not the model, was the problem.
+
+## What it is
+
+Prompt construction is the deliberate work of setting up a request so the model can succeed on the first try. A strong prompt names a role and context, states the task with concrete constraints, shows an example or format, and defines what "done" looks like. This maps to two of the [4D fluency skills](https://www.anthropic.com/learn/claude-for-you): describing what you want and delegating the right slice of work.
+
+## Why it matters to you
+
+The gap between a vague prompt and a built one is the gap between a 15-second useful answer and a five-round debugging session. When you write for a beneficiary, sloppy prompts cost you twice: first the rework, then the risk that a half-specified note ships with a wrong reading level or a missing deadline. The minutes you spend framing the request are the cheapest minutes in the whole task.
+
+## How to do it / what to watch for
+
+Build the prompt in four moves:
+
+- **Role and context:** "You write notices for Medicaid recipients at a sixth-grade reading level."
+- **Task with constraints:** word count, what to include, what to leave out, the audience.
+- **Format or example:** paste a sample notice, or specify headings and length.
+- **Definition of done:** "The reader knows the deadline and the one action they must take."
+
+Put the load-bearing instructions at the start or the end, where the model attends most. When your prompt mixes your instructions with pasted content, wrap the content in clear delimiters such as triple quotes, so the model does not mistake the source text for a command.
+
+## Example
+
+Vague: "Write something about renewing Medicaid." You get bland prose with no deadline. Constraint-first: "Role: you write for Medicaid recipients at a sixth-grade level. Task: a 120-word note telling them their renewal is due June 30 and that they must return the enclosed form. Plain words, second person, no jargon. Done = reader knows the date and the single action." The second prompt returns something close to shippable. You still verify the date.
+
+## In practice
+
+Spend 60 seconds building the prompt; it buys back five rounds of fixing the answer.
+
+## Sources
+
+- [Anthropic, 4D AI Fluency framework](https://www.anthropic.com/learn/claude-for-you)
+- [Anthropic AI Fluency Index (Education Report, Feb 2026)](https://www.anthropic.com/research/AI-fluency-index)$md$,
+       quiz_json = $json$[
+  {
+    "question": "You ask an AI tool, \"Help me explain SNAP benefits,\" and get a generic overview you can't use. What's the most effective fix?",
+    "options": [
+      "Re-send the same prompt and hope for a better draft this time.",
+      "Add the role, the audience, the length, and a clear definition of what a finished note should accomplish.",
+      "Switch to a different AI tool and try the same short prompt there.",
+      "Tell it to \"be more specific and professional\" without adding details."
+    ],
+    "correctIndex": 1,
+    "explanation": "Generic output usually traces back to an underspecified prompt, so the fix is to add the missing structure: role, audience, constraints, and a definition of done. Telling it to \"be more specific\" without adding details just shifts the guessing to the model, which still doesn't know your reader or your deadline. In practice, building the prompt up front beats re-rolling a thin one."
+  },
+  {
+    "question": "You paste a long policy excerpt into a prompt and add your instructions right after it. The model treats a sentence from the policy as if it were your command. What's the best preventive habit?",
+    "options": [
+      "Wrap the pasted policy in clear delimiters and keep your instructions separate from the source text.",
+      "Make the prompt much shorter so there's less text to confuse.",
+      "Trust that a capable model will always tell content from instruction.",
+      "Move all the pasted text to the very middle of the prompt."
+    ],
+    "correctIndex": 0,
+    "explanation": "When content and instructions sit side by side, the model can mistake one for the other, so delimiters (like triple quotes) and a clean separation prevent the mix-up. Assuming a capable model will always tell content from instruction is exactly the failure this habit guards against. Clear boundaries between \"here is the material\" and \"here is what to do with it\" keep the request unambiguous."
+  },
+  {
+    "question": "Your prompt is detailed but buries the single most important rule (\"the note must state the renewal deadline\") in the middle of a long paragraph. Why reposition it?",
+    "options": [
+      "Middle placement makes the prompt look unbalanced to reviewers.",
+      "Long paragraphs always cause the model to crash or time out.",
+      "Models pay the most attention to the start and end of a prompt, so a load-bearing instruction belongs there.",
+      "The deadline rule should be deleted to keep the prompt shorter."
+    ],
+    "correctIndex": 2,
+    "explanation": "Instructions at the start or end of a prompt get the most attention, so the rule that most affects the beneficiary should sit where the model is most likely to honor it. Deleting the deadline rule to shorten the prompt would drop the very requirement that protects the reader. Position your must-haves at the edges, not buried in the body."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.1';
+
+-- 2.2 — Output validation as a verifiable skill
+update public.modules
+   set body_md   = $md$An AI tool hands you a tidy eligibility summary with a quoted regulation and a specific effective date. It reads like something a senior analyst wrote. You're tempted to forward it. The polish is doing your thinking for you, and that's the moment to slow down.
+
+## What it is
+
+Output validation is the habit of treating every non-trivial AI output as unverified until you check it. It means owning the result, not just the request. Validation is not rereading for tone. It is testing specific claims, quotes, numbers, and citations against a source you trust.
+
+## Why it matters to you
+
+Polished writing lowers your guard in a measurable way. [Anthropic's research](https://www.anthropic.com/research/AI-fluency-index) found that when output looks finished, people question its reasoning less and notice missing context less. This is a documented pattern: [research on automation bias](https://journals.sagepub.com/doi/10.1177/154193129604000413) shows people lean on confident automated output and miss errors they would have caught on their own. Developers feel it too. In the [2025 Stack Overflow survey](https://survey.stackoverflow.co/2025/ai), the top frustration with AI was code that was "almost right, but not quite." In govtech, an "almost right" benefit threshold or appeal window can steer a real person wrong. Your name is on the deliverable, not the model's.
+
+## How to do it / what to watch for
+
+Build these checks into a quick pass before anything ships:
+
+- **Cross-check quotes** against the named source; if no source is named, ask for one.
+- **Spot-check numbers** (dates, dollar amounts, percentages) against the original data.
+- **Ask "what would have to be true for this to be wrong?"** and test that.
+- **Flag plausible claims you can't verify** rather than passing them along as fact.
+
+The red flag is fluency itself. A fabricated citation looks exactly like a real one, and a wrong date reads as confidently as a right one. "The AI said so" is never a defensible line in a deliverable.
+
+## Example
+
+A teammate shares an AI-drafted brief that cites "42 CFR 435.916" and states a renewal took effect "March 1, 2024." You pull the regulation: the section exists but says something different, and the program's records show the change landed in April. The draft was confident on both counts. Two minutes of checking caught an error that would have misinformed claimants.
+
+## In practice
+
+Treat every output as unverified until you've checked its quotes, numbers, and sources yourself.
+
+## Sources
+
+- [Anthropic AI Fluency Index (Education Report, Feb 2026)](https://www.anthropic.com/research/AI-fluency-index)
+- [Stack Overflow 2025 Developer Survey (AI)](https://survey.stackoverflow.co/2025/ai)
+- [Mosier & Skitka, automation bias](https://journals.sagepub.com/doi/10.1177/154193129604000413)$md$,
+       quiz_json = $json$[
+  {
+    "question": "An AI summary of a benefits rule includes a direct quote attributed to a specific CFR section. The wording sounds authoritative. What should you do before using it?",
+    "options": [
+      "Open the cited section and confirm the quote matches the actual text.",
+      "Accept it, since a named regulation citation signals the model checked its work.",
+      "Reword the quote so it reads more formally before forwarding.",
+      "Ask the model whether it's confident the quote is accurate."
+    ],
+    "correctIndex": 0,
+    "explanation": "Models can fabricate citations that look identical to real ones, so the only reliable check is opening the named source and comparing the text. A named citation feels like proof but isn't, and asking the model to rate its own confidence just produces more fluent text, not verification. Cross-check quotes against the source of record before you rely on them."
+  },
+  {
+    "question": "You're reviewing an AI-drafted memo with several plausible statistics, but you have no quick way to confirm two of them. What's the right move before it goes out?",
+    "options": [
+      "Leave the numbers in; they sound reasonable and the memo reads well.",
+      "Delete every number so the memo can't be wrong about anything.",
+      "Flag the two unverifiable figures and hold them until you can check them against the original data.",
+      "Add a line saying the figures were generated by AI and move on."
+    ],
+    "correctIndex": 2,
+    "explanation": "Plausible-sounding numbers you can't verify are exactly the ones that cause quiet harm, so flagging and holding them until you confirm against the source is the disciplined choice. Deleting every number throws away verified facts too, and an AI disclaimer doesn't make a wrong figure correct. Validate or hold; don't pass along what you can't stand behind."
+  },
+  {
+    "question": "A colleague defends an AI-generated claim in a client deliverable by saying, \"The tool produced it, so it should be fine.\" Why is that reasoning unsafe?",
+    "options": [
+      "Because AI tools are slower than writing it by hand.",
+      "Because clients prefer documents written entirely by people.",
+      "Because the output's polish lowers scrutiny, and an unverified claim in a deliverable is the team's responsibility, not the model's.",
+      "Because the tool's terms of service forbid using its text in deliverables."
+    ],
+    "correctIndex": 2,
+    "explanation": "Finished-looking output measurably reduces how hard people scrutinize it, so \"the AI said so\" leaves a fabricated or wrong claim unchecked while the team still owns the result. The issue isn't speed or client preference; it's accountability for accuracy. Validation is the antidote to misplaced trust, and it never transfers to the tool."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.2';
+
+-- 2.3 — Counteracting the polished-output trap
+update public.modules
+   set body_md   = $md$An AI tool returns a product requirements document that looks ready to circulate: clean headings, confident scope, crisp acceptance criteria. It reads done. But your team never actually decided whether the renewal flow should support partial submissions, and the draft quietly picked an answer. The polish hid the open question.
+
+## What it is
+
+The polished-output trap is the pull to accept work that looks finished without checking whether it is. It hits hardest on artifacts that wear the costume of completion: code, formatted docs, slide drafts, generated personas, and PRDs. Countering it means building named habits that make the model show its work instead of just its conclusions.
+
+## Why it matters to you
+
+The most expensive Year-1 mistakes rarely look like mistakes. They look like clean deliverables that smoothed over a real decision. [Anthropic's research](https://www.anthropic.com/research/AI-fluency-index) measured the effect: when output looks finished, people question its reasoning less (about three points less) and notice missing context less (about five points less). The danger compounds near the [Jagged Frontier](https://pubsonline.informs.org/doi/10.1287/orsc.2025.21838), where a confident-looking artifact can sit just outside what the tool does well, so it reads polished while being meaningfully less correct. A PRD that papers over a strategic ambiguity doesn't trip an alarm. It surfaces later as rework, or as a feature nobody agreed to build.
+
+## How to do it / what to watch for
+
+When the model returns something that looks done, push back with a short interrogation:
+
+- **"Explain your reasoning"** for the key choices, not just the output.
+- **"Name your assumptions"** so the implicit decisions become visible.
+- **"List what you didn't have"** that would have changed the answer.
+- **"Where are you least confident?"** to find the soft spots fast.
+
+The red flag is the absence of friction. A draft with no caveats, no open questions, and no stated assumptions usually buried them, not resolved them. Smoothness is a signal to dig, not a sign you're done. Judge the work; don't admire it.
+
+## Example
+
+That renewal PRD reads as settled. You ask, "What assumptions did you make, and where are you least confident?" The model admits it assumed full submissions only and flags the partial-submission case as unresolved. That single question surfaces a scope decision your team actually needs to make, before engineering builds the wrong thing.
+
+## In practice
+
+When output looks done, ask it to name its assumptions and say where it's least confident.
+
+## Sources
+
+- [Anthropic AI Fluency Index (Education Report, Feb 2026)](https://www.anthropic.com/research/AI-fluency-index)
+- [Dell'Acqua et al., Navigating the Jagged Technological Frontier](https://pubsonline.informs.org/doi/10.1287/orsc.2025.21838)$md$,
+       quiz_json = $json$[
+  {
+    "question": "An AI tool drafts a polished PRD for a benefits-renewal feature with no open questions or caveats. It looks ready to circulate. What's the best next step?",
+    "options": [
+      "Circulate it; the absence of caveats means the scope is settled.",
+      "Ask it to name its assumptions and say where it's least confident before you trust the scope.",
+      "Reformat it into slides so stakeholders engage with it faster.",
+      "Add your logo and send it as the team's official requirements."
+    ],
+    "correctIndex": 1,
+    "explanation": "A draft with no friction usually buried its assumptions rather than resolving them, so prompting for assumptions and low-confidence spots surfaces the decisions still hiding inside. Treating the lack of caveats as proof the scope is settled is the trap itself. The most dangerous artifacts are the ones that look finished; make the model show its reasoning before you rely on it."
+  },
+  {
+    "question": "A generated user persona for a Medicaid applicant reads smoothly and feels complete. Why is smoothness specifically a reason to dig deeper rather than relax?",
+    "options": [
+      "Smooth writing usually means the model used too many tokens.",
+      "Polished personas are always factually wrong and should be discarded.",
+      "Finished-looking output measurably lowers how much people question reasoning and notice missing context, so polish can hide gaps.",
+      "Smoothness indicates the persona was copied from a real person's record."
+    ],
+    "correctIndex": 2,
+    "explanation": "Research shows that when output looks finished, people question its reasoning less and notice missing context less, so a smooth persona can quietly omit the population it doesn't represent. Polish isn't proof that a persona is always wrong, nor a sign it was copied from a real record; it's a cue that your scrutiny just dropped. Treat completeness-on-the-surface as a prompt to ask what's missing."
+  },
+  {
+    "question": "You want to stress-test a confident AI-generated design doc. Which prompt best exposes hidden weak points?",
+    "options": [
+      "\"Make this sound more authoritative and decisive.\"",
+      "\"Shorten this to one page.\"",
+      "\"Where are you least confident, and what did you not have that would change this?\"",
+      "\"Rewrite this in a more formal tone.\""
+    ],
+    "correctIndex": 2,
+    "explanation": "Asking where the model is least confident and what information it lacked forces the soft spots into view, which is the whole point of pushing back on polished work. Making it sound more authoritative and decisive does the opposite by hiding uncertainty behind confident phrasing. Interrogate the reasoning and the gaps, not the tone."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.3';
+
+-- 2.4 — Iteration as the literate behavior
+update public.modules
+   set body_md   = $md$Your first prompt gets you a wordy, off-target summary of a user-research session. You could rewrite it yourself and call the tool useless. Or you could spend two more turns steering it. The people who get good results almost always take the second path.
+
+## What it is
+
+Iteration is treating an AI conversation as a loop, not a vending machine. You send a starter prompt, read the output, then refine or push back, and repeat until the answer is good. Each turn carries forward what you learned from the last one. The skill is not writing one perfect prompt. It is reading critically and steering across several turns.
+
+## Why it matters to you
+
+Iteration is the most reliable behavioral marker of good outcomes. [Anthropic's research](https://www.anthropic.com/research/AI-fluency-index) found it present in about 86% of effective conversations. That means a weak first draft is not a failure of the tool; it is the normal starting point. If you treat the first answer as final, you leave most of the value on the table, and you ship the version that needed the most work. The teammates who get reliable output are not luckier. They iterate.
+
+## How to do it / what to watch for
+
+When the first answer falls short, reach for a specific move:
+
+- **Re-ask with more constraint:** add the audience, length, or rule the model missed.
+- **Ask it to critique its own answer:** "What's weakest here, and why?"
+- **Ask for alternatives:** "Give me two other ways to structure this."
+- **Restart cleanly** when a thread is poisoned by a bad turn that keeps echoing.
+
+The failure mode is fighting a contaminated thread. Once the model latches onto a wrong framing, more corrections often drag the error along. Starting fresh, with a tighter prompt, beats arguing with a stuck conversation.
+
+## Example
+
+Your first draft note about a benefits appeal is too long and too formal. Turn two: "Cut to 120 words, sixth-grade reading level." Better, but it dropped the deadline. Turn three: "Keep the length; add the June 30 deadline as the first sentence." Turn four: "Now critique your own version for anything a stressed reader might miss." The fourth turn catches an ambiguous instruction. Three focused follow-ups turned a weak draft into something usable.
+
+## In practice
+
+The first answer is a starting point; refine, critique, or restart until it's right.
+
+## Sources
+
+- [Anthropic AI Fluency Index (Education Report, Feb 2026)](https://www.anthropic.com/research/AI-fluency-index)$md$,
+       quiz_json = $json$[
+  {
+    "question": "Your first AI draft of a plain-language notice is wordy and misses the deadline. What approach best reflects how effective users work?",
+    "options": [
+      "Abandon the tool and write the whole notice from scratch.",
+      "Run the same prompt several more times until one output happens to be better.",
+      "Refine across a few focused turns: tighten the length, add the deadline, then ask it to critique its own draft.",
+      "Accept the wordy draft and trim it yourself without re-prompting."
+    ],
+    "correctIndex": 2,
+    "explanation": "Iteration shows up in about 86% of effective conversations, so steering across a few targeted turns is the behavior most linked to good results. Re-running the same prompt unchanged isn't iteration; it's hoping for luck without adding new constraints. Treat the first answer as a draft to refine, not a verdict on the tool."
+  },
+  {
+    "question": "Halfway through a long thread, the model locked onto a wrong assumption about a program's rules, and every correction you add still echoes that mistake. What's the best move?",
+    "options": [
+      "Keep correcting in the same thread until it finally lets go of the bad framing.",
+      "Start a fresh thread with a tighter prompt that states the correct rule up front.",
+      "Accept the flawed output, since you've already invested several turns.",
+      "Ask the model to apologize and then continue in the same thread."
+    ],
+    "correctIndex": 1,
+    "explanation": "Once a thread is poisoned, the bad framing tends to drag along through further corrections, so a clean restart with a sharper prompt usually beats arguing with the stuck conversation. Continuing to correct in the same poisoned thread is the common trap that wastes turns. Knowing when to restart is part of iterating well."
+  },
+  {
+    "question": "An AI draft is decent but you suspect it has a weak spot you can't quite name. Which follow-up best uses iteration to find it?",
+    "options": [
+      "\"Make it longer and add more detail everywhere.\"",
+      "\"Critique your own draft and tell me what's weakest and why.\"",
+      "\"Rewrite it in a completely different tone.\"",
+      "\"Confirm that this draft is correct and complete.\""
+    ],
+    "correctIndex": 1,
+    "explanation": "Asking the model to critique its own answer is a core iteration move that surfaces weaknesses you couldn't pinpoint yourself. Asking it to confirm the draft is correct and complete invites a reassuring reply that hides the problem instead of exposing it. Use self-critique and alternatives to pressure-test a draft, not to validate it."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.4';
+
+-- 2.5 — Working with the context window
+update public.modules
+   set body_md   = $md$You've been refining a benefits notice with an AI tool for 40 minutes across a sprawling thread. Now it contradicts a rule it stated correctly earlier, and you can't tell why. The model didn't get dumber. The conversation outgrew what it could hold.
+
+## What it is
+
+The context window is everything the model can read at once: your prompt, the pasted material, and the conversation so far. [IBM describes it](https://www.ibm.com/think/topics/context-window) as the model's working memory, measured in tokens, at roughly 1.5 tokens per word. Anything outside that window effectively doesn't exist for the model. Managing the window means being deliberate about what you put in and what you leave out.
+
+## Why it matters to you
+
+Most "the AI gave me a weird answer" moments are context-management failures, not model failures. Two problems cause them. First, the window overflows, so earlier instructions or a key policy excerpt fall out of view and the model contradicts itself. Second, and less obvious, irrelevant context degrades answers too. Padding a prompt with material the model doesn't need can pull it off target, the same way a cluttered desk slows you down. Both cost you accuracy on work that reaches a beneficiary.
+
+## How to do it / what to watch for
+
+Treat the window like working memory with hard limits:
+
+- **Bring in what's relevant:** paste the specific policy section the task needs, not the whole manual.
+- **Summarize or chunk** long material so the essential parts fit.
+- **Start a fresh thread** when old context has drifted and the model is contradicting itself.
+- **Cut the clutter:** leave out tangents and stale detail that can pull the answer off course.
+
+The red flag is self-contradiction across a long thread, or answers that drift further from your actual question the more you add. When that happens, summarize what matters into a clean new prompt and restart.
+
+## Example
+
+In a long thread, you ask the model to rewrite a Medicaid notice. Early on it correctly states the renewal is annual. Forty messages later, after detours into formatting and tone, it calls the renewal monthly. The correct fact scrolled out of its working memory. You open a fresh thread, paste only the renewal rule and the draft, and the contradiction disappears.
+
+## In practice
+
+The model only knows what's in the window; bring in what matters, and restart when it drifts.
+
+## Sources
+
+- [IBM, What is a context window?](https://www.ibm.com/think/topics/context-window)$md$,
+       quiz_json = $json$[
+  {
+    "question": "After a long AI session, the model starts contradicting a program rule it got right earlier. What's the most likely cause and the best fix?",
+    "options": [
+      "The model degraded over time; switch tools and start over there.",
+      "The correct fact scrolled out of the context window; start a fresh thread with only the key rule and the current draft.",
+      "The model is being deliberately unhelpful; rephrase the question more politely.",
+      "Your internet connection dropped earlier facts; refresh the page and continue the same thread."
+    ],
+    "correctIndex": 1,
+    "explanation": "In a long thread, earlier content can fall outside the context window, so the model loses the fact it once had and contradicts itself. Restarting with only the relevant rule and draft brings the essentials back into working memory. Self-contradiction across a long conversation is a context-management signal, not a sign the model itself changed."
+  },
+  {
+    "question": "You're about to ask an AI tool a narrow question about one eligibility rule. You consider pasting the entire 80-page program manual \"just in case.\" Why might that hurt the answer?",
+    "options": [
+      "Long documents always trigger a billing error.",
+      "The model will refuse to read anything over a few pages.",
+      "Irrelevant context can pull the answer off target, not just risk overflow, so padding the prompt can degrade accuracy.",
+      "Pasting full manuals is against plain-language guidance."
+    ],
+    "correctIndex": 2,
+    "explanation": "Adding material the model doesn't need can drag the answer off course, so it's not only missing relevant context that hurts; irrelevant context does too. The cleaner move is to paste the specific section the question requires. Be deliberate about what goes in the window, including what to leave out."
+  },
+  {
+    "question": "A teammate keeps one marathon AI thread open all week for every task, assuming more history always helps. What's the risk?",
+    "options": [
+      "Older, irrelevant context accumulates and can crowd out or drift away from the current task, degrading answers.",
+      "The thread will be automatically deleted after a set number of messages.",
+      "Long threads are always more accurate because the model remembers everything.",
+      "There's no risk; a longer thread is strictly better than a fresh one."
+    ],
+    "correctIndex": 0,
+    "explanation": "A sprawling thread fills the window with stale, unrelated context that can crowd out what matters and cause drift, which is why fresh threads for new tasks often produce sharper answers. Assuming more history is always better ignores that the window has limits and that clutter degrades output. Start clean when the task changes."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.5';
+
+-- 2.6 — AI for writing tasks
+update public.modules
+   set body_md   = $md$A 14-page eligibility policy lands on your desk, and a claimant needs to understand it by Friday. Drafting the plain-language version by hand could eat your afternoon. An AI tool can give you a first pass in a minute. The question is what you do with that draft, not whether to use it.
+
+## What it is
+
+Writing is the highest-volume way most people use AI: first drafts, edits for clarity, structural suggestions, summaries of long documents, tone changes, and alternative phrasings. This is the [4D delegation skill](https://www.anthropic.com/learn/claude-for-you) applied to the writing that fills your day. Done well, it hands you a starting point. It does not hand you a finished product.
+
+## Why it matters to you
+
+Writing is where AI saves the most hours and also where it goes bland the fastest. A good draft can save you an hour. A bad one is generic-professional mush that says little and may state a wrong fact with total confidence. For govtech, the prize is real: [federal plain-language guidance](https://digital.gov/guides/plain-language) calls for short sentences, common words, active voice, and "you," which is exactly the kind of rewrite AI does fast. The catch is that you stay the editor of last resort. Every fact that reaches a claimant is yours to verify.
+
+## How to do it / what to watch for
+
+Use AI across the writing tasks, but keep your hand on the wheel:
+
+- **First drafts and summaries:** let it produce the rough version you'll shape.
+- **Editing for clarity:** ask it to shorten sentences and cut jargon, per plain-language rules.
+- **Tone and alternatives:** request two or three options when you're stuck.
+- **Then edit for voice:** restore the specific detail and the human phrasing it sanded off.
+
+The main red flag is flattening. AI tends to smooth specificity into generic prose, replacing a concrete deadline or a named form with vague reassurance. Watch for confident wrong facts in any draft, and never let "it sounds official" stand in for "it's correct."
+
+## Example
+
+You paste the dense eligibility policy and ask for a 150-word plain-language notice at a sixth-grade level. The draft is clear but flat: it says "submit the required documents soon" instead of naming the form and the June 30 date. You edit it back to specifics, restore a plain human tone, and verify the date against the policy. Twenty minutes total, not a lost afternoon.
+
+## In practice
+
+Let AI write the first draft; you own the voice and every fact that reaches a client.
+
+## Sources
+
+- [Anthropic, 4D AI Fluency framework](https://www.anthropic.com/learn/claude-for-you)
+- [Plain-language guidance (Plain Writing Act of 2010)](https://digital.gov/guides/plain-language)$md$,
+       quiz_json = $json$[
+  {
+    "question": "AI turns a dense eligibility policy into a clear plain-language notice, but it replaces the specific form name and deadline with \"submit the required documents soon.\" What's the right next step?",
+    "options": [
+      "Ship it; the vague phrasing is safer because it can't state a wrong date.",
+      "Edit it to restore the exact form name and deadline, then verify both against the policy.",
+      "Ask the model to make the language even more general to avoid mistakes.",
+      "Add a sentence saying \"contact us for details\" and send it."
+    ],
+    "correctIndex": 1,
+    "explanation": "AI tends to flatten specificity into generic reassurance, so the editor's job is to restore the concrete detail a reader actually needs and verify it against the source. Keeping the vague version protects against a wrong date by withholding the information the claimant came for, which fails the reader. Stay the editor of last resort: specific and verified beats smooth and empty."
+  },
+  {
+    "question": "A teammate uses AI to draft client-facing notices and forwards them as-is because \"the writing is clean and sounds official.\" Why is that risky?",
+    "options": [
+      "Clean writing always indicates the text was plagiarized.",
+      "Sounding official isn't the same as being accurate, and AI drafts can state wrong facts confidently.",
+      "AI writing is always too informal for government work.",
+      "The notices will read above a tenth-grade level by default."
+    ],
+    "correctIndex": 1,
+    "explanation": "Fluent, official-sounding prose can carry a confidently wrong fact, so \"it sounds official\" is never a substitute for verifying the content. The risk isn't tone or formality; it's unverified accuracy in something a claimant relies on. The writer owns every fact that reaches a client, no matter how polished the draft."
+  },
+  {
+    "question": "You're stuck on how to open a notice about a benefits change. Which use of AI fits its strength in writing tasks while keeping you in control?",
+    "options": [
+      "Have it generate two or three opening options, then choose and edit one in your voice.",
+      "Have it publish the notice directly to the client portal once it's written.",
+      "Have it decide the final eligibility determination for the claimant.",
+      "Have it pick the opening with no review because it writes faster than you."
+    ],
+    "correctIndex": 0,
+    "explanation": "Generating alternatives is a core writing-task strength, and choosing and editing one keeps you as the editor of last resort. Letting it publish the notice or decide the determination hands off judgment that belongs to a person, especially on anything affecting a claimant. Use AI to produce options and drafts; you make the final call and own the result."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.6';
+
+-- 2.7 — AI for synthesis
+update public.modules
+   set body_md   = $md$You have transcripts from twelve user interviews and a readout due tomorrow. An AI tool can compress all of it into five clean themes in minutes. That speed is exactly why it's dangerous: the tidy summary may have dropped the one voice that mattered most.
+
+## What it is
+
+Synthesis is using AI to compress and find patterns across volumes of text: meeting transcripts, user-research notes, stacks of contract clauses. The model reads more than you can and proposes the through-lines. The skill is treating that output as a draft to verify against the source, not a finding to ship. Synthesis saves the most time of any use case, and it also causes the most subtle harm.
+
+## Why it matters to you
+
+In civic-tech research, bad synthesis doesn't just lose detail. It can flatten the voice of the people the work exists to serve. AI errors fall hardest on those already facing barriers: [CDT's testing](https://cdt.org/insights/brief-generating-confusion-stress-testing-ai-chatbot-responses-on-voting-with-a-disability/) found chatbots gave wrong voting information to people with disabilities, and every model it tested hallucinated at least once. When you synthesize research, a smoothed-over summary can quietly erase the accessibility complaint or the minority experience that should have changed the design. Your readout drives decisions; a flattened one drives them wrong.
+
+## How to do it / what to watch for
+
+Use synthesis to draft, then validate hard against the source:
+
+- **Trace each theme back** to the transcripts that support it.
+- **Hunt for the minority voice** the summary may have dropped or averaged away.
+- **Check for smoothed contradictions** where two participants disagreed and the model picked one.
+- **Verify any quote** against what the person actually said.
+
+The failure modes cluster: confident over-generalization, missing the lone dissenting voice, smoothing over contradictions, and fabricating quotes that sound real. A clean summary with no tensions in it is suspect, because real research has tensions.
+
+## Example
+
+You ask AI to synthesize twelve interviews about a benefits portal. It returns five themes, all about speed and clarity. Tracing them back, you find that one participant who uses a screen reader couldn't complete the form at all, and that complaint vanished into the "clarity" theme. That single dropped voice was the most important finding in the set. You add it back, because shipping without it would steer the redesign past the people most at risk.
+
+## In practice
+
+Treat synthesis as a draft to verify against the source, never as a finding to ship.
+
+## Sources
+
+- [Anthropic AI Fluency Index (Education Report, Feb 2026)](https://www.anthropic.com/research/AI-fluency-index)
+- [CDT, Generating Confusion (Sept 2024)](https://cdt.org/insights/brief-generating-confusion-stress-testing-ai-chatbot-responses-on-voting-with-a-disability/)$md$,
+       quiz_json = $json$[
+  {
+    "question": "AI synthesizes twelve user interviews into five clean themes for tomorrow's readout. What's the most important check before you present them?",
+    "options": [
+      "Confirm the summary reads smoothly and has no contradictions.",
+      "Trace each theme back to the transcripts and look for any minority voice the summary dropped.",
+      "Count the themes to make sure there are exactly five.",
+      "Ask the model whether it captured everything important."
+    ],
+    "correctIndex": 1,
+    "explanation": "Synthesis tends to average away the lone dissenting voice, so tracing themes back to the source and hunting for what got dropped is the check that protects the people the research serves. Confirming the summary reads smoothly with no contradictions is actually backward, since a contradiction-free summary is a warning sign and real research has tensions. Treat the synthesis as a draft to verify against the transcripts, not a finished finding."
+  },
+  {
+    "question": "An AI synthesis of user-research notes includes a vivid, quotable line attributed to a participant. It perfectly captures the theme. Before you put it in the readout, what should you do?",
+    "options": [
+      "Use it as the headline quote; a vivid line strengthens the readout.",
+      "Paraphrase it slightly so it reads more smoothly.",
+      "Verify the quote against what the participant actually said in the transcript.",
+      "Attribute it to \"a participant\" generally so the exact wording matters less."
+    ],
+    "correctIndex": 2,
+    "explanation": "Fabricating realistic-sounding quotes is a known synthesis failure mode, so any quote must be checked against the source before it carries weight in a readout. A vivid line that perfectly captures the theme is exactly the kind a model might invent, so using it as the headline quote without checking is the trap. Verify quotes against the transcript; never let a polished phrasing substitute for what was actually said."
+  },
+  {
+    "question": "Two participants in a research set gave opposite reactions to a feature, but the AI summary presents a single tidy conclusion. Why does this matter for civic-tech work specifically?",
+    "options": [
+      "Tidy conclusions are harder for stakeholders to read.",
+      "Smoothing over contradictions can erase a minority experience, and in civic tech that often means dropping the voice of people already facing barriers.",
+      "Opposite reactions always mean the research was poorly designed.",
+      "A single conclusion uses fewer tokens, which lowers cost."
+    ],
+    "correctIndex": 1,
+    "explanation": "Synthesis often smooths over disagreement into one neat finding, and in civic tech the erased voice is frequently the vulnerable one the work is meant to serve. The problem isn't readability or token cost; it's that a flattened summary can steer a redesign past the people most at risk. Surface the contradiction and the minority experience rather than letting the model resolve it for you."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.7';
+
+-- 2.8 — Calibrated trust (avoiding over- and under-reliance)
+update public.modules
+   set body_md   = $md$You ask an AI tool to tighten an email, and it nails it. Ten minutes later you ask it for the exact citation in a benefits appeal, and you forward what it gives you. Same tool, same confidence, very different reliability. Trusting both answers equally is how good work goes wrong.
+
+## What it is
+
+Calibrated trust means your confidence in an AI answer roughly tracks how reliable the tool actually is for that specific task. It sits between two errors: over-reliance (rubber-stamping output) and under-reliance (reflexively rejecting it). Calibration is personal and earned. You build it by paying attention to where the tool helps you and where it has burned you, task by task.
+
+## Why it matters to you
+
+Miscalibration in either direction destroys value. Lean too hard and you ship errors; [research on automation bias](https://journals.sagepub.com/doi/10.1177/154193129604000413) shows over-reliance produces both errors of omission and of commission. Distrust everything and you lose the real gains, while still distrusting accurately is common: the [2025 Stack Overflow survey](https://survey.stackoverflow.co/2025/ai) found more developers distrust AI accuracy than trust it. The deeper trap is the [Jagged Frontier](https://pubsonline.informs.org/doi/10.1287/orsc.2025.21838): AI helps inside its capability boundary and quietly hurts on tasks that look similar but fall outside it. The two failures feel identical from your chair.
+
+## How to do it / what to watch for
+
+Build calibration into a habit:
+
+- **Rate your confidence** before you act, and ask whether the tool has earned it here.
+- **Keep personal evidence** of where it's reliable for you and where it's failed.
+- **Name three tasks in your work that sit outside the frontier** and the verification habit for each, such as checking every legal citation against the source.
+- **Neither rubber-stamp nor reflexively reject:** match the check to the risk.
+
+The red flag is treating a task you've never verified as if you have. Outside the frontier, output is meaningfully less correct while looking just as confident.
+
+## Example
+
+You rate two tasks. Drafting a meeting summary: high confidence, light check, and experience backs that up. Pulling the exact statute for an appeal: low confidence, because that's outside the frontier and the model has confidently cited wrong sections before. So you verify every citation against the source of record. Same tool, two different trust levels, each matched to evidence.
+
+## In practice
+
+Match your trust to the tool's track record on that task, and verify hardest outside the frontier.
+
+## Sources
+
+- [Dell'Acqua et al., Navigating the Jagged Technological Frontier](https://pubsonline.informs.org/doi/10.1287/orsc.2025.21838)
+- [Mosier & Skitka, automation bias](https://journals.sagepub.com/doi/10.1177/154193129604000413)
+- [Stack Overflow 2025 Developer Survey (AI)](https://survey.stackoverflow.co/2025/ai)$md$,
+       quiz_json = $json$[
+  {
+    "question": "An AI tool reliably tightens your emails, so you forward its legal citation for a benefits appeal with the same easy confidence. What's the flaw in that reasoning?",
+    "options": [
+      "Reliability on one kind of task doesn't transfer to a different one; the citation sits outside the frontier and needs verification against the source.",
+      "Email editing is actually the riskier of the two tasks.",
+      "You should distrust both outputs equally and rewrite both by hand.",
+      "The tool can't produce citations at all, so the output is fake by definition."
+    ],
+    "correctIndex": 0,
+    "explanation": "Calibrated trust tracks reliability task by task, and a legal citation falls outside the frontier where output is meaningfully less correct, so it needs verification even when email edits don't. Distrusting both equally and rewriting by hand swings into under-reliance and wastes the real gains. Match your confidence to the tool's track record on that specific task, and verify hardest outside the frontier."
+  },
+  {
+    "question": "A teammate, burned once by an AI error, now rewrites every AI output from scratch and rarely uses the tool. What's the cost of this stance?",
+    "options": [
+      "None; rejecting AI output is always the safe choice.",
+      "It's under-reliance, which throws away real gains on tasks where the tool is reliable for them.",
+      "It guarantees their work will contain more errors than before.",
+      "It violates plain-language guidance for government writing."
+    ],
+    "correctIndex": 1,
+    "explanation": "Reflexively rejecting AI is under-reliance, which is a miscalibration that discards value on the tasks where the tool has actually earned trust. The goal isn't to reject or rubber-stamp but to match trust to evidence task by task. One bad experience calibrates one task; it shouldn't blanket every use."
+  },
+  {
+    "question": "You want to build calibrated trust for your own work. Which action best develops it?",
+    "options": [
+      "Adopt a fixed rule to trust the tool 70% of the time across all tasks.",
+      "Decide once that the tool is either trustworthy or not, and apply that everywhere.",
+      "Name three tasks in your work that sit outside the frontier and attach a specific verification habit to each.",
+      "Ask the tool to rate its own reliability and use that number as your confidence."
+    ],
+    "correctIndex": 2,
+    "explanation": "Calibration is personal and task-specific, so identifying your own outside-the-frontier tasks and pairing each with a verification habit builds the evidence-based judgment the skill requires. A blanket trust percentage or a single overall verdict ignores that reliability varies sharply by task. Using the model's own self-rating is just more confident output, not evidence of its accuracy."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.8';
+
+-- 2.9 — Recognizing AI failure modes specific to your work
+update public.modules
+   set body_md   = $md$You ask a chatbot to summarize a denial and it cites a policy section that sounds exactly right. You've seen that move before, from this same tool, on this same kind of task. The question is whether you wrote it down last time.
+
+## What it is
+
+A personal failure-mode list is your own record of the specific ways AI breaks on the work you actually do. Not the textbook risks. The ones you have hit: a fabricated citation, two contradictory facts smoothed into one clean sentence, a wrong date, an invented case number, code that runs but does the wrong thing, the wrong tone for a grieving client. You name each one when it happens and keep the list nearby.
+
+## Why it matters to you
+
+General training tells you AI can confabulate. It can't tell you that your tool invents regulation sections on eligibility summaries every third try. That pattern is yours, and it predicts your next mistake better than any generic warning. The [Stack Overflow 2025 survey](https://survey.stackoverflow.co/2025/ai) found the top frustration with AI is output that is "almost right, but not quite," close enough to pass a quick glance. Your own log is what turns a vague worry into a specific check you run before a beneficiary sees the result.
+
+## How to do it / what to watch for
+
+Treat each failure as evidence, then reuse it as a pre-flight check.
+
+- When AI burns you, log it: the task, the exact error, how you caught it, and the tell that gave it away.
+- Group repeats. Three fabricated citations is a pattern, not bad luck.
+- Before a similar task, read the matching entries and check those spots first.
+- Note which checks the model can't do for itself, so you don't delegate them.
+
+The trap is fixing the one error and moving on. A polished result lowers your guard; the [Anthropic AI Fluency Index](https://www.anthropic.com/research/AI-fluency-index) found people question reasoning and notice missing context less when output looks clean. The log fights that by making you look anyway.
+
+## Example
+
+A caseworker keeps a short failure log in a pinned note. One line reads: "3/14: AI summary cited '8 CFR 245a.18' for a renewal; section doesn't exist. Caught on lookup. Tell: oddly specific subsection." Next time she drafts a renewal summary, she checks every citation against the rule before anything moves. The log made her own weak spot into a habit, not a hope.
+
+## In practice
+
+Log every AI failure you hit, then read your own list before the next task that looks like it.
+
+## Sources
+- [Stack Overflow 2025 Developer Survey (AI)](https://survey.stackoverflow.co/2025/ai)
+- [Anthropic AI Fluency Index (Education Report, Feb 2026)](https://www.anthropic.com/research/AI-fluency-index)
+$md$,
+       quiz_json = $json$[
+  {
+    "question": "Over a month, an AI tool you use for case summaries has invented a regulation citation three separate times. What is the most useful response?",
+    "options": [
+      "Add an entry to your failure log naming the pattern, and check every citation first on similar tasks from now on.",
+      "Fix the latest citation and move on, since each one was caught before it shipped.",
+      "Stop using AI for summaries entirely, because it clearly cannot be trusted.",
+      "Switch to a different chatbot and assume the problem will not follow you."
+    ],
+    "correctIndex": 0,
+    "explanation": "Three repeats is a personal failure mode, and logging it turns a vague worry into a specific pre-flight check you run on matching tasks. Fixing just the latest citation (option 2) treats a pattern as bad luck and leaves you exposed next time. The log compounds your judgment; it does not require abandoning a tool that still saves drafting time."
+  },
+  {
+    "question": "Which entry in a personal failure log will actually help you on future tasks?",
+    "options": [
+      "\"AI can hallucinate facts in general, so always read its output carefully before sending.\"",
+      "\"3/14: renewal summary cited a CFR section that doesn't exist; caught it on lookup; tell was the oddly specific subsection.\"",
+      "\"The model gave me another wrong answer today and it was pretty frustrating to deal with.\"",
+      "\"AI is a strong tool that always needs careful human oversight to be used responsibly.\""
+    ],
+    "correctIndex": 1,
+    "explanation": "A useful entry records the task, the exact error, how you caught it, and the tell, so you know precisely where to look next time. Option 1 just restates generic training, which cannot predict your specific tool on your specific work. Options 3 and 4 carry no detail you can act on."
+  },
+  {
+    "question": "An AI draft of a benefits notice reads cleanly and confidently, and you're behind on your queue. What does your failure log change about how you handle it?",
+    "options": [
+      "It tells you a clean draft is trustworthy, so you can ship faster when you're behind.",
+      "It replaces the need to check facts, since the log already lists the usual errors.",
+      "It points you to the exact spots this tool tends to break, so you check those before the notice goes out.",
+      "It lets you skip review on short notices and save it for long ones."
+    ],
+    "correctIndex": 2,
+    "explanation": "The log's payoff is targeting: it sends your limited attention to the specific failure modes this tool has shown on this kind of task. A polished draft actually lowers your guard, which is the trap, not a reason to ship. The log does not replace verification; it makes verification faster and sharper."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.9';
+
+-- 2.10 — Test-driven and constraint-first prompting
+update public.modules
+   set body_md   = $md$Every Monday you ask AI for the same weekly summary, and every Monday you fix the same three things: it's too long, it buries the risk, and it invents a status nobody reported. You keep editing the output. You've never edited the prompt.
+
+## What it is
+
+Constraint-first prompting means you state the rules before you ask: length, format, what the output must include, what it must not include, and an example of good and bad. Test-driven prompting means you judge each result against those rules instead of against your gut. Together they treat a prompt as an artifact you keep and improve, not a throwaway message you retype each time.
+
+## Why it matters to you
+
+This is the bridge from "I sometimes get a good answer" to "I get a reliable answer on the things I do every week." For one-off questions, eyeballing the result is fine. For recurring work, vague prompts give you variable output, and you pay for it in repeated edits. The [Anthropic 4D AI Fluency framework](https://www.anthropic.com/learn/claude-for-you) calls this Description: stating the task and its constraints clearly enough that the result is what you actually need. A reusable, tested prompt is how that pays off over a hundred Mondays.
+
+## How to do it / what to watch for
+
+Build the prompt like a spec, then test it before you trust it.
+
+- Write the constraints first: length, format, must-include, must-not-include.
+- Add one example of a good output and one of a bad one, so the model sees the line.
+- Run the prompt against two or three real past inputs and check each result against your rules.
+- Fix the prompt, not just the output, and save the version that passes.
+
+Watch for a prompt that passes on one easy input and fails on a messy one. Test on your hardest realistic case, not your cleanest. And don't bury the most important constraint at the end of a long message, where it competes with everything else.
+
+## Example
+
+An intake worker writes a reusable prompt for a recurring intake summary: 120 words max, three labeled fields, must include the reported income figure, must not infer eligibility. She runs it against three past intakes, including one with missing data. The first version guessed eligibility on the messy case, so she added "if a field is blank, write 'not reported'." The fixed prompt now holds across all three.
+
+## In practice
+
+For work you repeat, write the rules into the prompt and test it on real inputs before you rely on it.
+
+## Sources
+- [Anthropic 4D AI Fluency (Delegation, Description, Discernment, Diligence)](https://www.anthropic.com/learn/claude-for-you)
+$md$,
+       quiz_json = $json$[
+  {
+    "question": "Every week you fix the same problems in an AI-generated status summary: too long, missing the risk section, and inventing statuses. What's the most durable fix?",
+    "options": [
+      "Keep editing each week's output by hand, since by now you already know exactly what to correct.",
+      "Rewrite the prompt to specify length, require a risk section, and forbid statuses nobody reported, then save it.",
+      "Ask the model to \"be more concise and accurate\" at the start of the request each week before it writes.",
+      "Generate the summary twice each week and then keep whichever of the two versions happens to read better."
+    ],
+    "correctIndex": 1,
+    "explanation": "Recurring work calls for fixing the artifact, not the output: encoding the constraints into a reusable prompt removes the repeated edits permanently. Editing each week's result (option 1) keeps you paying the same tax forever. \"Be more concise and accurate\" is too vague to constrain anything, which is exactly why the output stays variable."
+  },
+  {
+    "question": "You've written a constraint-first prompt for a recurring summary. How should you test whether it's reliable?",
+    "options": [
+      "Run it once on a clean, simple input; if that looks good, it's ready.",
+      "Trust it after the first good result, since writing the constraints was the hard part.",
+      "Run it against two or three real past inputs, including a messy one, and check each result against your rules.",
+      "Show it to a colleague and ask if the wording sounds professional."
+    ],
+    "correctIndex": 2,
+    "explanation": "Testing against several real inputs, especially a messy one, is what reveals where the prompt quietly fails, like guessing on a blank field. A single clean input (option 1) is the easy case that almost any prompt passes, so it tells you little about reliability. Constraints are only proven once outputs are judged against them."
+  },
+  {
+    "question": "Your reusable intake-summary prompt works on most cases but, on a record with a missing income field, the model guesses a number. What's the right move?",
+    "options": [
+      "Manually correct that one output by hand and assume the guess was just a rare one-off glitch.",
+      "Drop the must-include income requirement from the prompt so that the model stops guessing a number.",
+      "Accept the guessed figure, since the model is usually right about income on the other records.",
+      "Add a rule that any blank field must be written as \"not reported,\" then re-test on that case."
+    ],
+    "correctIndex": 3,
+    "explanation": "The failure exposed a missing constraint, so you fix the prompt to handle blanks and confirm the fix on the hard case. Correcting just that one output (option 1) leaves the gap open for the next messy record. Treating prompts as artifacts that improve with deliberate iteration is what makes recurring tasks dependable."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.10';
+
+-- 2.11 — Personal AI use-case library + Diligence Statement
+update public.modules
+   set body_md   = $md$A new analyst asks you, "Is AI any good for drafting client deliverables?" You know the real answer is "for some parts, with checks." But you can't show them where it helped, which prompt worked, or how you proved the facts. Every task you've done is still in your head.
+
+## What it is
+
+A personal AI use-case library is a running record of where AI clearly helps you, where it doesn't, the prompts that worked, and the failure modes you've hit. A Diligence Statement is a short write-up, roughly 250 to 400 words, for one high-stakes use case. It covers what you delegated, how you described the task, how you evaluated the outputs, and what diligence you exercised: disclosure, validation, and attribution.
+
+## Why it matters to you
+
+Without a library, every task is a fresh start and your skill never compounds. With one, you reuse what worked and warn yourself off what didn't, and you become the person new colleagues ask. The [Anthropic 4D AI Fluency framework](https://www.anthropic.com/learn/claude-for-you) names Diligence as the responsible side of the work: being accountable for what you produce with AI. A high-stakes use case is one where a wrong output reaches a beneficiary, a client, or the public, or shapes a real decision. Those are exactly the cases worth documenting.
+
+## How to do it / what to watch for
+
+Keep the library light, and reserve the formal write-up for what matters.
+
+- Log each use: the task, whether AI helped, the prompt, and any failure mode.
+- Mark which uses are high-stakes versus low-stakes.
+- For at least one high-stakes case, write a full Diligence Statement.
+- Revisit and prune the library as tools and your patterns change.
+
+Watch for a library that lists only wins. The "didn't help" entries save you the most time. And don't let a Diligence Statement become a formality; if you can't honestly describe how you validated the output, you haven't finished the diligence yet.
+
+## Example
+
+An analyst writes a Diligence Statement for an AI-assisted client deliverable. She records that she delegated a first draft of a methods section, described it with a constraint-first prompt and two sample inputs, and evaluated it by checking every cited figure against the source data. Her diligence: she disclosed AI assistance to her lead, validated all numbers herself, and attributed the underlying sources. The statement now doubles as a template for the team.
+
+## In practice
+
+Keep a library of what AI does and doesn't do for you, and write a Diligence Statement for anything high-stakes.
+
+## Sources
+- [Anthropic 4D AI Fluency (Delegation, Description, Discernment, Diligence)](https://www.anthropic.com/learn/claude-for-you)
+$md$,
+       quiz_json = $json$[
+  {
+    "question": "Which use case most warrants a written Diligence Statement rather than just a library entry?",
+    "options": [
+      "Using AI to brainstorm a few possible names for a new internal team Slack channel.",
+      "Asking AI to reformat your own rough meeting notes into a cleaner list for your personal use.",
+      "Using AI to draft a client-facing eligibility deliverable that informs a real decision.",
+      "Having AI suggest a few alternative synonyms while you edit a short, informal internal email."
+    ],
+    "correctIndex": 2,
+    "explanation": "A high-stakes use case is one where a wrong output reaches a client or shapes a real decision, so the client deliverable is exactly what needs a documented Diligence Statement. The other options are low-stakes and internal, where a light library entry is enough. Reserving the formal write-up for high-stakes work keeps the practice sustainable."
+  },
+  {
+    "question": "A colleague's Diligence Statement says what he delegated and how he prompted it, but nothing about how he checked the output. What's missing?",
+    "options": [
+      "Nothing important is missing; describing the task and the prompt is really the core of diligence.",
+      "The evaluation and diligence parts: how he validated the output, and how he disclosed and attributed it.",
+      "A longer, more detailed description of the exact prompt wording he used with the model.",
+      "A note on how much time the task ended up saving him compared with doing it by hand."
+    ],
+    "correctIndex": 1,
+    "explanation": "A Diligence Statement is incomplete without the evaluation step and the accountability actions, validation, disclosure, and attribution, which are the heart of Diligence in the 4D framework. Delegation and Description alone (option 1) show what he asked for, not that he stands behind the result. If you can't describe how you validated the output, the diligence isn't done."
+  },
+  {
+    "question": "You're starting an AI use-case library. What makes it genuinely useful over time?",
+    "options": [
+      "Recording only your clearest successes, so the library stays short and stays motivating to read.",
+      "Logging it once when you set it up and then leaving it fixed, so the reference stays stable.",
+      "Keeping it private and undocumented, so each colleague is free to form their own separate views.",
+      "Logging where AI helped and where it didn't, with the prompts and failure modes, and pruning it as tools change."
+    ],
+    "correctIndex": 3,
+    "explanation": "The library compounds your skill only if it captures failures and prompts, not just wins, and stays current as tools shift. A wins-only library (option 1) hides the \"didn't help\" entries that save the most wasted effort. Kept honestly, the library also makes you a teaching resource for new colleagues."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.11';
+
+-- 2.12 — Recognizing when to switch tools, models, or modes
+update public.modules
+   set body_md   = $md$You've asked the same chatbot the same eligibility question five different ways. Each answer sounds confident and none of them matches the actual rule. You feel like one more rephrase will crack it. It won't. The literate move is to leave this conversation.
+
+## What it is
+
+Switching means recognizing when your current tool, model, or mode is the wrong fit and changing it deliberately. The options are concrete: move from a generalist chatbot to a tool that retrieves the real source, from a small fast model to a larger one for hard reasoning, from chat to a notebook for repeatable steps, or from AI back to a human expert. The skill is knowing the signal to switch, not just the menu of choices.
+
+## Why it matters to you
+
+Most repeated frustration with AI is using the wrong tool for the job and grinding anyway. Research on the "jagged technological frontier" by [Dell'Acqua and colleagues](https://pubsonline.informs.org/doi/10.1287/orsc.2025.21838) found AI helps on tasks inside its strengths but quietly hurts on similar-looking tasks just outside them. A chat model with no access to the current policy can't reliably answer a fine eligibility question, no matter how you word it. Knowing where that edge sits, and stepping over it on purpose, protects both your time and the people who depend on a correct answer.
+
+## How to do it / what to watch for
+
+Notice the signal, then change the setup instead of repeating yourself.
+
+- Same wrong answer after rephrasing: stop prompting, change the tool.
+- Need a fact tied to a live source: switch to a tool with retrieval.
+- Hard, multi-step reasoning: move to a larger, slower model.
+- Repeatable steps or real data: move from chat to a notebook.
+- High-stakes call with no clear source: escalate to a human expert.
+
+Watch for sunk-cost grinding: the longer a thread runs, the harder it is to abandon, even when it's clearly stuck. And watch for questions that aren't really tool problems at all. Some calls belong to a person with authority and judgment, not a model.
+
+## Example
+
+A caseworker faces a hard eligibility question where two program rules seem to conflict and the case affects whether a family keeps coverage. The chatbot gives a clean answer, but she can't trace it to either rule. The right move isn't a sixth prompt. She escalates to a policy expert who can read the regulation and own the determination.
+
+## In practice
+
+When AI keeps failing the same way, switch the tool, model, mode, or hand it to a human, instead of grinding.
+
+## Sources
+- [Dell'Acqua et al., "Navigating the Jagged Technological Frontier" (Organization Science, 2026)](https://pubsonline.informs.org/doi/10.1287/orsc.2025.21838)
+$md$,
+       quiz_json = $json$[
+  {
+    "question": "You've rephrased the same policy question to a chatbot five times and keep getting confident answers that don't match the rule. What's the literate next move?",
+    "options": [
+      "Try a sixth, more detailed rephrasing; the right wording is bound to crack it.",
+      "Switch to a tool that retrieves the actual policy, or escalate to someone who can read the regulation.",
+      "Accept the most confident answer, since the model has now considered it five times.",
+      "Lower your expectations and use the closest answer you got."
+    ],
+    "correctIndex": 1,
+    "explanation": "When a chat model keeps failing the same way, the problem is the tool, not the wording, so you switch to retrieval or a human expert. A sixth rephrasing (option 1) is sunk-cost grinding; repetition doesn't add the source access the model lacks. The literate move is to switch, not to grind."
+  },
+  {
+    "question": "Which situation most clearly calls for handing the task to a human expert rather than any AI tool?",
+    "options": [
+      "Summarizing a long internal meeting transcript into a short list of action items.",
+      "Reformatting a table of already-public statistics so it fits cleanly on a slide.",
+      "Drafting a routine appointment-reminder message that simply restates a known date.",
+      "A high-stakes eligibility determination where two rules conflict and no source clearly resolves it."
+    ],
+    "correctIndex": 3,
+    "explanation": "A high-stakes call with conflicting rules and no clear source needs a person with authority and judgment to own the determination, not a model's confident guess. The other tasks are well inside AI's strengths and low-risk. Some questions aren't tool problems at all; recognizing that is part of knowing when to switch."
+  },
+  {
+    "question": "You repeatedly paste data into a chatbot to run the same multi-step calculation, and small errors keep slipping in. What switch fits best?",
+    "options": [
+      "Move the work into a notebook where the steps are explicit and repeatable.",
+      "Keep using chat but ask the model to double-check itself each time.",
+      "Switch to a smaller, faster model to get answers more quickly.",
+      "Paste the data in smaller pieces and hope the errors stop."
+    ],
+    "correctIndex": 0,
+    "explanation": "Repeatable steps on real data belong in a notebook, where the logic is fixed and you can rerun it without re-prompting. Asking chat to self-check (option 2) keeps the fragile, one-off setup that caused the errors. Matching the mode to the job is the point; a faster model wouldn't fix reliability."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.12';
+
+-- 2.13 — Resisting metric and productivity illusions
+update public.modules
+   set body_md   = $md$The AI-assisted draft feels fast. You're flying through the queue, and your dashboard shows your output is up. Then the reviews come back, and you're spending the afternoon fixing the same drafts you felt so fast writing. The speed was real. So was the rework.
+
+## What it is
+
+A productivity illusion is when your sense of speedup outruns your actual output. The feeling of moving fast is a poor measure of whether you produced more good work. Resisting the illusion means treating "I feel productive" as a hypothesis to test, not a result, and being skeptical of any single number that claims to capture your performance.
+
+## Why it matters to you
+
+The whole point of this stage is calibrated personal evidence, and confusing a subjective rush for real output leaves you worse calibrated, not better. A controlled [METR study from 2025](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/) found experienced developers were about 19% slower when using AI tools, while believing they were roughly 20% faster. The feeling and the reality pointed in opposite directions. A [2026 METR follow-up](https://metr.org/blog/2026-02-24-uplift-update/) complicated the size of that effect, mostly from selection effects, while the perception gap held. The lesson isn't a fixed number. It's that feeling fast is not evidence of being fast.
+
+## How to do it / what to watch for
+
+Distrust the rush, and demand more than one number.
+
+- Treat "I feel faster" as a claim to check, not proof.
+- Measure what a single speed metric hides: rework, error rate, downstream cost.
+- Be wary when one number becomes the target. Once it does, people optimize the number, not the work.
+- Prefer several signals together over any one clean figure.
+
+Watch for dashboards that show speed and hide rework. A chart of drafts-per-day looks great until you count how many came back. This is Goodhart's law in plain terms: when a measure becomes the goal, it stops measuring what you cared about. Quality, rework, and downstream cost are the dimensions a speed metric quietly drops.
+
+## Example
+
+A team's "productivity dashboard" shows AI-assisted drafts going out 30% faster, and leadership is pleased. A skeptical lead pulls the rework data the dashboard left out. Nearly a third of those drafts came back for correction, and net throughput barely moved. The speed number was true and misleading at once. The multi-dimensional view told the real story.
+
+## In practice
+
+Feeling fast is not being fast. Judge AI's help with several measures, not one speed number.
+
+## Sources
+- [METR early-2025 AI developer productivity study (July 2025)](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/)
+- [METR follow-up (Feb 2026)](https://metr.org/blog/2026-02-24-uplift-update/)
+- [Stack Overflow 2025 Developer Survey (AI)](https://survey.stackoverflow.co/2025/ai)
+$md$,
+       quiz_json = $json$[
+  {
+    "question": "A controlled 2025 METR study of experienced developers using AI tools found which result?",
+    "options": [
+      "They were about 19% slower while believing they were roughly 20% faster.",
+      "They were about 20% faster, matching how fast they felt.",
+      "They were slightly slower and correctly sensed they were slower.",
+      "Their speed was unchanged, and so was their perception."
+    ],
+    "correctIndex": 0,
+    "explanation": "The study found experienced developers were roughly 19% slower with AI even though they felt about 20% faster, so feeling and reality pointed opposite ways. Option 2 is the intuitive trap: people assume the rush of speed reflects real output. The takeaway is that subjective speedup is not evidence of productivity."
+  },
+  {
+    "question": "Your team dashboard shows AI-assisted drafts going out 30% faster, and leadership wants to expand AI use. What should you check first?",
+    "options": [
+      "Nothing; a 30% speed gain on a clear metric is strong enough evidence.",
+      "Whether an even faster model could push the number higher.",
+      "How much rework those drafts generated and whether net throughput actually improved.",
+      "Whether other teams' dashboards show similar speed gains."
+    ],
+    "correctIndex": 2,
+    "explanation": "A speed metric hides rework, error rate, and downstream cost, so net throughput and correction rates are what reveal real productivity. Trusting the 30% alone (option 1) is exactly the single-metric illusion the lesson warns against. Prefer several signals together over one clean figure."
+  },
+  {
+    "question": "After a 2026 follow-up complicated the size of the earlier slowdown finding, how should you use that result?",
+    "options": [
+      "As solid proof that AI now makes experienced workers measurably faster on real tasks.",
+      "As a precise new productivity number you can confidently report up to leadership.",
+      "As good reason to ignore the earlier slowdown study and its findings entirely.",
+      "As evidence that measuring AI's effect is hard, which supports \"feeling fast is not being fast\" over any fixed number."
+    ],
+    "correctIndex": 3,
+    "explanation": "The follow-up showed the effect size is uncertain and being redesigned, so it argues that measurement is hard and the perception gap is real, not a new figure. Reading it as proof of a speedup (option 1) overstates what it says and repeats the illusion. Use it to stay skeptical of clean single numbers in either direction."
+  },
+  {
+    "question": "A manager proposes rewarding staff purely on drafts completed per day. What's the main risk?",
+    "options": [
+      "Staff will resist having any measurement of their daily output applied to them at all.",
+      "Once the count becomes the target, people optimize the count and quality and rework get ignored.",
+      "The drafts-per-day metric is simply too hard to calculate accurately to be useful in practice.",
+      "Drafts completed per day is irrelevant to real productivity in any form, so it tells you nothing."
+    ],
+    "correctIndex": 1,
+    "explanation": "This is Goodhart's law: when a single measure becomes the goal, people optimize that number rather than the underlying work, so quality and rework slip. The metric isn't useless (option 4); the danger is making it the sole target. Multi-dimensional evidence guards against gaming any one figure."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.13';
+
+-- 2.14 — GLAT-style objective gate
+update public.modules
+   set body_md   = $md$You finish Stage 2 feeling sharp. You can spot a fabricated citation, you know when to switch tools, you've stopped trusting the speed rush. But "I feel ready" is the one signal this whole stage taught you to distrust. So how do you actually prove it before you move on?
+
+## What it is
+
+An objective gate is a short, validated check you pass on real items, not a box you tick to say you understand. It uses scenario and concept questions covering the Stage 1 and Stage 2 skills, scored against right answers. The model is the [GLAT, a validated GenAI literacy test](https://arxiv.org/abs/2411.00283): a 20-item multiple-choice instrument where objective scores predict real performance better than how competent learners say they feel.
+
+## Why it matters to you
+
+Self-report reliably overstates progress. People who feel fluent often aren't, which is why an objective check is what makes the Stage 2 to Stage 3 step trustworthy. If the gate were self-graded, it would inherit the exact bias this stage exists to correct. A vetted instrument doesn't care how confident you feel; it asks whether you actually choose the right action in a realistic case. Passing it is evidence other people can rely on, including the colleagues who will trust your work downstream.
+
+## How to do it / what to watch for
+
+Treat the gate as proof, and use instruments built for the job.
+
+- Answer scenario items that ask for the best action, not the definition.
+- Use a validated bank like the GLAT rather than questions you wrote for yourself.
+- Score against correct answers, with a clear bar to pass.
+- If you fall short, restudy the weak area and retake, instead of waving it through.
+
+Watch for the urge to grade yourself generously because you "basically knew it." The point of an external check is that it removes that judgment from you. And don't confuse a high confidence rating with a passing score. Confidence is the thing being tested, not the test.
+
+## Example
+
+Before moving to Stage 3, a learner takes the objective check: a set of scenario and concept items drawn from Stage 1 and 2. One item hands her a polished AI summary that cites a specific deadline and asks for the right next step. She picks "verify the date against the source of record." Her score, not her sense of readiness, is what opens the next stage.
+
+## In practice
+
+Prove your literacy on a validated objective check, not on how ready you feel.
+
+## Sources
+- [GLAT (GenAI Literacy Assessment Test), arXiv 2411.00283](https://arxiv.org/abs/2411.00283)
+$md$,
+       quiz_json = $json$[
+  {
+    "question": "An AI tool drafts plain-language SNAP instructions that read well and state a specific income limit. Before this reaches a claimant, what's the right next step?",
+    "options": [
+      "Verify the income limit against the program's official policy, since the model can state a wrong number confidently.",
+      "Send it as written; the writing is clear and the specific figure makes the whole thing feel credible.",
+      "Rewrite it in more formal, official-sounding language so that claimants are more likely to trust it.",
+      "Generate the instructions a second time and then use whichever of the two versions reads more smoothly."
+    ],
+    "correctIndex": 0,
+    "explanation": "Models produce fluent text that can include confidently stated wrong facts, so any specific figure must be checked against the source of record before it reaches a beneficiary. Option 2 is the trap: fluency plus a precise number feels like proof but isn't. Polishing or regenerating doesn't fix accuracy."
+  },
+  {
+    "question": "Why does the Stage 2 to Stage 3 step rely on an objective check rather than a learner's self-rating of readiness?",
+    "options": [
+      "Self-ratings are quicker to collect, so relying on them keeps the whole program moving faster.",
+      "Self-report reliably overstates progress, so an objective score is needed to make the step trustworthy.",
+      "Objective tests are simply easier to write and grade than asking people how confident they feel.",
+      "Self-ratings of AI readiness are explicitly banned by current federal AI policy for this purpose."
+    ],
+    "correctIndex": 1,
+    "explanation": "People who feel fluent often aren't, so an objective check removes the self-report bias this stage exists to correct. Speed (option 1) isn't the reason; trustworthiness is. A self-graded gate would inherit the very overconfidence it's meant to catch."
+  },
+  {
+    "question": "A learner scores below the bar on the objective gate but feels confident she understands the material. What's the right response?",
+    "options": [
+      "Let her advance, since strong confidence is a good sign of readiness.",
+      "Average her score with her confidence rating to decide.",
+      "Have her restudy the weak area and retake the check before advancing.",
+      "Lower the passing bar so her score qualifies."
+    ],
+    "correctIndex": 2,
+    "explanation": "The score, not the feeling, is the evidence, so a learner below the bar restudies and retakes rather than advancing on confidence. Letting confidence override the score (option 1) reintroduces the exact bias the gate is designed to remove. Confidence is the thing being tested, not the test."
+  },
+  {
+    "question": "When AI keeps giving you confident but wrong answers to a hard policy question, what's the literate move?",
+    "options": [
+      "Keep rephrasing the same question until the wording finally works.",
+      "Accept the most confident answer, since the model has tried several times.",
+      "Switch to a tool that retrieves the real policy, or escalate to a human expert.",
+      "Assume the policy itself must be wrong and move on."
+    ],
+    "correctIndex": 2,
+    "explanation": "Repeated same-way failures signal a tool mismatch, so you switch to retrieval or a human rather than grinding on the prompt. More rephrasing (option 1) is sunk-cost effort that can't add the source access the model lacks. The literate move is to switch, not to grind."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.14';
+
+-- 2.15 — Paired AI-on / AI-off calibration
+update public.modules
+   set body_md   = $md$You're sure AI saves you time on intake notices. You feel it every time. But "feel" is exactly the signal Stage 2 taught you to question. The only way to know your real number is to run the task both ways and watch the clock and the error count, not your gut.
+
+## What it is
+
+A paired calibration is a small controlled exercise you run on yourself. You do one task with AI on and a comparable task with AI off. For each, you record three things: your subjective estimate of how much faster AI made you, your actual elapsed time, and the defect count found on review. Comparing your estimate to your real time gives you a personal calibration number: the size of your own perception-versus-reality gap.
+
+## Why it matters to you
+
+This is the concrete, measurable version of "feeling fast is not being fast." A controlled [METR study](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/) found experienced developers were about 19% slower with AI while believing they were faster. You don't have to assume that applies to you; the paired exercise lets you measure your own gap directly. A [2026 follow-up](https://metr.org/blog/2026-02-24-uplift-update/) showed the precise effect is hard to pin down even for researchers, which is more reason to trust your own measured number over your impression. Your calibration figure is the validity check on every other self-reported signal you produce.
+
+## How to do it / what to watch for
+
+Set it up so the comparison is fair, then trust the numbers.
+
+- Pick two genuinely comparable tasks of similar size and difficulty.
+- Before starting, write your guess for how much faster AI will make you.
+- Run one with AI, one without, and record actual elapsed time for each.
+- Have someone review both and count the defects in each.
+- Compare your guess to your real time, and note the gap.
+
+Watch for tasks that aren't actually comparable; an easy one paired with a hard one tells you nothing. Count defects honestly, since AI-assisted work can be faster to draft and slower to fix. And know when to switch approaches if a tool plainly doesn't fit the task in front of you.
+
+## Example
+
+A caseworker drafts two comparable denial notices, one with AI and one without. She guesses AI made her 40% faster. The clock says 15%, and the reviewer finds two extra defects in the AI draft, both invented details she had to correct. Her calibration number is the 25-point gap between her guess and reality. She now discounts her own speed sense by about that much.
+
+## In practice
+
+Run one task with AI and one without, time both, count the defects, and learn your real perception-versus-reality gap.
+
+## Sources
+- [METR early-2025 AI developer productivity study (July 2025)](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/)
+- [METR follow-up (Feb 2026)](https://metr.org/blog/2026-02-24-uplift-update/)
+- [Dell'Acqua et al., "Navigating the Jagged Technological Frontier" (Organization Science, 2026)](https://pubsonline.informs.org/doi/10.1287/orsc.2025.21838)
+$md$,
+       quiz_json = $json$[
+  {
+    "question": "You want to know whether AI actually speeds up your intake notices. What's the most reliable way to find out?",
+    "options": [
+      "Track how fast each AI-assisted notice feels as you write it and then average those impressions.",
+      "Do one comparable notice with AI and one without, recording your time estimate, actual time, and defects for each.",
+      "Trust the 19% slowdown from the METR study and just adopt that figure as your own personal number.",
+      "Count how many notices you finish in a typical day with AI turned on and treat that as the answer."
+    ],
+    "correctIndex": 1,
+    "explanation": "A paired AI-on/AI-off exercise measures your own perception-versus-reality gap directly, using actual time and defect counts rather than impressions. Adopting the METR number as your own (option 3) skips the measurement; that study's value is the method and the warning, not a figure that automatically applies to you. Your measured gap is the validity check on your self-reports."
+  },
+  {
+    "question": "Setting up a paired calibration, which choice keeps the comparison fair?",
+    "options": [
+      "Pair a quick, simple task done with AI against a long, complex one done without it.",
+      "Use the same task twice so you already know the content the second time.",
+      "Pick two tasks of similar size and difficulty, one done with AI and one without.",
+      "Do both tasks with AI but rate one as if AI were off."
+    ],
+    "correctIndex": 2,
+    "explanation": "Comparable tasks of similar size and difficulty are what make the time and defect comparison meaningful. Pairing an easy task with a hard one (option 1) confounds the result, so any difference could come from difficulty rather than AI. A fair pairing is the whole basis of a trustworthy calibration number."
+  },
+  {
+    "question": "In a paired test, your AI-assisted draft was faster to write but the reviewer found two invented details you had to fix. What does this teach about calibration?",
+    "options": [
+      "Defects don't really matter for calibration as long as the AI draft was faster to produce.",
+      "You should stop counting defects on AI drafts, since they make the tool look worse than it feels.",
+      "The speed gain is the only number worth recording in a calibration exercise like this.",
+      "Drafting speed and total cost differ, so counting defects honestly is essential: AI work can be quick to draft, slow to fix."
+    ],
+    "correctIndex": 3,
+    "explanation": "Honest defect counts capture the rework that raw drafting speed hides, which is why they belong in your calibration alongside time. Ignoring defects (options 1 and 2) reproduces the illusion that fast drafting equals real productivity. The defect count is what turns a speed impression into an honest measure."
+  }
+]$json$::jsonb,
+       updated_at = now()
+ where cell_id = '2.15';
