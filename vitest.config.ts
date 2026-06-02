@@ -22,7 +22,9 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.{ts,tsx}'],
+    // Also pick up the Edge Function's pure-logic tests (chat-core), which are
+    // Deno-agnostic and run fine under node. e2e/ stays Playwright-only.
+    include: ['src/**/*.test.{ts,tsx}', 'supabase/functions/**/*.test.ts'],
     exclude: ['node_modules', 'dist', 'e2e'],
     setupFiles: ['src/test/setup.ts'],
   },

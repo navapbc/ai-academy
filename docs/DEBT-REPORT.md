@@ -67,8 +67,9 @@ resolved finding is marked **✅ Resolved** inline below.
 | PR | Items closed | Status |
 |----|--------------|--------|
 | `fix/p0-crash-safety` | FE-01, FE-02, FE-07 | ✅ merged |
+| `fix/chat-edge-hardening` | SEC-01, SEC-02, SEC-03, SEC-04, SEC-05, LLM-01, LLM-02, LLM-03, LLM-04, LLM-06, LLM-07, LLM-08, LLM-12 + closes the "Edge Function SSE parser untested" coverage gap | ✅ merged |
 
-**Open remaining:** P0 **0** · P1 18 · P2 24 · P3 20 *(updated as PRs land).*
+**Open remaining:** P0 **0** · P1 12 · P2 18 · P3 19 *(updated as PRs land).*
 
 ---
 
@@ -87,6 +88,7 @@ resolved finding is marked **✅ Resolved** inline below.
 `supabase/functions/chat/index.ts:24-29`.
 *Impact:* any origin can invoke the proxy from a browser; combined with SEC-01 this broadens the abuse surface (not session-CSRF, since auth is a custom header, not a cookie).
 *Direction:* echo a single allowed origin from an allow-list (dev localhost + prod domain).
+**✅ Resolved** (`fix/chat-edge-hardening`): SEC-01 — the function now `createClient(...).auth.getUser()` and rejects anything that isn't a real user token (anon key → 401) plus a non-`@navapbc.com` user (403). SEC-02 — `buildCorsHeaders` echoes only an allow-listed origin (no `*`). Tested in `supabase/functions/chat/chat-core.test.ts` (`emailDomainAllowed`, `buildCorsHeaders`).
 
 ### P2
 
@@ -95,6 +97,7 @@ resolved finding is marked **✅ Resolved** inline below.
 **SEC-04 — Unbounded `max_tokens`, no message/size/rate limits** — `chat/index.ts:69-79`. Only validation is "messages is a non-empty array." *Direction:* clamp `max_tokens`, cap message count/size, validate `role`/`content` types, add per-user rate limiting.
 
 **SEC-05 — Anthropic upstream error body forwarded verbatim to the client** — `chat/index.ts:101-107,181-183`. Low-grade info disclosure. *Direction:* log server-side, return a generic client message with the status.
+**✅ Resolved** (`fix/chat-edge-hardening`): SEC-03 — `validateChatRequest` rejects any model outside `MODEL_ALLOWLIST`. SEC-04 — `clampMaxTokens` (ceiling 4096) + message-count/size caps + per-user `fixedWindowAllow` limiter. SEC-05 — upstream error is logged server-side and a generic message returned. Tested in `chat-core.test.ts`.
 
 ### P3
 
@@ -155,6 +158,8 @@ RLS enabled + owner-only SELECT/INSERT/UPDATE on `profiles`/`module_progress`/`q
 
 **LLM-04 — No `max_tokens` ceiling** — `chat/index.ts:40,75`. Client value forwarded unclamped. *Direction:* `Math.min(requested, CEILING)` + positive-integer validation. (Pairs with SEC-04.)
 
+**✅ Resolved** (`fix/chat-edge-hardening`): LLM-01 per-user `fixedWindowAllow` limiter (30/min) + message-count/size caps; LLM-02 real `getUser()` auth (anon key rejected); LLM-03 `MODEL_ALLOWLIST`; LLM-04 `clampMaxTokens` (ceiling 4096). All in `chat-core.ts`, unit-tested in `chat-core.test.ts`.
+
 ### P2
 
 **LLM-05 — Client streaming has no AbortSignal / cancellation** — `src/lib/llm.ts:35-94` (no `signal`; loop only exits on `done`); consumers `Playground.tsx:96`, `PromptLab.tsx:61`. Unmount/new-send leaks the request and keeps billing; `onChunk` can fire after unmount. No "stop generating" control. *Direction:* thread an `AbortSignal` into `StreamOptions`/`fetch`/`reader.cancel()`; abort in a cleanup effect. *Documented by:* `src/lib/llm.test.ts` → `describe.skip('… cancellation (DOCUMENTS: LLM-05)')`.
@@ -164,6 +169,8 @@ RLS enabled + owner-only SELECT/INSERT/UPDATE on `profiles`/`module_progress`/`q
 **LLM-07 — Stream can hang / `isStop` substring-matches** — `chat/index.ts:118-148,191-193`. No read/idle timeout (a stalled upstream blocks `read()` forever); `isStop` uses `String.includes('"type":"message_stop"')` (fragile). *Direction:* idle timeout that aborts upstream; detect stop via parsed JSON `type`.
 
 **LLM-08 — Weak input validation** — `chat/index.ts:62-79`. Item shapes, `role` enum, `content`/`system`/`model`/`max_tokens` types unchecked; forwarded to Anthropic. *Direction:* validate each field, 400 on failure.
+
+**✅ Resolved** (`fix/chat-edge-hardening`): LLM-06 a mid-stream `error` event now `controller.error()`s (no longer rendered as content) — `parseEvent` returns a discriminated `{type:'error'}`. LLM-07 `isStop` parses the event `type` (no substring false-positive). LLM-08 `validateChatRequest` checks every field, 400 on failure. LLM-12 allow-listed CORS (≡ SEC-02). All unit-tested in `chat-core.test.ts`. *(LLM-05 is handled in the next PR; a read/idle timeout for a stalled upstream is noted there as a remaining sub-item.)*
 
 ### P3
 
@@ -312,7 +319,7 @@ New suite added this pass (all green): **`npm run test` → 92 passed, 9 skipped
 **E2E (Playwright, stubbed Claude; local-only, not in CI):** sign-in as dev nava user + non-nava rejected; quiz pass at 100% persists across reload; data-classifier exercise end-to-end; 2.1 prompt lab returns the stubbed completion; Stage gating locked→unlocked; reflection saves.
 
 ### Gaps (not yet covered)
-- **Edge Function SSE parsing** (`parseEvent`/`isStop` in `supabase/functions/chat/index.ts`) — a Deno module with top-level `Deno.serve()`; can't be imported under vitest without source changes. Only exercised indirectly by the E2E stub (which bypasses real SSE). Recommend a Deno-test or a small refactor to export the pure parser in a later pass.
+- ~~**Edge Function SSE parsing**~~ — **✅ Closed** (`fix/chat-edge-hardening`): the pure logic was extracted to `supabase/functions/chat/chat-core.ts` and is now unit-tested in `chat-core.test.ts` (`parseEvent`/`isStop` + request validation, model allow-list, max_tokens clamp, CORS, limiter). The Deno-only glue in `index.ts` (auth via `getUser`, the real `fetch`, the in-memory limiter instance) is still verified by inspection + the E2E stub for the client path; a read/idle timeout for a stalled upstream remains a noted sub-item of LLM-07.
 - **`Playground`, `Header`, `Sidebar`, `SupportModal`, `LocalTutorFAB`, `PrivacySimulator`, `UseCaseLib`** — no component tests yet.
 - **`App.tsx` empty-curriculum crash (FE-02)** — pinned at the unit level (`groupIntoPhases` always returns 3 stages) but no full-App render test reproducing the white-screen.
 - **Accessibility** — no automated a11y assertions (e.g. axe) wired in; the WCAG findings above are from manual audit.

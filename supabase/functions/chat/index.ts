@@ -6,75 +6,113 @@
 // re-stream just the text deltas back to the client as a plain UTF-8 text
 // stream, which `src/lib/llm.ts` reads with a fetch + stream reader.
 //
-// Auth: relies on Supabase's default JWT verification at the gateway. The
-// client invokes with the anon key (a valid JWT), which passes pre-SSO.
-// Per-user auth and rate limits land later.
+// Hardening (debt audit, SEC-01..05 / LLM-01..08,12):
+//  - Authn/authz: requires a real signed-in @navapbc.com user (the public anon
+//    key alone is rejected) — verified via getUser, not just the gateway JWT.
+//  - CORS: echoes an allow-listed origin instead of a blanket `*`.
+//  - Input: validated + normalized; model is allow-listed; max_tokens clamped.
+//  - Rate limit: per-user fixed window (best-effort, per-isolate).
+//  - Errors: upstream detail is logged, not forwarded verbatim; a mid-stream
+//    upstream error aborts the stream instead of masquerading as content.
+//
+// Pure logic lives in ./chat-core.ts (unit-tested under vitest).
+import { createClient } from 'jsr:@supabase/supabase-js@2';
+import {
+  buildCorsHeaders,
+  emailDomainAllowed,
+  fixedWindowAllow,
+  isStop,
+  parseEvent,
+  validateChatRequest,
+  type RateLimitState,
+} from './chat-core.ts';
 
-// Default model: Claude Haiku 4.5 — the cheapest current Claude model. The
-// `ANTHROPIC_MODEL` env var overrides this default, and an individual request
-// can override per call via the `model` field.
 const DEFAULT_MODEL = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-haiku-4-5';
-const DEFAULT_MAX_TOKENS = 1024;
-
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 
-// Permissive CORS for local dev. The dev server runs on :3000 (reachable as
-// both localhost and 127.0.0.1). Tighten the allow-list for production.
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_EMAIL_DOMAIN = 'navapbc.com';
 
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
+// CORS allow-list: local dev origins plus an optional prod origin from env.
+const ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  ...(Deno.env.get('APP_ORIGIN') ? [Deno.env.get('APP_ORIGIN')!] : []),
+];
 
-interface ChatRequest {
-  messages: ChatMessage[];
-  system?: string;
-  model?: string;
-  max_tokens?: number;
-}
+// Per-user rate limit (best-effort; per-isolate — see chat-core.ts note).
+const RATE_LIMIT = 30; // requests
+const RATE_WINDOW_MS = 60_000; // per minute
+const rateStore = new Map<string, RateLimitState>();
 
 Deno.serve(async (req: Request) => {
+  const origin = req.headers.get('Origin');
+  const cors = buildCorsHeaders(origin, ALLOWED_ORIGINS);
+  const jsonError = (message: string, status: number) =>
+    new Response(JSON.stringify({ error: message }), {
+      status,
+      headers: { ...cors, 'content-type': 'application/json' },
+    });
+
   // CORS preflight.
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: cors });
   }
-
   if (req.method !== 'POST') {
     return jsonError('Method not allowed. Use POST.', 405);
   }
 
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
   if (!apiKey) {
-    return jsonError(
-      'ANTHROPIC_API_KEY not set. Add it to the env file passed to ' +
-        '`supabase functions serve --env-file supabase/functions/.env`.',
-      500,
-    );
+    return jsonError('Server is misconfigured (missing API key).', 500);
   }
 
-  let body: ChatRequest;
+  // --- Authn/authz: require a real @navapbc.com user (SEC-01 / LLM-02) -------
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  if (!supabaseUrl || !anonKey) {
+    return jsonError('Server is misconfigured (missing Supabase env).', 500);
+  }
+  const supabase = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  const user = userData?.user;
+  // The bare anon key is not a user token, so getUser fails for it.
+  if (userErr || !user) {
+    return jsonError('Sign in to use this feature.', 401);
+  }
+  if (!emailDomainAllowed(user.email, ALLOWED_EMAIL_DOMAIN)) {
+    return jsonError(`Access is restricted to @${ALLOWED_EMAIL_DOMAIN} accounts.`, 403);
+  }
+
+  // --- Rate limit (LLM-01) ---------------------------------------------------
+  if (!fixedWindowAllow(rateStore, user.id, Date.now(), RATE_LIMIT, RATE_WINDOW_MS)) {
+    return jsonError('Rate limit exceeded. Please slow down and try again shortly.', 429);
+  }
+
+  // --- Validate + normalize input (LLM-03 / LLM-04 / LLM-08) -----------------
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return jsonError('Invalid JSON body.', 400);
   }
-
-  if (!Array.isArray(body.messages) || body.messages.length === 0) {
-    return jsonError('Request must include a non-empty `messages` array.', 400);
+  const validated = validateChatRequest(rawBody, DEFAULT_MODEL);
+  if (!validated.ok) {
+    return jsonError(validated.error, 400);
   }
+  const { messages, system, model, max_tokens } = validated.value;
 
   const anthropicBody = {
-    model: body.model ?? DEFAULT_MODEL,
-    max_tokens: body.max_tokens ?? DEFAULT_MAX_TOKENS,
-    ...(body.system ? { system: body.system } : {}),
-    messages: body.messages.map((m) => ({ role: m.role, content: m.content })),
+    model,
+    max_tokens,
+    ...(system ? { system } : {}),
+    messages,
     stream: true,
   };
 
@@ -90,24 +128,21 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify(anthropicBody),
     });
   } catch (err) {
-    return jsonError(
-      `Failed to reach Anthropic API: ${err instanceof Error ? err.message : String(err)}`,
-      502,
-    );
+    console.error('Anthropic fetch failed:', err);
+    return jsonError('Failed to reach the model provider. Please try again.', 502);
   }
 
-  // Surface Anthropic API errors (bad key, invalid model, rate limit, etc.)
-  // with their original status and message rather than a generic 500.
+  // Log the upstream detail server-side; return a generic message (SEC-05).
   if (!upstream.ok || !upstream.body) {
     const detail = await upstream.text().catch(() => '');
-    return jsonError(
-      `Anthropic API error (${upstream.status}): ${detail || upstream.statusText}`,
-      upstream.status || 502,
-    );
+    console.error(`Anthropic API error (${upstream.status}): ${detail || upstream.statusText}`);
+    const status = upstream.status === 429 ? 429 : upstream.status >= 500 ? 502 : 400;
+    return jsonError('The model provider returned an error. Please try again.', status);
   }
 
-  // Re-stream: parse Anthropic's SSE and emit only the text deltas as a plain
-  // text stream the browser can read incrementally.
+  // Re-stream: parse Anthropic's SSE and emit only the text deltas. A mid-stream
+  // upstream `error` event aborts the stream (LLM-06) instead of being rendered
+  // as assistant text.
   const textStream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const reader = upstream.body!.getReader();
@@ -121,18 +156,22 @@ Deno.serve(async (req: Request) => {
           if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
-
-          // SSE events are separated by a blank line. Process complete events
-          // and keep any trailing partial event in the buffer.
           const events = buffer.split('\n\n');
           buffer = events.pop() ?? '';
 
           for (const event of events) {
-            const text = parseEvent(event);
-            if (text) controller.enqueue(encoder.encode(text));
+            const parsed = parseEvent(event);
+            if (parsed?.type === 'text' && parsed.text) {
+              controller.enqueue(encoder.encode(parsed.text));
+            } else if (parsed?.type === 'error') {
+              console.error('Anthropic stream error:', parsed.message);
+              controller.error(new Error(parsed.message));
+              await reader.cancel().catch(() => {});
+              return;
+            }
             if (isStop(event)) {
               controller.close();
-              reader.cancel().catch(() => {});
+              await reader.cancel().catch(() => {});
               return;
             }
           }
@@ -150,51 +189,9 @@ Deno.serve(async (req: Request) => {
 
   return new Response(textStream, {
     headers: {
-      ...corsHeaders,
+      ...cors,
       'content-type': 'text/plain; charset=utf-8',
       'cache-control': 'no-cache',
     },
   });
 });
-
-/**
- * Extracts the text delta from a single Anthropic SSE event block, if any.
- * We only care about `content_block_delta` events carrying a `text_delta`.
- * `error` events are turned into a readable inline message.
- */
-function parseEvent(event: string): string | null {
-  const dataLines = event
-    .split('\n')
-    .filter((line) => line.startsWith('data:'))
-    .map((line) => line.slice(5).trim());
-
-  if (dataLines.length === 0) return null;
-
-  const data = dataLines.join('');
-  if (!data || data === '[DONE]') return null;
-
-  try {
-    const json = JSON.parse(data);
-    if (json.type === 'content_block_delta' && json.delta?.type === 'text_delta') {
-      return json.delta.text ?? '';
-    }
-    if (json.type === 'error') {
-      return `\n[stream error: ${json.error?.message ?? 'unknown error'}]`;
-    }
-  } catch {
-    // Ignore non-JSON / partial data lines.
-  }
-  return null;
-}
-
-/** Whether this SSE event signals the end of the message stream. */
-function isStop(event: string): boolean {
-  return event.includes('event: message_stop') || event.includes('"type":"message_stop"');
-}
-
-function jsonError(message: string, status: number): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { ...corsHeaders, 'content-type': 'application/json' },
-  });
-}
