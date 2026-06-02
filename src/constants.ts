@@ -1,7 +1,6 @@
 export { AI_PERSONAS } from './data/personas';
 export { GLOSSARY_TERMS } from './data/glossary';
-export { RECOMMENDED_RESOURCES } from './data/resources';
-// The curriculum (PHASES) is no longer a static import — it's fetched from
-// Supabase at runtime (content-as-data, P3.2.2). See src/lib/modules.ts. The
-// src/data/phases.ts file is retained as the seed source-of-record referenced
-// by the P3.2.1 migration.
+// The curriculum is fetched from Supabase at runtime (content-as-data, P3.2.2;
+// see src/lib/modules.ts). The former static seed files (data/phases.ts,
+// data/quiz.ts, data/resources.ts, content/*.md) were superseded by the DB seed
+// + supabase/seed-data/curriculum-content.json and removed (DEAD-01/02/03).

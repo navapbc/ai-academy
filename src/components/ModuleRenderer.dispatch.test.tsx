@@ -94,16 +94,11 @@ describe('completion affordance', () => {
     expect(screen.getByText('STUB:Quiz')).toBeInTheDocument();
   });
 
-  // DOCUMENTS: FE-06 — a type:'lab' module whose labConfig is missing (or whose
-  // kind is unhandled) renders no exercise, no quiz, and NO completion control:
-  // a silent dead-end that blocks all downstream gated content. The desired
-  // behavior is a visible "not configured / contact support" fallback. Unskip
-  // once ModuleRenderer renders a fallback for unhandled lab modules.
-  test.skip('a lab module with no labConfig shows a fallback instead of a silent dead-end (DOCUMENTS: FE-06)', () => {
+  // FE-06 — a type:'lab' module whose labConfig is missing (or whose kind is
+  // unhandled) used to render no exercise, no quiz, and no completion control: a
+  // silent dead-end. It now shows a visible fallback notice.
+  test('a lab module with no labConfig shows a fallback instead of a silent dead-end (FE-06)', () => {
     renderModule({ type: 'lab', content: '# Lab intro' });
-    // Today: nothing actionable renders. We WANT a fallback affordance:
-    expect(
-      screen.queryByText(/not configured|contact support|completed this section/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/isn't available yet|not configured/i)).toBeInTheDocument();
   });
 });

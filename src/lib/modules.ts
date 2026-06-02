@@ -64,6 +64,35 @@ interface ModuleRow {
 const MODULE_COLUMNS =
   'cell_id, stage, title, type, dimension, evidence_type, self_report_validity, body_md, mastery_anchor, emergent_anchor, quiz_json, lab_config_json, sorter_config_json';
 
+/**
+ * Runtime guard for a `modules` row (TYPE-03). The Supabase client returns
+ * loosely-typed data, so without this a column rename or shape change would
+ * compile clean and silently mis-render. We assert the required scalar fields
+ * exist with the right primitive type at the mapping boundary, so drift fails
+ * loudly with a clear message instead of producing a broken curriculum.
+ */
+export function assertModuleRow(row: unknown): asserts row is ModuleRow {
+  if (typeof row !== 'object' || row === null) {
+    throw new Error('modules row is not an object — schema drift?');
+  }
+  const r = row as Record<string, unknown>;
+  const requireString = (key: string) => {
+    if (typeof r[key] !== 'string') {
+      throw new Error(`modules row is missing string field "${key}" — schema drift?`);
+    }
+  };
+  requireString('cell_id');
+  requireString('stage');
+  requireString('title');
+  requireString('type');
+  if (!((r.stage as string) in STAGE_META)) {
+    throw new Error(`modules row has unknown stage "${String(r.stage)}" — schema drift?`);
+  }
+  if (!Array.isArray(r.dimension)) {
+    throw new Error('modules row field "dimension" is not an array — schema drift?');
+  }
+}
+
 /** Maps a DB row to the existing Module shape (cell_id -> id+cellId, body_md -> content). */
 export function mapRowToModule(row: ModuleRow): Module {
   return {
@@ -116,6 +145,11 @@ export async function fetchCurriculum(): Promise<Phase[]> {
 
   if (error) throw error;
 
-  const modules = ((data ?? []) as ModuleRow[]).map(mapRowToModule);
+  // Validate each row's shape before mapping so schema drift fails loudly.
+  const rows = data ?? [];
+  const modules = rows.map((row) => {
+    assertModuleRow(row);
+    return mapRowToModule(row);
+  });
   return groupIntoPhases(modules);
 }

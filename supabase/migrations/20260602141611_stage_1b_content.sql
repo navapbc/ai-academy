@@ -80,7 +80,7 @@ If you picture the model as *pattern completion, not retrieval or understanding*
     }
   ]$json$::jsonb,
   status = 'in_review',
-  version = version + 1,
+  version = 2,
   updated_at = now()
 where cell_id = '1.1';
 
@@ -156,7 +156,7 @@ Hallucination isn't going away. Designing your workflow around that fact is the 
     }
   ]$json$::jsonb,
   status = 'in_review',
-  version = version + 1,
+  version = 2,
   updated_at = now()
 where cell_id = '1.2';
 
@@ -234,7 +234,7 @@ Literate use means asking whether the output actually reaches everyone:
     }
   ]$json$::jsonb,
   status = 'in_review',
-  version = version + 1,
+  version = 2,
   updated_at = now()
 where cell_id = '1.7';
 
@@ -305,7 +305,7 @@ A literate practitioner can hold two truths at once: AI is genuinely useful **an
     }
   ]$json$::jsonb,
   status = 'in_review',
-  version = version + 1,
+  version = 2,
   updated_at = now()
 where cell_id = '1.8';
 
@@ -377,7 +377,7 @@ Overselling AI ("it'll do your job") breeds either fear or reckless over-relianc
     }
   ]$json$::jsonb,
   status = 'in_review',
-  version = version + 1,
+  version = 2,
   updated_at = now()
 where cell_id = '1.11';
 
@@ -452,6 +452,6 @@ These harms are specific, predictable, and — with awareness — avoidable.$md$
     }
   ]$json$::jsonb,
   status = 'in_review',
-  version = version + 1,
+  version = 2,
   updated_at = now()
 where cell_id = '1.12';

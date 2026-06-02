@@ -48,7 +48,7 @@ update public.modules set
 }
 $json$::jsonb,
   status = 'in_review',
-  version = version + 1,
+  version = 2,
   updated_at = now()
 where cell_id = '1.12';
 
@@ -75,6 +75,6 @@ update public.modules set
 }
 $json$::jsonb,
   status = 'in_review',
-  version = version + 1,
+  version = 2,
   updated_at = now()
 where cell_id = '1.13';

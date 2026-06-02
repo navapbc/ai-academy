@@ -116,6 +116,17 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
     }
   };
 
+  // Render the widgets once so we can detect a dead-end module (FE-06): a
+  // module that produces no interactive widget, no exercise, no inline quiz, and
+  // no completion button would otherwise show only the video/content with no way
+  // forward — silently blocking gated content. We surface a clear fallback.
+  const interactive = renderInteractive();
+  const exercise = renderExercise();
+  const hasCompletionButton =
+    (module.type === 'content' || module.type === 'glossary') && !hasInlineQuiz;
+  const showNoActivityFallback =
+    !interactive && !exercise && !hasInlineQuiz && !hasCompletionButton;
+
   return (
     <motion.div
       key={module.id}
@@ -164,11 +175,21 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         </div>
       )}
 
-      {renderInteractive()}
+      {interactive}
 
-      {renderExercise()}
+      {exercise}
 
       {hasInlineQuiz && <Quiz moduleId={module.id} questions={module.quiz!} onComplete={onComplete} />}
+
+      {showNoActivityFallback && (
+        <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm text-center space-y-2">
+          <h3 className="font-bold text-gray-800">This section isn&apos;t available yet</h3>
+          <p className="text-sm text-gray-500">
+            Its interactive content isn&apos;t configured. Please check back later or report an
+            issue if this seems wrong.
+          </p>
+        </div>
+      )}
 
       {module.resources && module.resources.length > 0 && (
         <div className="bg-gray-50 rounded-3xl p-8 border border-gray-100">
