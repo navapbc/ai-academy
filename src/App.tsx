@@ -51,12 +51,23 @@ function AcademyApp({ userId, onSignOut }: { userId: string; onSignOut: () => vo
     );
   }
 
-  if (error || !phases) {
+  // An empty curriculum (no modules in any stage) is treated as an error state,
+  // not rendered (DEBT FE-02): groupIntoPhases always returns 3 stages, so
+  // `phases` is never null/[] even when the modules table is empty — without
+  // this check `Academy` would deref `allModules[0]` (undefined) and crash.
+  const isEmpty = !!phases && phases.every((p) => p.modules.length === 0);
+
+  if (error || !phases || isEmpty) {
+    const message =
+      error ??
+      (isEmpty
+        ? 'No curriculum content is available yet. Please check back soon.'
+        : 'Could not load the curriculum.');
     return (
       <div className="min-h-screen bg-nava-sand flex items-center justify-center p-6">
         <div className="max-w-md text-center space-y-4">
           <AlertTriangle className="w-10 h-10 text-orange-500 mx-auto" />
-          <p className="text-gray-700 font-medium">{error ?? 'Could not load the curriculum.'}</p>
+          <p className="text-gray-700 font-medium">{message}</p>
           <button
             onClick={() => window.location.reload()}
             className="px-6 py-2.5 bg-nava-green hover:bg-nava-plum text-white rounded-xl font-bold transition-all"
