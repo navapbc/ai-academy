@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, test, expect, afterEach, vi } from 'vitest';
 
 // UNIT tests for the streamChat client seam (src/lib/llm.ts). We mock the
 // supabaseClient module (so no real client / session) and stub `fetch` with a

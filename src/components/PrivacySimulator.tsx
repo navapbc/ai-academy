@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Cloud, Laptop, ArrowRight, Shield, ShieldAlert, CheckCircle, Play, ShieldCheck } from 'lucide-react';
+import { Cloud, Laptop, Shield, ShieldAlert, CheckCircle, Play, ShieldCheck } from 'lucide-react';
 
 export default function PrivacySimulator({ onComplete }: { onComplete: () => void }) {
   const [mode, setMode] = useState<'cloud' | 'local'>('cloud');

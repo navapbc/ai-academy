@@ -69,8 +69,9 @@ resolved finding is marked **✅ Resolved** inline below.
 | `fix/p0-crash-safety` | FE-01, FE-02, FE-07 | ✅ merged |
 | `fix/chat-edge-hardening` | SEC-01, SEC-02, SEC-03, SEC-04, SEC-05, LLM-01, LLM-02, LLM-03, LLM-04, LLM-06, LLM-07, LLM-08, LLM-12 + closes the "Edge Function SSE parser untested" coverage gap | ✅ merged |
 | `fix/stream-cancellation` | LLM-05 | ✅ merged |
+| `chore/strict-ts-eslint` | TYPE-01, TYPE-02 | ✅ merged |
 
-**Open remaining:** P0 **0** · P1 12 · P2 17 · P3 19 *(updated as PRs land).*
+**Open remaining:** P0 **0** · P1 10 · P2 17 · P3 19 *(updated as PRs land).*
 
 ---
 
@@ -262,8 +263,10 @@ Key isolation correct. Pre-stream error handling is thorough (missing key→500,
 ### P1
 
 **TYPE-01 — `tsconfig.json` does not enable `strict` (or any strict sub-flag)** — `tsconfig.json:2-25`. Missing `strict`/`strictNullChecks`/`noImplicitAny`/`noUnusedLocals`/… Since `lint`==`tsc --noEmit` is the only gate, null-deref, implicit-any, and dead-code classes are invisible (and the `as`/`!` patterns below are only "safe" because nothing checks them). *Direction:* enable `strict` and triage incrementally.
+**✅ Resolved** (`chore/strict-ts-eslint`): enabled `strict` + `noUnusedLocals`/`noUnusedParameters`/`noImplicitReturns`/`noFallthroughCasesInSwitch`. The codebase was already strict-clean (0 type errors); only 3 unused imports needed removing. `npm run lint` stays green.
 
 **TYPE-02 — No ESLint configured, but `eslint-disable` directives are committed** — no `.eslintrc*`/`eslint.config.*`; disables at `Quiz.tsx:56`, `modules.test.ts:26,33`. The `react-hooks/exhaustive-deps` suppression hides the real DATA-03/FE-04 effect-deps gap; nothing enforces hook/a11y/unused rules. *Direction:* add ESLint (`@typescript-eslint`, `eslint-plugin-react-hooks`) wired into `lint`, or remove the misleading directives.
+**✅ Resolved** (`chore/strict-ts-eslint`): added `eslint.config.js` (flat: `@eslint/js` + `typescript-eslint` recommended + `react-hooks` rules-of-hooks=error / exhaustive-deps=warn) and wired it into `npm run lint` (now `tsc --noEmit && eslint .`). The committed `eslint-disable` directives are now enforced by a real linter.
 
 ### P2
 
