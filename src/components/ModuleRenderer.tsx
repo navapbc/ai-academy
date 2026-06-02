@@ -16,6 +16,7 @@ import ScenarioSorter from './ScenarioSorter';
 import DataClassifier from './exercises/DataClassifier';
 import ToolTriage from './exercises/ToolTriage';
 import FailureSpotter from './exercises/FailureSpotter';
+import ScenarioExercise from './exercises/ScenarioExercise';
 
 interface Props {
   module: Module;
@@ -97,6 +98,9 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         return <ToolTriage config={module.labConfig} labId={module.cellId} />;
       case 'failure-spotter':
         return <FailureSpotter config={module.labConfig} labId={module.cellId} />;
+      case 'disclosure-builder':
+      case 'regulatory-check':
+        return <ScenarioExercise config={module.labConfig} labId={module.cellId} />;
       default:
         return null;
     }
