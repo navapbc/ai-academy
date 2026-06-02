@@ -99,20 +99,24 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
         status: 'submitted',
       });
       setSaved(true);
-      onComplete();
 
-      // Grade after saving — completion never depends on grading (P4.2).
       if (config.rubric) {
+        // Grade in place; the learner advances via "Continue" after seeing the
+        // result. We must NOT onComplete() here — it advances the cursor and
+        // unmounts the lab before the grade can render.
         setGrading(true);
         try {
           const result = await requestLlmGrade({ rubric: config.rubric, submission });
           await saveGrade(id, result, 'reviewable');
           setGradeResult(result);
         } catch {
-          setGradeError('Grading is unavailable right now — your work is saved.');
+          setGradeError('Grading is unavailable right now — your work is saved. You can continue.');
         } finally {
           setGrading(false);
         }
+      } else {
+        // No rubric: complete immediately (unchanged one-click behavior).
+        onComplete();
       }
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Could not save your submission.');
@@ -279,7 +283,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
               className="flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 disabled:opacity-50 transition-all active:scale-95"
             >
               {saved
-                ? <>Saved & completed <CheckCircle className="w-4 h-4" /></>
+                ? (config.rubric ? <>Saved <CheckCircle className="w-4 h-4" /></> : <>Saved &amp; completed <CheckCircle className="w-4 h-4" /></>)
                 : saving
                   ? <><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Sparkles className="w-4 h-4" /></motion.div> Saving…</>
                   : <><Save className="w-4 h-4" /> Save & complete</>}
@@ -297,6 +301,17 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
           </p>
         )}
         {gradeError && <p className="text-xs text-gray-500">{gradeError}</p>}
+        {config.rubric && saved && !grading && (gradeResult || gradeError) && (
+          <div className="flex justify-end">
+            <button
+              onClick={onComplete}
+              className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm hover:bg-nava-plum transition-all active:scale-95"
+            >
+              Continue
+              <CheckCircle className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         {gradeResult && (
           <div className="bg-nava-mint/30 border-2 border-nava-mint rounded-2xl p-6 space-y-4" id="grade-result">
             <div className="flex items-center justify-between">
