@@ -90,7 +90,7 @@ export default function SignoffChecklist({ config, labId }: Props) {
 
       <div className="space-y-3">
         <p className="text-sm font-semibold text-gray-800">Which best fits how you&apos;re involved with AI?</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div role="radiogroup" aria-label="Your role" className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {roles.map((r) => {
             const sel = role === r.id;
             return (
@@ -114,7 +114,7 @@ export default function SignoffChecklist({ config, labId }: Props) {
 
       <div className="space-y-3">
         <p className="text-sm font-semibold text-gray-800">Commitments — check each to sign off:</p>
-        <div className="space-y-2">
+        <div role="group" aria-label="Commitments" className="space-y-2">
           {commitments.map((c) => {
             const on = !!checked[c.id];
             return (

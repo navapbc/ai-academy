@@ -164,7 +164,7 @@ export default function HarmRubric({ config, labId }: Props) {
 
       {graded ? (
         <div className="flex items-center justify-between border-t border-gray-100 pt-6">
-          <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+          <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm font-bold text-gray-700">
             <ShieldCheck className="w-5 h-5 text-nava-green" />
             You scored {grade.correctIds.length} / {scenarios.length}
           </div>
