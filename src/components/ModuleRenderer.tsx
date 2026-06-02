@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { motion } from 'motion/react';
 import { CheckCircle, ExternalLink, PlayCircle, Library, Award } from 'lucide-react';
 import { Module, AIPersona } from '../types';
-import { GLOSSARY_TERMS, QUIZ_DATA } from '../constants';
+import { GLOSSARY_TERMS } from '../constants';
 import { BRANDING, injectBranding } from '../branding';
 import { useAuth } from '../lib/auth';
 import { fetchQuizSummary, type QuizResult } from '../lib/progress';
@@ -30,8 +30,8 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
   // renders after the lesson and is the completion gate — the standalone
   // "I've completed this section" button is suppressed (passing == complete).
   // Quiz-type modules already render their quiz via renderInteractive().
-  const hasInlineQuiz = module.type !== 'quiz' && (QUIZ_DATA[module.id]?.length ?? 0) > 0;
-  const hasQuiz = (QUIZ_DATA[module.id]?.length ?? 0) > 0;
+  const hasInlineQuiz = module.type !== 'quiz' && (module.quiz?.length ?? 0) > 0;
+  const hasQuiz = (module.quiz?.length ?? 0) > 0;
 
   // Surface the learner's best recorded score for this module's quiz. Stays
   // null (badge hidden) until an attempt exists; read-back failures are silent.
@@ -66,7 +66,7 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
           />
         );
       case 'quiz':
-        return <Quiz moduleId={module.id} onComplete={onComplete} />;
+        return <Quiz moduleId={module.id} questions={module.quiz ?? []} onComplete={onComplete} />;
       case 'use-case':
         return <UseCaseLib onComplete={onComplete} />;
       case 'glossary':
@@ -126,7 +126,7 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
 
       {renderInteractive()}
 
-      {hasInlineQuiz && <Quiz moduleId={module.id} onComplete={onComplete} />}
+      {hasInlineQuiz && <Quiz moduleId={module.id} questions={module.quiz!} onComplete={onComplete} />}
 
       {module.resources && module.resources.length > 0 && (
         <div className="bg-gray-50 rounded-3xl p-8 border border-gray-100">

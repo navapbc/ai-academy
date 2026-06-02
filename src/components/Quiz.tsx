@@ -1,13 +1,20 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { HelpCircle, Check, X, ShieldCheck, ChevronRight } from 'lucide-react';
-import { QUIZ_DATA } from '../constants';
+import type { QuizQuestion } from '../types';
 import { useAuth } from '../lib/auth';
 import { recordQuizAttempt, fetchQuizSummary, type QuizSummary } from '../lib/progress';
 
-export default function Quiz({ moduleId, onComplete }: { moduleId: string; onComplete: () => void }) {
+export default function Quiz({
+  moduleId,
+  questions,
+  onComplete,
+}: {
+  moduleId: string;
+  questions: QuizQuestion[];
+  onComplete: () => void;
+}) {
   const { user } = useAuth();
-  const questions = QUIZ_DATA[moduleId] || [];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
