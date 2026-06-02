@@ -177,13 +177,38 @@ export interface ReflectionConfig {
   minWords: number;
 }
 
+/**
+ * 1.12 harm-rubric (P3.9): classify each civic-tech scenario into one of the
+ * four harm patterns. `correct` is a pattern id; `patterns` are shown as the
+ * rubric reference and as the MC options.
+ */
+export interface HarmRubricConfig {
+  kind: 'harm-rubric';
+  patterns: { id: string; label: string; desc: string }[];
+  scenarios: { id: string; text: string; correct: string; why: string }[];
+}
+
+/**
+ * 1.13 sign-off (P3.9): ungraded. The learner picks the role that best fits how
+ * they're involved with AI, then checks every commitment to sign off. Records
+ * the role + acknowledged commitment ids; no right/wrong.
+ */
+export interface SignoffConfig {
+  kind: 'signoff-checklist';
+  intro?: string;
+  roles: { id: string; label: string; desc: string }[];
+  commitments: { id: string; text: string }[];
+}
+
 export type LabConfig =
   | PromptConstructionConfig
   | DataClassifierConfig
   | ToolTriageConfig
   | FailureSpotterConfig
   | ScenarioExerciseConfig
-  | ReflectionConfig;
+  | ReflectionConfig
+  | HarmRubricConfig
+  | SignoffConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];
