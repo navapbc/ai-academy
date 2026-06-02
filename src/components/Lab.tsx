@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Play, Terminal, CheckCircle, FlaskConical, Lightbulb, Target, ChevronDown, Save } from 'lucide-react';
 import { streamChat } from '../lib/llm';
 import { CLAUDE_MODELS, DEFAULT_MODEL_ID } from '../lib/models';
-import { recordLabSubmission } from '../lib/progress';
+import { recordLabSubmission, saveGrade } from '../lib/progress';
+import { requestLlmGrade, type GradeResult } from '../lib/grading';
 import { useAuth } from '../lib/auth';
 import { AIPersona, LabConfig } from '../types';
 import { labHeader } from './labHeader';
@@ -30,6 +31,9 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [grading, setGrading] = useState(false);
+  const [gradeResult, setGradeResult] = useState<GradeResult | null>(null);
+  const [gradeError, setGradeError] = useState<string | null>(null);
   // Cancels the in-flight stream on unmount / re-run (LLM-05).
   const abortRef = useRef<AbortController | null>(null);
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -86,14 +90,30 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
     }
     setSaving(true);
     setSaveError(null);
+    setGradeError(null);
     try {
-      await recordLabSubmission(user.id, {
+      const submission = { brief: briefText, prompt, response };
+      const id = await recordLabSubmission(user.id, {
         labId,
-        transcript: { brief: briefText, prompt, response },
+        transcript: submission,
         status: 'submitted',
       });
       setSaved(true);
       onComplete();
+
+      // Grade after saving — completion never depends on grading (P4.2).
+      if (config.rubric) {
+        setGrading(true);
+        try {
+          const result = await requestLlmGrade({ rubric: config.rubric, submission });
+          await saveGrade(id, result, 'reviewable');
+          setGradeResult(result);
+        } catch {
+          setGradeError('Grading is unavailable right now — your work is saved.');
+        } finally {
+          setGrading(false);
+        }
+      }
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Could not save your submission.');
     } finally {
@@ -264,6 +284,41 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
                   ? <><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Sparkles className="w-4 h-4" /></motion.div> Saving…</>
                   : <><Save className="w-4 h-4" /> Save & complete</>}
             </button>
+          </div>
+        )}
+
+        {/* Grade result (P4.2) — provisional, pending champion review (P5.1). */}
+        {grading && (
+          <p className="text-xs text-gray-500 flex items-center gap-2">
+            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+              <Sparkles className="w-3.5 h-3.5" />
+            </motion.div>
+            Grading your work…
+          </p>
+        )}
+        {gradeError && <p className="text-xs text-gray-500">{gradeError}</p>}
+        {gradeResult && (
+          <div className="bg-nava-mint/30 border-2 border-nava-mint rounded-2xl p-6 space-y-4" id="grade-result">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-nava-plum">Anchor-scored feedback</h4>
+              <span className="text-sm font-bold text-gray-700">
+                {gradeResult.overall} / {gradeResult.maxOverall}
+              </span>
+            </div>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-nava-plum/70">
+              Provisional — pending review
+            </p>
+            <ul className="space-y-3">
+              {gradeResult.perAnchor.map((a) => (
+                <li key={a.id} className="text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold text-gray-800">{a.label}</span>
+                    <span className="text-xs font-bold text-gray-600">{a.score}/{a.max}</span>
+                  </div>
+                  <p className="text-xs text-gray-600 leading-relaxed">{a.rationale}</p>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>
