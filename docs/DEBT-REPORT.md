@@ -71,8 +71,9 @@ resolved finding is marked **✅ Resolved** inline below.
 | `fix/stream-cancellation` | LLM-05 | ✅ merged |
 | `chore/strict-ts-eslint` | TYPE-01, TYPE-02 | ✅ merged |
 | `fix/progress-reliability` | DATA-02, FE-03 | ✅ merged |
+| `fix/quiz-integrity` | DATA-03, FE-04, FE-05 | ✅ merged |
 
-**Open remaining:** P0 **0** · P1 8 · P2 17 · P3 19 *(updated as PRs land).*
+**Open remaining:** P0 **0** · P1 6 · P2 16 · P3 19 *(updated as PRs land).*
 
 ---
 
@@ -132,6 +133,7 @@ RLS enabled + owner-only SELECT/INSERT/UPDATE on `profiles`/`module_progress`/`q
 ### P2
 
 **DATA-03 — Quiz attempt persisted in a `[showResults]` effect → StrictMode/re-render double-record** — `src/components/Quiz.tsx:43-57`. `quiz_attempts` is append-only with no dedupe; dev StrictMode writes two rows per completion. User-visible scoring is unaffected (best/latest reduce is dupe-safe) but the table accumulates phantom attempts. *Direction:* guard with a `useRef` or move the insert into the explicit "See Results" transition. *Documented by:* `src/components/Quiz.test.tsx` → `test.skip('… exactly one attempt … StrictMode (DOCUMENTS: DATA-03 / FE-04)')`.
+**✅ Resolved** (`fix/quiz-integrity`): a `recordedRef` guard makes the record idempotent across StrictMode + results re-renders; effect deps are now complete (lint disable removed). Test unskipped.
 
 **DATA-04 — Exercises set `graded=true` before the auth/save check; retry re-appends rows** — `DataClassifier.tsx:47-78`, `ToolTriage.tsx:40-69`, `ScenarioExercise.tsx:50-79`. Graded-but-unsaved state when signed out; `handleRetry`+resubmit appends another `lab_submissions` row (append-only, no dedupe). Low user impact (practice, not the gate). *Direction:* set `graded` after save resolves, or upsert-by-(user,lab) if only latest should persist.
 
@@ -207,8 +209,10 @@ Key isolation correct. Pre-stream error handling is thorough (missing key→500,
 **✅ Resolved** (`fix/progress-reliability`): `useProgress` takes an `isLocked` predicate; `resolveNextModuleId` advances to the first *unlocked* later module (or stays put), and `App` supplies the gating predicate. Tests: `useProgress.test.tsx` → "gating-aware advance (FE-03)".
 
 **FE-04 — Quiz double-records under StrictMode (suppressed exhaustive-deps is load-bearing)** — `src/components/Quiz.tsx:43-57`. (Same defect as DATA-03, frontend framing.) *Documented by:* the same `Quiz.test.tsx` skip marked `DOCUMENTS: DATA-03 / FE-04`.
+**✅ Resolved** (`fix/quiz-integrity`): see DATA-03 — `recordedRef` guard + complete effect deps.
 
 **FE-05 — Quiz `score` accumulated imperatively, decoupled from the recorded `answers`** — `src/components/Quiz.tsx:62,75-79`. Safe today (post-submit options disabled; `selected!` guarded by disabled Submit) but fragile: the pass-gate and recorded score have no relationship to the `answers` map. *Direction:* derive `score` from `answers` vs `correctIndex` at results time.
+**✅ Resolved** (`fix/quiz-integrity`): removed the `score` counter; `computeScore(answers, questions)` is the single source for display, the pass-gate, and the recorded attempt. `selected!` replaced with an early-return guard.
 
 ### P2
 
@@ -346,7 +350,7 @@ and should be un-skipped by the fix that resolves the finding.
 | ~~`src/lib/llm.test.ts` → `describe.skip('streamChat — cancellation …')`~~ | **LLM-05** | ✅ **Resolved & unskipped** (`fix/stream-cancellation`) — now an active passing test |
 | ~~`src/lib/useProgress.test.tsx` → `test.skip('… retried/flushed …')`~~ | **DATA-02** | ✅ **Resolved & unskipped** (`fix/progress-reliability`) |
 | ~~`src/lib/gating.extra.test.ts` → `test.skip('… not land on a locked Stage-2 module')`~~ | **FE-03** | ✅ **Resolved** (`fix/progress-reliability`) — now covered by `useProgress.test.tsx` |
-| `src/components/Quiz.test.tsx` → `test.skip('… exactly one attempt … StrictMode')` | **DATA-03 / FE-04** | one completed run records exactly one `quiz_attempts` row under StrictMode |
+| ~~`src/components/Quiz.test.tsx` → `test.skip('… exactly one attempt … StrictMode')`~~ | **DATA-03 / FE-04** | ✅ **Resolved & unskipped** (`fix/quiz-integrity`) |
 | `src/components/ModuleRenderer.dispatch.test.tsx` → `test.skip('… fallback instead of a silent dead-end')` | **FE-06** | a `type:'lab'` module with no config shows a fallback, not nothing |
 
 *(The 4 RLS integration tests also report as "skipped" in a default `npm run test`
