@@ -42,8 +42,8 @@ describe('DataClassifier', () => {
     render(<DataClassifier config={config} labId="1.4" />);
 
     expect(screen.getByText('A client SSN')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'PII' }));
-    await user.click(screen.getByRole('button', { name: 'Approved internal tool' }));
+    await user.click(screen.getByRole('radio', { name: 'PII' }));
+    await user.click(screen.getByRole('radio', { name: 'Approved internal tool' }));
     await user.click(screen.getByRole('button', { name: 'Submit answers' }));
 
     expect(screen.getByText('You scored 1 / 1')).toBeInTheDocument();
@@ -58,8 +58,8 @@ describe('DataClassifier', () => {
   test('a wrong pick scores 0 and surfaces the rationale', async () => {
     const user = userEvent.setup();
     render(<DataClassifier config={config} labId="1.4" />);
-    await user.click(screen.getByRole('button', { name: 'Public' }));
-    await user.click(screen.getByRole('button', { name: 'Public chatbot' }));
+    await user.click(screen.getByRole('radio', { name: 'Public' }));
+    await user.click(screen.getByRole('radio', { name: 'Public chatbot' }));
     await user.click(screen.getByRole('button', { name: 'Submit answers' }));
     expect(screen.getByText('You scored 0 / 1')).toBeInTheDocument();
     expect(screen.getByText('SSNs are sensitive.')).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe('ToolTriage', () => {
   test('grades the best-tool pick and records a submission', async () => {
     const user = userEvent.setup();
     render(<ToolTriage config={config} labId="1.5" />);
-    await user.click(screen.getByRole('button', { name: 'Redacting assistant' }));
+    await user.click(screen.getByRole('radio', { name: 'Redacting assistant' }));
     await user.click(screen.getByRole('button', { name: 'Submit answers' }));
     expect(screen.getByText('You scored 1 / 1')).toBeInTheDocument();
     await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({ labId: '1.5' })));
@@ -102,8 +102,8 @@ describe('FailureSpotter', () => {
   test('scores both sub-questions (issue + mitigation) and records the submission', async () => {
     const user = userEvent.setup();
     render(<FailureSpotter config={config} labId="1.7" />);
-    await user.click(screen.getByRole('button', { name: 'Hallucinated fact' }));
-    await user.click(screen.getByRole('button', { name: 'Verify against source' }));
+    await user.click(screen.getByRole('radio', { name: 'Hallucinated fact' }));
+    await user.click(screen.getByRole('radio', { name: 'Verify against source' }));
     await user.click(screen.getByRole('button', { name: 'Submit answers' }));
     expect(screen.getByText('You scored 2 / 2')).toBeInTheDocument();
     await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({ labId: '1.7' })));
@@ -122,7 +122,7 @@ describe('ScenarioExercise (disclosure-builder / regulatory-check)', () => {
   test('grades the single-select pick, records, and shows the keepable takeaway', async () => {
     const user = userEvent.setup();
     render(<ScenarioExercise config={config} labId="1.9" />);
-    await user.click(screen.getByRole('button', { name: 'Note AI assistance' }));
+    await user.click(screen.getByRole('radio', { name: 'Note AI assistance' }));
     await user.click(screen.getByRole('button', { name: 'Submit answers' }));
     expect(screen.getByText('You scored 1 / 1')).toBeInTheDocument();
     expect(screen.getByText('Your disclosure cheat-sheet')).toBeInTheDocument();

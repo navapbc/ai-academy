@@ -73,8 +73,9 @@ resolved finding is marked **✅ Resolved** inline below.
 | `fix/progress-reliability` | DATA-02, FE-03 | ✅ merged |
 | `fix/quiz-integrity` | DATA-03, FE-04, FE-05 | ✅ merged |
 | `fix/migration-drift-1b` | DATA-01 | ✅ merged |
+| `fix/a11y-quiz-exercises` | A11Y-01, A11Y-03 | ✅ merged |
 
-**Open remaining:** P0 **0** · P1 5 · P2 16 · P3 19 *(updated as PRs land).*
+**Open remaining:** P0 **0** · P1 3 · P2 16 · P3 19 *(updated as PRs land).*
 
 ---
 
@@ -240,8 +241,10 @@ Key isolation correct. Pre-stream error handling is thorough (missing key→500,
 ### P1
 
 - **A11Y-01 — Quiz/exercise option buttons expose state by color/icon only (no radio semantics, no `aria-pressed`)** — `Quiz.tsx:163-181`; `DataClassifier.tsx:129-178`, `ToolTriage.tsx:114-134`, `FailureSpotter.tsx:102-122`, `ScenarioExercise.tsx:124-144`. SC 4.1.2, 1.4.1, 4.1.3. *Direction:* radiogroup pattern (`role=radiogroup`/`radio`+`aria-checked`) or `aria-pressed`; add visually-hidden "correct/your answer" after grading.
+  - **✅ Resolved** (`fix/a11y-quiz-exercises`): every option group is now `role=radiogroup` with `role=radio`+`aria-checked` options, and post-grade correctness carries an `sr-only` "(correct answer)"/"(your answer, incorrect)" — across Quiz + all four exercises. Test: `Quiz.test.tsx` asserts the radiogroup, `aria-checked` toggle, and the live feedback.
 - **A11Y-02 — Modals have no focus trap, no Escape, no focus move-in/restore, no dialog role** — `SupportModal.tsx:19-108`, `LocalTutorFAB.tsx:16-55`. SC 2.4.3, 4.1.2, 2.1.1. *Direction:* `role=dialog`/`aria-modal`, focus management, trap, Escape, restore (consider a headless dialog primitive).
 - **A11Y-03 — Graded feedback / score / "saved" confirmations not announced** — `Quiz.tsx:94-100,185-217`, all exercises, `ReflectionCapture.tsx:82-102`. SC 4.1.3. *Direction:* `role=status`/`aria-live=polite` or move focus to the feedback.
+  - **✅ Resolved** (`fix/a11y-quiz-exercises`): per-item feedback, the quiz results panel, every exercise score line, and the reflection-saved confirmation are now `role=status` `aria-live=polite`. *(The streaming-response live region is A11Y-04; app-level error banners are A11Y-13.)*
 - **A11Y-04 — Streaming chat responses not in a live region** — `Playground.tsx:263-307`, `PromptLab.tsx:218-234`. SC 4.1.3. *Direction:* `aria-live=polite` + `aria-busy`; announce on completion to avoid token chatter.
 - **A11Y-05 — Low-contrast `text-gray-400`/`text-gray-300` on white (~2.6:1 / ~1.6:1)** — widespread (`Quiz.tsx:96`, `Login.tsx:85,128`, `Sidebar.tsx:108,164,169,201`, `Header.tsx:49`, `PromptLab.tsx:149,208,225`, `Playground.tsx:242,248,332`). SC 1.4.3. *Direction:* `gray-500`+ for normal text; reserve `gray-400`/`300` for decorative icons/large text.
 

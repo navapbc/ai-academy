@@ -83,6 +83,8 @@ export default function ReflectionCapture({ config, labId }: Props) {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
+          role="status"
+          aria-live="polite"
           className="rounded-2xl border-2 border-nava-green/20 bg-nava-mint/40 p-6 space-y-3"
         >
           <div className="flex items-center gap-2 text-nava-green font-bold">

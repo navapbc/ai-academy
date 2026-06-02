@@ -100,8 +100,9 @@ export async function passQuiz(page: Page, cellId: string) {
 
   for (let i = 0; i < questions.length; i++) {
     const correctText = questions[i].options[questions[i].correctIndex];
-    // Only the current question is in the DOM, so the option text is unique.
-    await quiz.getByRole('button', { name: correctText, exact: true }).click();
+    // Options are a radiogroup (A11Y-01) → role="radio". Only the current
+    // question is in the DOM, so the option text is unique.
+    await quiz.getByRole('radio', { name: correctText, exact: true }).click();
     await quiz.getByRole('button', { name: 'Submit Answer' }).click();
     const next = i + 1 < questions.length ? 'Next Question' : 'See Results';
     await quiz.getByRole('button', { name: next }).click();
