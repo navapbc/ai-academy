@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import {
   buildCorsHeaders,
+  buildSystemBlocks,
   clampMaxTokens,
   DEFAULT_MAX_TOKENS,
   emailDomainAllowed,
@@ -87,6 +88,18 @@ describe('validateChatRequest (LLM-08)', () => {
   test('rejects wrong types for system / max_tokens', () => {
     expect(ok({ messages: [{ role: 'user', content: 'hi' }], system: 5 }).ok).toBe(false);
     expect(ok({ messages: [{ role: 'user', content: 'hi' }], max_tokens: 'lots' }).ok).toBe(false);
+  });
+});
+
+describe('buildSystemBlocks (LLM-09 — prompt caching)', () => {
+  test('wraps the system prompt in a cache_control breakpoint', () => {
+    expect(buildSystemBlocks('You are helpful')).toEqual([
+      { type: 'text', text: 'You are helpful', cache_control: { type: 'ephemeral' } },
+    ]);
+  });
+  test('returns undefined when there is no system prompt', () => {
+    expect(buildSystemBlocks(undefined)).toBeUndefined();
+    expect(buildSystemBlocks('')).toBeUndefined();
   });
 });
 

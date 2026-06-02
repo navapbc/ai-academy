@@ -78,8 +78,9 @@ resolved finding is marked **✅ Resolved** inline below.
 | `fix/a11y-p2` | A11Y-06, A11Y-07, A11Y-08, A11Y-09, A11Y-10, A11Y-11, A11Y-12, A11Y-13 | ✅ merged |
 | `fix/p2-remainder` | FE-06, DATA-04, DATA-05, TYPE-03, DEAD-01, DEAD-02, DEAD-03 | ✅ merged |
 | `chore/p3-build-frontend` | BUILD-01, BUILD-02, TYPE-04, TYPE-05, TYPE-06, DATA-10, FE-10, A11Y-14, A11Y-16 (+ accepted-as-is: FE-09, TYPE-07, A11Y-15) | ✅ merged |
+| `fix/p3-final` | SEC-07, DATA-06, DATA-08, LLM-09 (+ accepted-as-is: SEC-06, DATA-07, DATA-09, LLM-10, LLM-11) | ✅ merged |
 
-**Open remaining:** P0 **0** · **P1 0** · **P2 0** · P3 (data/security/llm minors) — see `fix/p3-final` *(updated as PRs land).*
+**Open remaining:** P0 **0** · P1 **0** · P2 **0** · P3 **0** ✅ — every audited finding is resolved or explicitly accepted-as-is (with rationale inline), across 13 follow-up fix PRs. lint + build + unit/component + gated-integration + E2E all green on `main`.
 
 ---
 
@@ -112,8 +113,10 @@ resolved finding is marked **✅ Resolved** inline below.
 ### P3
 
 **SEC-06 — Dev email/password path + documented demo creds** — `supabase/config.toml:179-182`, `src/components/Login.tsx:13,130`, `supabase/seed.sql:13`. Acceptable for local-only; ensure email provider + seeding are disabled in any hosted config.
+**☑ Accepted** (`fix/p3-final`): accepted — email/password + demo creds are local-dev-only (config- and seed-gated); keep the email provider + DB seeding disabled in any hosted config.
 
 **SEC-07 — `content_versions` lockdown relies on absence of a policy** — `supabase/migrations/20260602130334_modules_content_as_data.sql:64,73-74`. Correct (RLS on, no permissive policy → denied) but implicit; add a regression test asserting denial.
+**✅ Resolved** (`fix/p3-final`): added a gated integration test asserting authenticated reads of `content_versions` return zero rows (RLS on, no permissive policy).
 
 ### Passed (good)
 RLS enabled + owner-only SELECT/INSERT/UPDATE on `profiles`/`module_progress`/`quiz_attempts`/`lab_submissions` (`20260528221204_init_core.sql:66-125`), DELETE intentionally denied (no policy); `modules` is authenticated read-only; `content_versions` fully locked. Domain trigger is `SECURITY DEFINER` + `set search_path = ''`, `BEFORE INSERT ON auth.users` (`20260601160455...:17-35`); `handle_new_user` likewise. `ANTHROPIC_API_KEY` only via `Deno.env` in the function, never VITE-prefixed, never in client. `git ls-files` tracks only `*.env.example` (placeholders); real `.env` files gitignored. No `service_role` in `src/`.
@@ -151,9 +154,13 @@ RLS enabled + owner-only SELECT/INSERT/UPDATE on `profiles`/`module_progress`/`q
 ### P3
 
 - **DATA-06** — `fetchModuleProgress` `latestInProgressId` relies on DB ordering with no secondary sort key; ties non-deterministic — `src/lib/progress.ts:38-54`. Minor (resume position only).
+  - **✅ Resolved** (`fix/p3-final`): `fetchModuleProgress` adds a `module_id` secondary sort so identical `updated_at` ties are deterministic (stable `latestInProgressId`).
 - **DATA-07** — `fetchQuizSummary` best/latest reduce is correct (strict `>` keeps earliest on ties; ISO timestamps sort lexicographically) — `src/lib/progress.ts:147-150`. Informational, no bug.
+  - **☑ Accepted** (`fix/p3-final`): accepted — verified correct, not a bug (strict `>`/lexicographic ISO timestamps).
 - **DATA-08** — `seed.sql` demo progress uses legacy ids `p1-m0`/`p1-m1` that don't exist in `modules`; `resolveCurrentModuleId` ignores them so no crash, but the demo data is meaningless — `supabase/seed.sql:57-67`. *Direction:* use real cell ids.
+  - **✅ Resolved** (`fix/p3-final`): `seed.sql` demo progress now uses real cell ids (`1.3` completed, `1.4` in_progress) instead of the legacy `p1-m*` placeholders.
 - **DATA-09** — `seed-data/curriculum-content.json` is generator-input only (no runtime import), so no runtime drift; but hand-editing the generated SQL can silently diverge from it. Informational.
+  - **☑ Accepted** (`fix/p3-final`): accepted — `curriculum-content.json` is generator-input only; no runtime drift. Informational.
 - **DATA-10** — `progressCache` has no version/invalidation and is clobbered by reconcile; `JSON.parse(...) as UserProgress` trusts stale shapes — `src/lib/progressCache.ts:20-39`. *Direction:* version the cached payload.
   - **✅ Resolved** (`chore/p3-build-frontend`): progressCache stores `{ v, progress }` and discards on version mismatch / failed shape check; existing round-trip tests still pass.
 
@@ -192,8 +199,11 @@ RLS enabled + owner-only SELECT/INSERT/UPDATE on `profiles`/`module_progress`/`q
 ### P3
 
 - **LLM-09** — No Anthropic prompt caching (no `cache_control` breakpoints); the stable system/persona prefix is re-sent uncached every turn — `chat/index.ts:73-79`, `Playground.tsx:58,96`. Cost debt. *Direction:* send `system` as a content-block array with an ephemeral `cache_control` breakpoint.
+  - **✅ Resolved** (`fix/p3-final`): `buildSystemBlocks` wraps the system prompt in an ephemeral `cache_control` breakpoint and the Edge Function sends it, so the stable prefix is prompt-cached. Tested in `chat-core.test.ts`.
 - **LLM-10** — Models are unpinned aliases, not dated snapshots — `chat/index.ts:16`, `src/lib/models.ts:13-16`. The ids (`claude-haiku-4-5`, `claude-sonnet-4-6`) are plausibly current; the issue is reproducibility/stability of floating aliases (graded lab transcripts become non-reproducible). *Direction:* pin dated snapshots with a deliberate upgrade step.
+  - **☑ Accepted** (`fix/p3-final`): accepted — unpinned aliases are a deliberate auto-upgrade choice for an internal tool; pinning to dated snapshots is deferred as an ops decision (noted for reproducibility-sensitive use).
 - **LLM-11** — `anthropic-version` pinned to `2023-06-01` — `chat/index.ts:20,87`. Correct practice; note only (newer beta features may need an `anthropic-beta` header).
+  - **☑ Accepted** (`fix/p3-final`): accepted — `anthropic-version` pinning is correct practice; informational note only.
 - **LLM-12** — Wildcard CORS on the proxy — `chat/index.ts:24-29`. (Same as SEC-02.)
 
 ### Passed (good)

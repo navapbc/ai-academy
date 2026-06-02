@@ -106,6 +106,24 @@ export function validateChatRequest(body: unknown, defaultModel: string): Valida
   };
 }
 
+// --- Prompt caching (LLM-09) ------------------------------------------------
+export interface SystemBlock {
+  type: 'text';
+  text: string;
+  cache_control: { type: 'ephemeral' };
+}
+
+/**
+ * Builds Anthropic's structured `system` field with an ephemeral cache_control
+ * breakpoint, so the (stable) system/persona prefix is served from the prompt
+ * cache on repeat turns instead of re-billing full input tokens (LLM-09).
+ * Returns undefined when there's no system prompt.
+ */
+export function buildSystemBlocks(system: string | undefined): SystemBlock[] | undefined {
+  if (!system) return undefined;
+  return [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }];
+}
+
 // --- Domain restriction (SEC-01 / LLM-02) -----------------------------------
 export function emailDomainAllowed(email: string | undefined | null, domain: string): boolean {
   if (!email) return false;
