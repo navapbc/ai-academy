@@ -69,6 +69,8 @@ export interface QuizQuestion {
  */
 export interface PromptConstructionConfig {
   kind: 'prompt-construction';
+  title?: string; // lab header; generic fallback if absent (P4.1)
+  subtitle?: string; // lab subhead; generic fallback if absent (P4.1)
   /** The realistic task + target-output constraints shown in the brief. */
   brief: { task: string; constraints: string[] };
   /** Collapsible scaffolding tips — the parts of a strong prompt. */
