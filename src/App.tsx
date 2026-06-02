@@ -5,8 +5,10 @@ import { BRANDING } from './branding';
 import { useAuth } from './lib/auth';
 import { useProgress } from './lib/useProgress';
 import { useCurriculum } from './lib/useCurriculum';
+import { stage1aProgress, isModuleLocked, firstIncompleteStage1aId } from './lib/gating';
 import Login from './components/Login';
 import ModuleRenderer from './components/ModuleRenderer';
+import LockedNotice from './components/LockedNotice';
 import Playground from './components/Playground';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
@@ -88,12 +90,30 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
   const currentModule = allModules.find(m => m.id === progress.currentModuleId) || allModules[0];
   const currentPhase = phases.find(p => p.id === currentModule.phaseId);
 
+  // Stage gating (P3.11): Stage 2 unlocks only once all of Stage 1a is complete.
+  // Computed once from the loaded phases + the learner's progress and passed
+  // down to the nav and the content view.
+  const stage1a = useMemo(
+    () => stage1aProgress(phases, progress.completedModuleIds),
+    [phases, progress.completedModuleIds],
+  );
+  const currentModuleLocked = isModuleLocked(currentModule, stage1a.done);
+
   const handleModuleSelect = (moduleId: string) => {
+    // A locked module is never selectable (the nav already disables it); guard
+    // here too so no path can navigate into a gated Stage-2 module.
+    const target = allModules.find(m => m.id === moduleId);
+    if (target && isModuleLocked(target, stage1a.done)) return;
     selectModule(moduleId);
     // Auto-close sidebar on mobile
     if (window.innerWidth < 1024) {
       setIsSidebarOpen(false);
     }
+  };
+
+  const goToStage1a = () => {
+    const targetId = firstIncompleteStage1aId(phases, progress.completedModuleIds);
+    if (targetId) handleModuleSelect(targetId);
   };
 
   const handleComplete = (moduleId: string) => {
@@ -114,6 +134,9 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
         onOpenSupport={() => setIsSupportOpen(true)}
         activeView={view}
         onViewChange={setView}
+        stage1aDone={stage1a.done}
+        stage1aCompleted={stage1a.completed}
+        stage1aTotal={stage1a.total}
       />
 
       <main className="flex-1 flex flex-col min-w-0 relative h-full">
@@ -146,11 +169,20 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
             />
           </div>
           <div className={view !== 'playground' ? 'max-w-5xl mx-auto p-8 lg:p-12 xl:p-16' : 'hidden'}>
-            <ModuleRenderer
-              module={currentModule}
-              selectedPersona={selectedPersona}
-              onComplete={() => handleComplete(currentModule.id)}
-            />
+            {currentModuleLocked ? (
+              <LockedNotice
+                completed={stage1a.completed}
+                total={stage1a.total}
+                onGoToStage1a={goToStage1a}
+                canGoToStage1a={firstIncompleteStage1aId(phases, progress.completedModuleIds) !== undefined}
+              />
+            ) : (
+              <ModuleRenderer
+                module={currentModule}
+                selectedPersona={selectedPersona}
+                onComplete={() => handleComplete(currentModule.id)}
+              />
+            )}
           </div>
         </div>
       </main>
