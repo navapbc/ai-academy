@@ -1,5 +1,12 @@
 -- stage_1b_content (P3.4): author the six Stage 1b "Orienting Frames" cells.
 --
+-- ⚠️ SUPERSEDED (see DATA-01 in docs/DEBT-REPORT.md): the body_md/quiz_json this
+-- migration writes are LATER OVERWRITTEN for all 28 cells by the generated
+-- 20260602190000_load_curriculum_content. Only the status='in_review' +
+-- version bump below survived, which left these six cells inconsistent with the
+-- rest — reconciled forward by 20260602260000_reconcile_stage_1b_provenance.
+-- Kept as-is for migration history; the canonical content is the 190000 JSON.
+--
 -- Turns the "Coming soon" stubs seeded in 20260602130334_modules_content_as_data
 -- into real lessons + 4-question scored quizzes. DRAFT content pending SME review,
 -- so status is set to 'in_review' (the runtime ignores status; this is a queryable
