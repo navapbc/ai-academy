@@ -43,6 +43,7 @@ function CopyButton({ text }: { text: string }) {
       onClick={handleCopy}
       className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-gray-500 hover:text-gray-600 hover:bg-gray-100 transition-all"
       title="Copy message"
+      aria-label="Copy message"
     >
       {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
     </button>
@@ -190,6 +191,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
               onClick={exportConversation}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-500 hover:text-gray-200 border border-gray-700 transition-all text-[10px] font-bold uppercase tracking-wider"
               title="Copy conversation as markdown"
+              aria-label="Export conversation"
             >
               <Download className="w-3.5 h-3.5" />
               Export
@@ -200,6 +202,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
             disabled={messages.length === 0}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-red-900/60 text-gray-500 hover:text-red-300 border border-gray-700 hover:border-red-800 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-800 disabled:hover:text-gray-500 disabled:hover:border-gray-700 transition-all text-[10px] font-bold uppercase tracking-wider"
             title="Clear conversation"
+            aria-label="Clear conversation"
           >
             <Trash2 className="w-3.5 h-3.5" />
             Clear
@@ -237,6 +240,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
                   onChange={e => setSystemPrompt(e.target.value)}
                   rows={4}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs font-mono text-gray-700 focus:ring-2 focus:ring-nava-green focus:border-transparent outline-none transition-all resize-none"
+                  aria-label="System prompt"
                   placeholder="Enter a system prompt…"
                 />
               </div>
@@ -335,6 +339,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
             onChange={e => setUserInput(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={3}
+            aria-label="Message"
             placeholder="Type a message… (⌘↵ to send)"
             className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 pr-16 text-sm focus:ring-2 focus:ring-nava-green focus:border-transparent outline-none transition-all resize-none"
           />

@@ -182,7 +182,7 @@ export default function ScenarioExercise({ config, labId }: Props) {
         })}
       </div>
 
-      {saveError && <p className="text-xs text-red-600 font-medium">{saveError}</p>}
+      {saveError && <p role="alert" className="text-xs text-red-600 font-medium">{saveError}</p>}
 
       {/* The keepable cheat-sheet / model response: the correct option text of
           every item, assembled once the learner has submitted. */}

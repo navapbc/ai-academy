@@ -50,18 +50,21 @@ export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSel
         >
           <div className="p-6 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <BarChart3 className="w-6 h-6 text-nava-green" />
-              <h1 className="font-bold text-xl tracking-tight">{BRANDING.name}</h1>
+              <BarChart3 className="w-6 h-6 text-nava-green" aria-hidden="true" />
+              {/* A logo/wordmark, not the page heading — kept out of the heading
+                  outline so the lesson title is the single page-level h1 (A11Y-09). */}
+              <span className="font-bold text-xl tracking-tight">{BRANDING.name}</span>
             </div>
-            <button 
+            <button
               onClick={onClose}
+              aria-label="Close menu"
               className="lg:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-500"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto py-4 px-3 space-y-8">
+          <nav aria-label="Course navigation" className="flex-1 overflow-y-auto py-4 px-3 space-y-8">
             {/* Playground */}
             <div className="px-3 pb-2">
               <button
@@ -177,7 +180,7 @@ export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSel
               </div>
               );
             })}
-          </div>
+          </nav>
 
           <div className="p-4 border-t border-gray-100 bg-gray-50/50 space-y-4">
             <div>
@@ -185,7 +188,14 @@ export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSel
                 <span>Your Training</span>
                 <span>{overallProgress}%</span>
               </div>
-              <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden"
+                role="progressbar"
+                aria-label="Overall training progress"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={overallProgress}
+              >
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${overallProgress}%` }}

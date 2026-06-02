@@ -159,8 +159,15 @@ export default function Quiz({
             <p className="text-xs text-gray-500">Question {currentIndex + 1} of {questions.length}</p>
           </div>
         </div>
-        <div className="h-1.5 w-24 bg-gray-100 rounded-full overflow-hidden">
-          <motion.div 
+        <div
+          className="h-1.5 w-24 bg-gray-100 rounded-full overflow-hidden"
+          role="progressbar"
+          aria-label="Quiz progress"
+          aria-valuemin={0}
+          aria-valuemax={questions.length}
+          aria-valuenow={currentIndex}
+        >
+          <motion.div
             animate={{ width: `${((currentIndex) / questions.length) * 100}%` }}
             className="h-full bg-nava-green"
           />

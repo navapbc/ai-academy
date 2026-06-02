@@ -27,4 +27,17 @@ describe('SupportModal accessibility', () => {
     await userEvent.keyboard('{Escape}');
     expect(onClose).toHaveBeenCalled();
   });
+
+  test('the GitHub action is a real disabled button until the description is valid (A11Y-11)', async () => {
+    render(<SupportModal isOpen onClose={() => {}} />);
+    // Invalid (empty) → a disabled <button>, not a focusable dead link.
+    const githubButton = screen.getByRole('button', { name: /GitHub Issue/i });
+    expect(githubButton).toBeDisabled();
+    // The description field is properly labelled.
+    expect(screen.getByLabelText('Description')).toBeInTheDocument();
+
+    // Once valid, it becomes an enabled link.
+    await userEvent.type(screen.getByLabelText('Description'), 'This is a real bug report.');
+    expect(screen.getByRole('link', { name: /GitHub Issue/i })).toBeInTheDocument();
+  });
 });

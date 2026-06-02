@@ -183,6 +183,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
+                aria-label="Your prompt"
                 onKeyDown={(e) => {
                   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleRun();
                 }}
@@ -251,7 +252,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
         {/* Save & complete */}
         {hasRun && (
           <div className="pt-2 border-t border-gray-100 flex flex-col items-end gap-2">
-            {saveError && <p className="text-xs text-red-600 font-medium">{saveError}</p>}
+            {saveError && <p role="alert" className="text-xs text-red-600 font-medium">{saveError}</p>}
             <button
               onClick={handleSave}
               disabled={saving || saved}

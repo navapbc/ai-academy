@@ -25,8 +25,9 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-nava-sand flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-nava-green animate-spin" />
+      <div className="min-h-screen bg-nava-sand flex items-center justify-center" role="status">
+        <Loader2 className="w-8 h-8 text-nava-green animate-spin" aria-hidden="true" />
+        <span className="sr-only">Loading…</span>
       </div>
     );
   }
@@ -45,8 +46,9 @@ function AcademyApp({ userId, onSignOut }: { userId: string; onSignOut: () => vo
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-nava-sand flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-nava-green animate-spin" />
+      <div className="min-h-screen bg-nava-sand flex items-center justify-center" role="status">
+        <Loader2 className="w-8 h-8 text-nava-green animate-spin" aria-hidden="true" />
+        <span className="sr-only">Loading…</span>
       </div>
     );
   }
@@ -176,7 +178,7 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
         />
 
         {error && (
-          <div className="mx-4 mt-3 flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-orange-50 border border-orange-200 text-orange-800 text-sm">
+          <div role="alert" className="mx-4 mt-3 flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-orange-50 border border-orange-200 text-orange-800 text-sm">
             <span>{error}</span>
             <button
               onClick={dismissError}
