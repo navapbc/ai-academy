@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { PenLine, Check, Sparkles, Eye } from 'lucide-react';
 import type { ReflectionConfig } from '../../types';
 import { useAuth } from '../../lib/auth';
