@@ -14,6 +14,7 @@ import Quiz from './Quiz';
 import UseCaseLib from './UseCaseLib';
 import DataClassifier from './exercises/DataClassifier';
 import ToolTriage from './exercises/ToolTriage';
+import FailureSpotter from './exercises/FailureSpotter';
 
 interface Props {
   module: Module;
@@ -91,6 +92,8 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         return <DataClassifier config={module.labConfig} labId={module.cellId} />;
       case 'tool-triage':
         return <ToolTriage config={module.labConfig} labId={module.cellId} />;
+      case 'failure-spotter':
+        return <FailureSpotter config={module.labConfig} labId={module.cellId} />;
       default:
         return null;
     }

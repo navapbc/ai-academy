@@ -101,7 +101,34 @@ export interface ToolTriageConfig {
   cases: { text: string; tool: string; why: string }[];
 }
 
-export type LabConfig = PromptConstructionConfig | DataClassifierConfig | ToolTriageConfig;
+/** A single multiple-choice question used inside the failure-spotter exercise. */
+export interface FailureSpotterQuestion {
+  prompt: string;
+  options: string[];
+  correctIndex: number;
+  why: string;
+}
+
+/**
+ * 1.7 failure-spotter (P3.7): for each item the learner reads a flawed AI
+ * artifact (rendered as markdown) and answers two graded MCs — what's wrong
+ * (issue) and what to do about it (mitigation).
+ */
+export interface FailureSpotterConfig {
+  kind: 'failure-spotter';
+  items: {
+    id: string;
+    artifactMd: string;
+    issue: FailureSpotterQuestion;
+    mitigation: FailureSpotterQuestion;
+  }[];
+}
+
+export type LabConfig =
+  | PromptConstructionConfig
+  | DataClassifierConfig
+  | ToolTriageConfig
+  | FailureSpotterConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];
