@@ -23,13 +23,30 @@ const ALLOWED_ORIGINS = [
 ];
 
 function corsHeaders(origin: string | null): Record<string, string> {
-  const allow = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    'access-control-allow-origin': allow,
+  const headers: Record<string, string> = {
     'access-control-allow-headers': 'authorization, content-type, apikey',
     'access-control-allow-methods': 'POST, OPTIONS',
     vary: 'Origin',
   };
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    headers['access-control-allow-origin'] = origin;
+  }
+  return headers;
+}
+
+const RATE_LIMIT = 20; // grade requests
+const RATE_WINDOW_MS = 60_000; // per minute
+const rateStore = new Map<string, { count: number; windowStart: number }>();
+
+function rateLimitAllow(userId: string, now: number): boolean {
+  const state = rateStore.get(userId);
+  if (!state || now - state.windowStart >= RATE_WINDOW_MS) {
+    rateStore.set(userId, { count: 1, windowStart: now });
+    return true;
+  }
+  if (state.count >= RATE_LIMIT) return false;
+  state.count += 1;
+  return true;
 }
 
 function emailDomainAllowed(email: string | undefined): boolean {
@@ -80,6 +97,10 @@ Deno.serve(async (req: Request) => {
   if (userErr || !user) return jsonError('Sign in to use this feature.', 401);
   if (!emailDomainAllowed(user.email)) {
     return jsonError(`Access is restricted to @${ALLOWED_EMAIL_DOMAIN} accounts.`, 403);
+  }
+
+  if (!rateLimitAllow(user.id, Date.now())) {
+    return jsonError('Rate limit exceeded. Please slow down and try again shortly.', 429);
   }
 
   let body: unknown;
