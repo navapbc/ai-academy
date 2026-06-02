@@ -1,0 +1,159 @@
+// @vitest-environment jsdom
+import { describe, test, expect, beforeEach, vi } from 'vitest';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import DataClassifier from './DataClassifier';
+import ToolTriage from './ToolTriage';
+import FailureSpotter from './FailureSpotter';
+import ScenarioExercise from './ScenarioExercise';
+import ReflectionCapture from './ReflectionCapture';
+import type {
+  DataClassifierConfig,
+  ToolTriageConfig,
+  FailureSpotterConfig,
+  ScenarioExerciseConfig,
+  ReflectionConfig,
+} from '../../types';
+
+// The graded practice exercises. They render after the lesson, auto-grade
+// against the seeded answers, and record a lab_submissions row — but they are
+// NOT the completion gate (the inline quiz is), which is structurally enforced:
+// none of these components even accept an onComplete prop. These tests confirm
+// they render, accept input, grade, and call recordLabSubmission.
+const { recordLabSubmission } = vi.hoisted(() => ({ recordLabSubmission: vi.fn(async () => {}) }));
+vi.mock('../../lib/auth', () => ({ useAuth: () => ({ user: { id: 'u1' } }) }));
+vi.mock('../../lib/progress', () => ({ recordLabSubmission }));
+
+beforeEach(() => recordLabSubmission.mockClear());
+
+describe('DataClassifier', () => {
+  const config: DataClassifierConfig = {
+    kind: 'data-classifier',
+    tools: [
+      { id: 't1', label: 'Approved internal tool' },
+      { id: 't2', label: 'Public chatbot' },
+    ],
+    classes: ['Public', 'PII'],
+    items: [{ text: 'A client SSN', dataClass: 'PII', tool: 't1', why: 'SSNs are sensitive.' }],
+  };
+
+  test('grades a correct class+tool pick, records the submission, shows the score', async () => {
+    const user = userEvent.setup();
+    render(<DataClassifier config={config} labId="1.4" />);
+
+    expect(screen.getByText('A client SSN')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'PII' }));
+    await user.click(screen.getByRole('button', { name: 'Approved internal tool' }));
+    await user.click(screen.getByRole('button', { name: 'Submit answers' }));
+
+    expect(screen.getByText('You scored 1 / 1')).toBeInTheDocument();
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalled());
+    expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({
+      labId: '1.4',
+      status: 'submitted',
+      transcript: expect.objectContaining({ score: 1, maxScore: 1 }),
+    }));
+  });
+
+  test('a wrong pick scores 0 and surfaces the rationale', async () => {
+    const user = userEvent.setup();
+    render(<DataClassifier config={config} labId="1.4" />);
+    await user.click(screen.getByRole('button', { name: 'Public' }));
+    await user.click(screen.getByRole('button', { name: 'Public chatbot' }));
+    await user.click(screen.getByRole('button', { name: 'Submit answers' }));
+    expect(screen.getByText('You scored 0 / 1')).toBeInTheDocument();
+    expect(screen.getByText('SSNs are sensitive.')).toBeInTheDocument();
+  });
+});
+
+describe('ToolTriage', () => {
+  const config: ToolTriageConfig = {
+    kind: 'tool-triage',
+    tools: [
+      { id: 't1', label: 'Redacting assistant' },
+      { id: 't2', label: 'Raw paste into web LLM' },
+    ],
+    cases: [{ text: 'Summarize a memo with names', tool: 't1', why: 'Redact first.' }],
+  };
+
+  test('grades the best-tool pick and records a submission', async () => {
+    const user = userEvent.setup();
+    render(<ToolTriage config={config} labId="1.5" />);
+    await user.click(screen.getByRole('button', { name: 'Redacting assistant' }));
+    await user.click(screen.getByRole('button', { name: 'Submit answers' }));
+    expect(screen.getByText('You scored 1 / 1')).toBeInTheDocument();
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({ labId: '1.5' })));
+  });
+});
+
+describe('FailureSpotter', () => {
+  const config: FailureSpotterConfig = {
+    kind: 'failure-spotter',
+    items: [
+      {
+        id: 'f1',
+        artifactMd: 'AI says the deadline is **yesterday**.',
+        issue: { prompt: "What's wrong?", options: ['Nothing', 'Hallucinated fact'], correctIndex: 1, why: 'It invented a date.' },
+        mitigation: { prompt: 'Best next step?', options: ['Ship it', 'Verify against source'], correctIndex: 1, why: 'Always verify.' },
+      },
+    ],
+  };
+
+  test('scores both sub-questions (issue + mitigation) and records the submission', async () => {
+    const user = userEvent.setup();
+    render(<FailureSpotter config={config} labId="1.7" />);
+    await user.click(screen.getByRole('button', { name: 'Hallucinated fact' }));
+    await user.click(screen.getByRole('button', { name: 'Verify against source' }));
+    await user.click(screen.getByRole('button', { name: 'Submit answers' }));
+    expect(screen.getByText('You scored 2 / 2')).toBeInTheDocument();
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({ labId: '1.7' })));
+  });
+});
+
+describe('ScenarioExercise (disclosure-builder / regulatory-check)', () => {
+  const config: ScenarioExerciseConfig = {
+    kind: 'disclosure-builder',
+    items: [
+      { prompt: 'A public blog post drafted by AI', options: ['No disclosure', 'Note AI assistance', 'Hide it', 'Lie'], correctIndex: 1, why: 'Disclose AI assistance.' },
+    ],
+    takeaway: { title: 'Your disclosure cheat-sheet', intro: 'Keep these handy.' },
+  };
+
+  test('grades the single-select pick, records, and shows the keepable takeaway', async () => {
+    const user = userEvent.setup();
+    render(<ScenarioExercise config={config} labId="1.9" />);
+    await user.click(screen.getByRole('button', { name: 'Note AI assistance' }));
+    await user.click(screen.getByRole('button', { name: 'Submit answers' }));
+    expect(screen.getByText('You scored 1 / 1')).toBeInTheDocument();
+    expect(screen.getByText('Your disclosure cheat-sheet')).toBeInTheDocument();
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({ labId: '1.9' })));
+  });
+});
+
+describe('ReflectionCapture', () => {
+  const config: ReflectionConfig = {
+    kind: 'reflection',
+    prompt: 'What surprised you?',
+    guidance: 'A few sentences.',
+    minWords: 30,
+  };
+
+  test('blocks submit below the 50-word floor, then saves and confirms', async () => {
+    render(<ReflectionCapture config={config} labId="1.8" />);
+    const textarea = screen.getByPlaceholderText(/Write your reflection/i);
+    const submit = () => screen.getByRole('button', { name: /Submit reflection/i });
+
+    fireEvent.change(textarea, { target: { value: 'too short' } });
+    expect(submit()).toBeDisabled();
+
+    fireEvent.change(textarea, { target: { value: Array.from({ length: 55 }, (_, i) => `word${i}`).join(' ') } });
+    expect(submit()).toBeEnabled();
+
+    fireEvent.click(submit());
+    await waitFor(() => expect(screen.getByText('Reflection saved')).toBeInTheDocument());
+    expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({
+      labId: '1.8',
+      transcript: expect.objectContaining({ kind: 'reflection' }),
+    }));
+  });
+});
