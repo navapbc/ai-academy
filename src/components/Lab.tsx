@@ -39,7 +39,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
   if (config?.kind !== 'prompt-construction') {
     return (
       <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm text-center space-y-2" id="prompt-lab">
-        <FlaskConical className="w-8 h-8 mx-auto text-gray-300" />
+        <FlaskConical className="w-8 h-8 mx-auto text-gray-500" />
         <h3 className="font-bold text-gray-800">Lab not configured</h3>
         <p className="text-sm text-gray-500">
           This lab is missing its configuration. Please check back later.
@@ -110,7 +110,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
           </div>
           <div>
             <h3 className="font-bold">{title}</h3>
-            <p className="text-xs text-gray-400">{subtitle}</p>
+            <p className="text-xs text-gray-500">{subtitle}</p>
           </div>
         </div>
 
@@ -155,7 +155,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
             <div>
               <button
                 onClick={() => setShowTips(s => !s)}
-                className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 hover:text-nava-plum uppercase tracking-widest transition-colors"
+                className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 hover:text-nava-plum uppercase tracking-widest transition-colors"
               >
                 <Lightbulb className="w-3.5 h-3.5 text-nava-gold" />
                 Scaffolding tips
@@ -205,7 +205,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
           {/* Self-check list */}
           <div className="lg:col-span-2">
             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 space-y-3">
-              <div className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+              <div className="text-[11px] font-black uppercase tracking-widest text-gray-500">
                 Self-check
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
@@ -214,7 +214,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
               <ul className="space-y-2 pt-1">
                 {brief.constraints.map((c) => (
                   <li key={c} className="flex items-start gap-2 text-sm text-gray-700">
-                    <CheckCircle className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
+                    <CheckCircle className="w-4 h-4 text-gray-500 mt-0.5 shrink-0" />
                     <span>{c}</span>
                   </li>
                 ))}
@@ -231,12 +231,18 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
               animate={{ opacity: 1, y: 0 }}
               className="bg-gray-50 border border-gray-200 rounded-2xl p-6 space-y-3"
             >
-              <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                 <Terminal className="w-3.5 h-3.5" />
                 Claude's Output
               </div>
-              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {response || <span className="text-gray-400 italic">Waiting for Claude…</span>}
+              {/* A11Y-04: announce the streamed output to screen readers. */}
+              <div
+                role="status"
+                aria-live="polite"
+                aria-busy={isLoading}
+                className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap"
+              >
+                {response || <span className="text-gray-500 italic">Waiting for Claude…</span>}
               </div>
             </motion.div>
           )}

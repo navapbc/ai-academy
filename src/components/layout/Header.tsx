@@ -46,7 +46,7 @@ export default function Header({
           {currentPhase && (
             <span className="text-nava-green font-bold uppercase tracking-wider text-[10px]">{currentPhase.week}</span>
           )}
-          <ChevronRight className="w-4 h-4 text-gray-300" />
+          <ChevronRight className="w-4 h-4 text-gray-500" />
           <span className="text-gray-900 font-semibold truncate max-w-[200px]">{currentModule.title}</span>
         </nav>
       </div>

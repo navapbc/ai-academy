@@ -55,7 +55,7 @@ export default function UseCaseLib({ onComplete }: { onComplete: () => void }) {
               className="space-y-4"
             >
               <h3 className="text-2xl font-bold text-white">{USE_CASES[featuredIdx].title}</h3>
-              <p className="text-gray-400 text-sm max-w-xl leading-relaxed">{USE_CASES[featuredIdx].description}</p>
+              <p className="text-gray-500 text-sm max-w-xl leading-relaxed">{USE_CASES[featuredIdx].description}</p>
               <div className="flex items-center gap-4 pt-2">
                 <button 
                   onClick={() => copyToClipboard(USE_CASES[featuredIdx].prompt)}
@@ -88,7 +88,7 @@ export default function UseCaseLib({ onComplete }: { onComplete: () => void }) {
               </div>
               <button 
                 onClick={() => copyToClipboard(useCase.prompt)}
-                className="absolute top-2 right-2 p-2 hover:bg-gray-200 rounded-lg text-gray-400 hover:text-gray-600 transition-all"
+                className="absolute top-2 right-2 p-2 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-gray-600 transition-all"
               >
                 <Copy className="w-4 h-4" />
               </button>

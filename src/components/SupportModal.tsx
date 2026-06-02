@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Send, Bug, AlertCircle } from 'lucide-react';
+import { useDialogA11y } from '../lib/useDialogA11y';
 
 interface SupportModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface SupportModalProps {
 export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
   const [description, setDescription] = useState('');
   const [touched, setTouched] = useState(false);
+  const dialogRef = useDialogA11y<HTMLDivElement>(isOpen, onClose);
 
   const isValid = description.trim().length > 10;
   const showWarning = touched && !isValid;
@@ -28,7 +30,11 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
             className="absolute inset-0 bg-nava-plum/40 backdrop-blur-sm"
           />
           
-          <motion.div 
+          <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="support-modal-title"
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -42,15 +48,16 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                     <Bug className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-nava-plum">Report an Issue</h2>
+                    <h2 id="support-modal-title" className="text-xl font-bold text-nava-plum">Report an Issue</h2>
                     <p className="text-sm text-gray-500">Help us improve the sprint experience</p>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={onClose}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-gray-600"
+                  aria-label="Close dialog"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-gray-600"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-5 h-5" aria-hidden="true" />
                 </button>
               </div>
 
@@ -90,7 +97,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                       setTouched(true);
                     }
                   }}
-                  className={`flex-1 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg ${isValid ? 'bg-gray-900 text-white hover:bg-black shadow-black/10' : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'}`}
+                  className={`flex-1 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg ${isValid ? 'bg-gray-900 text-white hover:bg-black shadow-black/10' : 'bg-gray-100 text-gray-500 cursor-not-allowed shadow-none'}`}
                 >
                   <Send className="w-4 h-4" />
                   GitHub Issue

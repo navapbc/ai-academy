@@ -101,7 +101,7 @@ export default function HarmRubric({ config, labId }: Props) {
               }`}
             >
               <p className="text-sm font-medium text-gray-800">
-                <span className="text-gray-400 mr-2">{i + 1}.</span>
+                <span className="text-gray-500 mr-2">{i + 1}.</span>
                 {s.text}
               </p>
               <div className="flex flex-wrap gap-2">

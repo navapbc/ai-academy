@@ -62,7 +62,7 @@ export default function PrivacySimulator({ onComplete }: { onComplete: () => voi
         {/* User Laptop */}
         <div className="flex flex-col items-center gap-2">
           <div className="w-20 h-20 bg-gray-50 rounded-2xl border-2 border-gray-200 flex items-center justify-center relative">
-            <Laptop className="w-10 h-10 text-gray-400" />
+            <Laptop className="w-10 h-10 text-gray-500" />
             {isSimulating && steps === 0 && (
               <motion.div 
                 layoutId="data-packet"
@@ -70,7 +70,7 @@ export default function PrivacySimulator({ onComplete }: { onComplete: () => voi
               />
             )}
           </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Your Device</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Your Device</span>
         </div>
 
         {/* Path */}
@@ -95,7 +95,7 @@ export default function PrivacySimulator({ onComplete }: { onComplete: () => voi
         {/* Destination */}
         <div className="flex flex-col items-center gap-2">
           <div className={`w-20 h-20 rounded-2xl border-2 flex items-center justify-center relative ${mode === 'cloud' ? 'bg-nava-mint border-nava-green' : 'bg-gray-50 border-gray-200 opacity-50'}`}>
-            <Cloud className={`w-10 h-10 ${mode === 'cloud' ? 'text-nava-green' : 'text-gray-300'}`} />
+            <Cloud className={`w-10 h-10 ${mode === 'cloud' ? 'text-nava-green' : 'text-gray-500'}`} />
             {isSimulating && steps === 3 && mode === 'cloud' && (
               <motion.div 
                 initial={{ scale: 0 }}
@@ -104,7 +104,7 @@ export default function PrivacySimulator({ onComplete }: { onComplete: () => voi
               />
             )}
           </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Cloud Server</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Cloud Server</span>
         </div>
       </div>
 

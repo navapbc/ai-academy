@@ -41,7 +41,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+      className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-gray-500 hover:text-gray-600 hover:bg-gray-100 transition-all"
       title="Copy message"
     >
       {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
@@ -163,7 +163,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
           </div>
           <div>
             <h3 className="font-bold text-sm">Playground</h3>
-            <p className="text-[11px] text-gray-400">
+            <p className="text-[11px] text-gray-500">
               {turnCount > 0
                 ? `${turnCount} turn${turnCount !== 1 ? 's' : ''} with Claude`
                 : 'Free-form chat with Claude'}
@@ -188,7 +188,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
           {messages.length > 0 && (
             <button
               onClick={exportConversation}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-gray-200 border border-gray-700 transition-all text-[10px] font-bold uppercase tracking-wider"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-500 hover:text-gray-200 border border-gray-700 transition-all text-[10px] font-bold uppercase tracking-wider"
               title="Copy conversation as markdown"
             >
               <Download className="w-3.5 h-3.5" />
@@ -198,7 +198,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
           <button
             onClick={() => setMessages([])}
             disabled={messages.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-red-900/60 text-gray-400 hover:text-red-300 border border-gray-700 hover:border-red-800 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-800 disabled:hover:text-gray-400 disabled:hover:border-gray-700 transition-all text-[10px] font-bold uppercase tracking-wider"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-red-900/60 text-gray-500 hover:text-red-300 border border-gray-700 hover:border-red-800 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-800 disabled:hover:text-gray-500 disabled:hover:border-gray-700 transition-all text-[10px] font-bold uppercase tracking-wider"
             title="Clear conversation"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -214,14 +214,14 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
           className="w-full flex items-center justify-between px-6 py-3 text-left hover:bg-gray-50 transition-colors"
         >
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 shrink-0">System Prompt</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 shrink-0">System Prompt</span>
             {!isSystemPromptOpen && (
               <span className="text-xs text-gray-500 truncate">{systemPromptSummary}</span>
             )}
           </div>
           {isSystemPromptOpen
-            ? <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
-            : <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />}
+            ? <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
+            : <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />}
         </button>
         <AnimatePresence>
           {isSystemPromptOpen && (
@@ -245,24 +245,28 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
         </AnimatePresence>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0">
+      {/* Messages (A11Y-04: streamed assistant replies are announced politely). */}
+      <div
+        className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0"
+        aria-live="polite"
+        aria-busy={isLoading}
+      >
         {messages.length === 0 ? (
           <div className="flex flex-col gap-6 h-full">
             {/* Empty state */}
-            <div className="flex flex-col items-center justify-center flex-1 gap-3 text-gray-400 select-none">
+            <div className="flex flex-col items-center justify-center flex-1 gap-3 text-gray-500 select-none">
               <div className="w-16 h-16 bg-gray-50 rounded-3xl flex items-center justify-center">
-                <Sparkles className="w-7 h-7 text-gray-300" />
+                <Sparkles className="w-7 h-7 text-gray-500" />
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold text-gray-600">Start a conversation</p>
-                <p className="text-xs text-gray-400 mt-1">Chatting with Claude</p>
+                <p className="text-xs text-gray-500 mt-1">Chatting with Claude</p>
               </div>
             </div>
 
             {/* Suggested prompts */}
             <div className="space-y-3">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Try a prompt</p>
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Try a prompt</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {SUGGESTED_PROMPTS.map((p) => (
                   <button
@@ -355,10 +359,10 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
         </div>
         {messages.length > 0 && (
           <div className="flex items-center justify-between mt-2 px-1">
-            <span className="text-[10px] text-gray-400">
+            <span className="text-[10px] text-gray-500">
               {turnCount} turn{turnCount !== 1 ? 's' : ''}
             </span>
-            <span className="text-[10px] text-gray-400">⌘↵ to send</span>
+            <span className="text-[10px] text-gray-500">⌘↵ to send</span>
           </div>
         )}
       </div>
