@@ -1,12 +1,14 @@
+import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart3, X, CheckCircle2, LifeBuoy, Terminal } from 'lucide-react';
-import { UserProgress } from '../../types';
-import { PHASES, LIVE_MODULE_IDS } from '../../constants';
+import { Phase, UserProgress } from '../../types';
+import { isModuleLive } from '../../lib/modules';
 import { BRANDING } from '../../branding';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  phases: Phase[];
   progress: UserProgress;
   onModuleSelect: (id: string) => void;
   overallProgress: number;
@@ -15,14 +17,20 @@ interface SidebarProps {
   onViewChange: (view: 'learning' | 'playground') => void;
 }
 
-export default function Sidebar({ isOpen, onClose, progress, onModuleSelect, overallProgress, onOpenSupport, activeView, onViewChange }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSelect, overallProgress, onOpenSupport, activeView, onViewChange }: SidebarProps) {
   const completed = new Set(progress.completedModuleIds);
-  const totalModules = PHASES.reduce((n, p) => n + p.modules.length, 0);
+  const totalModules = phases.reduce((n, p) => n + p.modules.length, 0);
   // Count only completed ids that are still in the curriculum, so the headline
   // count can't exceed the total.
-  const completedCount = PHASES.reduce(
+  const completedCount = phases.reduce(
     (n, p) => n + p.modules.filter(m => completed.has(m.id)).length,
     0,
+  );
+  // "Soon" badge tracks which cells are still stubs — derived from the fetched
+  // content, so an edited row drops its badge with no code change.
+  const liveModuleIds = useMemo(
+    () => new Set(phases.flatMap(p => p.modules).filter(isModuleLive).map(m => m.id)),
+    [phases],
   );
 
   return (
@@ -80,7 +88,7 @@ export default function Sidebar({ isOpen, onClose, progress, onModuleSelect, ove
 
             <div className="border-t border-gray-100 my-2 mx-3" />
 
-            {PHASES.map((phase) => {
+            {phases.map((phase) => {
               const phaseCompleted = phase.modules.filter(m => completed.has(m.id)).length;
               return (
               <div key={phase.id} className="space-y-2">
@@ -121,7 +129,7 @@ export default function Sidebar({ isOpen, onClose, progress, onModuleSelect, ove
                         <span className={`flex-1 min-w-0 text-xs font-medium truncate ${isActive ? 'font-bold' : ''}`}>
                           {module.title}
                         </span>
-                        {!LIVE_MODULE_IDS.has(module.id) && (
+                        {!liveModuleIds.has(module.id) && (
                           <span className="flex-shrink-0 text-[9px] font-bold uppercase tracking-wide text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5">
                             Soon
                           </span>
