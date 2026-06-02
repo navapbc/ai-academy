@@ -7,6 +7,7 @@ import type {
   Phase,
   QuizQuestion,
   SelfReportValidity,
+  SorterConfig,
   Stage,
 } from '../types';
 import { getSupabaseClient } from './supabaseClient';
@@ -57,10 +58,11 @@ interface ModuleRow {
   emergent_anchor: string | null;
   quiz_json: QuizQuestion[] | null;
   lab_config_json: LabConfig | null;
+  sorter_config_json: SorterConfig | null;
 }
 
 const MODULE_COLUMNS =
-  'cell_id, stage, title, type, dimension, evidence_type, self_report_validity, body_md, mastery_anchor, emergent_anchor, quiz_json, lab_config_json';
+  'cell_id, stage, title, type, dimension, evidence_type, self_report_validity, body_md, mastery_anchor, emergent_anchor, quiz_json, lab_config_json, sorter_config_json';
 
 /** Maps a DB row to the existing Module shape (cell_id -> id+cellId, body_md -> content). */
 export function mapRowToModule(row: ModuleRow): Module {
@@ -79,6 +81,7 @@ export function mapRowToModule(row: ModuleRow): Module {
     emergentAnchor: row.emergent_anchor ?? undefined,
     quiz: row.quiz_json ?? undefined,
     labConfig: row.lab_config_json ?? undefined,
+    sorterConfig: row.sorter_config_json ?? undefined,
   };
 }
 
