@@ -1,5 +1,5 @@
 
-export type ModuleType = 'content' | 'lab' | 'simulator' | 'use-case' | 'quiz' | 'glossary';
+export type ModuleType = 'content' | 'lab' | 'simulator' | 'use-case' | 'quiz' | 'glossary' | 'sorter';
 
 // --- Nava AI Literacy Matrix metadata (P3.1) ---
 // These describe where a module sits in the matrix and how mastery is evidenced.
@@ -42,6 +42,7 @@ export interface Module {
   emergentAnchor?: string; // ditto
   quiz?: QuizQuestion[]; // scored questions, read from the DB quiz_json column (P3.2.3a)
   labConfig?: LabConfig; // interactive-lab config, read from the DB lab_config_json column (P3.2.3b)
+  sorterConfig?: SorterConfig; // scenario-sorter config, from the DB sorter_config_json column (P3.5)
 }
 
 export interface Phase {
@@ -72,6 +73,22 @@ export interface PromptConstructionConfig {
   brief: { task: string; constraints: string[] };
   /** Collapsible scaffolding tips — the parts of a strong prompt. */
   scaffoldHints: { label: string; hint: string }[];
+}
+
+/** Scenario-sorter categories: how AI should (or shouldn't) be involved in a task. */
+export type SorterCategory = 'delegate' | 'assist' | 'human-only' | 'refuse';
+
+export interface SorterScenario {
+  id: string;
+  text: string;
+  correct: SorterCategory;
+  rationale: string;
+}
+
+export interface SorterConfig {
+  kind: 'scenario-sort';
+  intro?: string;
+  scenarios: SorterScenario[];
 }
 
 /** A selectable approved-tool option, shared by the classifier/triage exercises. */

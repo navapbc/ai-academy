@@ -12,6 +12,7 @@ import PrivacySimulator from './PrivacySimulator';
 import PromptLab from './PromptLab';
 import Quiz from './Quiz';
 import UseCaseLib from './UseCaseLib';
+import ScenarioSorter from './ScenarioSorter';
 import DataClassifier from './exercises/DataClassifier';
 import ToolTriage from './exercises/ToolTriage';
 import FailureSpotter from './exercises/FailureSpotter';
@@ -65,6 +66,8 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         return <Quiz moduleId={module.id} questions={module.quiz ?? []} onComplete={onComplete} />;
       case 'use-case':
         return <UseCaseLib onComplete={onComplete} />;
+      case 'sorter':
+        return <ScenarioSorter config={module.sorterConfig} onComplete={onComplete} />;
       case 'glossary':
         return <Glossary />;
       default:
