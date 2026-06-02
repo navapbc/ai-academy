@@ -53,16 +53,18 @@ update public.profiles
    set full_name = 'Demo Learner'
  where id = '00000000-0000-0000-0000-000000000001';
 
--- Sample progress + quiz rows for the demo user.
+-- Sample progress + quiz rows for the demo user. Use REAL curriculum cell ids
+-- (DATA-08) so the demo data maps to actual modules instead of legacy p1-m*
+-- placeholders the app ignored.
 insert into public.module_progress (user_id, module_id, status, completed_at)
 values
-  ('00000000-0000-0000-0000-000000000001', 'p1-m0', 'completed', now()),
-  ('00000000-0000-0000-0000-000000000001', 'p1-m1', 'in_progress', null);
+  ('00000000-0000-0000-0000-000000000001', '1.3', 'completed', now()),
+  ('00000000-0000-0000-0000-000000000001', '1.4', 'in_progress', null);
 
 insert into public.quiz_attempts (user_id, module_id, score, max_score, passed, answers)
 values (
   '00000000-0000-0000-0000-000000000001',
-  'p1-m1',
+  '1.4',
   4, 5, true,
   '{"q1":"a","q2":"c","q3":"b"}'
 );

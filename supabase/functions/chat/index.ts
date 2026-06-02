@@ -19,6 +19,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import {
   buildCorsHeaders,
+  buildSystemBlocks,
   emailDomainAllowed,
   fixedWindowAllow,
   isStop,
@@ -111,7 +112,8 @@ Deno.serve(async (req: Request) => {
   const anthropicBody = {
     model,
     max_tokens,
-    ...(system ? { system } : {}),
+    // Cache the stable system prefix to cut repeat-turn cost (LLM-09).
+    ...(system ? { system: buildSystemBlocks(system) } : {}),
     messages,
     stream: true,
   };

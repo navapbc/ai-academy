@@ -40,7 +40,11 @@ export async function fetchModuleProgress(userId: string): Promise<ModuleProgres
     .from('module_progress')
     .select('module_id, status, updated_at')
     .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
+    // Secondary sort by module_id so rows with identical updated_at have a
+    // deterministic order — `latestInProgressId` (= first in_progress row) is
+    // then stable across reloads instead of arbitrary (DATA-06).
+    .order('updated_at', { ascending: false })
+    .order('module_id', { ascending: true });
 
   if (error) throw error;
 

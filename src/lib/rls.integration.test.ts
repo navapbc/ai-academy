@@ -147,3 +147,15 @@ describe.skipIf(!RUN)('Curriculum provenance (DATA-01)', () => {
     // intentionally left untouched.)
   });
 });
+
+describe.skipIf(!RUN)('content_versions lockdown (SEC-07)', () => {
+  test('an authenticated user cannot read content_versions (RLS on, no policy)', async () => {
+    const client = freshClient();
+    await client.auth.signUp({ email: uniqueEmail('cv', 'navapbc.com'), password: PASSWORD });
+    // RLS is enabled with no permissive policy → the table is fully locked down,
+    // so a select returns zero rows (no error) regardless of contents.
+    const { data, error } = await client.from('content_versions').select('*');
+    expect(error).toBeNull();
+    expect(data ?? []).toHaveLength(0);
+  });
+});
