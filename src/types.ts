@@ -161,12 +161,29 @@ export interface ScenarioExerciseConfig {
   takeaway: { title: string; intro: string };
 }
 
+/**
+ * 1.8 / 1.11 reflection (P3.10): an UNGRADED written reflection (no right
+ * answer). The learner reads a prompt + guidance and writes a free-text
+ * response; `minWords` is a soft target shown in a live word counter. On submit
+ * the text is stored as a lab_submissions row tagged `kind:'reflection'` for a
+ * Champion to review later — there is no grading and no completion gate (the
+ * inline quiz remains the gate). This differs from the graded exercise kinds
+ * above only in shape and intent.
+ */
+export interface ReflectionConfig {
+  kind: 'reflection';
+  prompt: string;
+  guidance: string;
+  minWords: number;
+}
+
 export type LabConfig =
   | PromptConstructionConfig
   | DataClassifierConfig
   | ToolTriageConfig
   | FailureSpotterConfig
-  | ScenarioExerciseConfig;
+  | ScenarioExerciseConfig
+  | ReflectionConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];
