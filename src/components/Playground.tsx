@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
   Send, Terminal, Trash2, ChevronDown, ChevronUp, Bot, User,
-  Copy, Check, Download, Sparkles,
+  Copy, Check, Download, Sparkles, Square,
 } from 'lucide-react';
 import { streamChat } from '../lib/llm';
 import { CLAUDE_MODELS, DEFAULT_MODEL_ID } from '../lib/models';
@@ -61,6 +61,12 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevPersonaRef = useRef<AIPersona>(selectedPersona);
+  // Cancels the in-flight stream on unmount or when the user hits "stop" (LLM-05).
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Abort any in-flight stream when the Playground unmounts (e.g. view change),
+  // so the request/connection doesn't leak and keep billing.
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   useEffect(() => {
     if (selectedPersona !== prevPersonaRef.current) {
@@ -92,8 +98,13 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
       { role: 'user' as const, content: text },
     ];
 
+    // Fresh controller per send; abort any prior in-flight stream first.
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
-      await streamChat(apiMessages, { system: systemPrompt, model }, (chunk) => {
+      await streamChat(apiMessages, { system: systemPrompt, model, signal: controller.signal }, (chunk) => {
         setMessages(prev => {
           const updated = [...prev];
           const last = updated[updated.length - 1];
@@ -114,6 +125,12 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
       setIsLoading(false);
     }
   }, [userInput, isLoading, messages, systemPrompt, model]);
+
+  // Stop the in-flight generation; streamChat resolves cleanly on abort so the
+  // partial response stays and isLoading is cleared by handleSend's finally.
+  const handleStop = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -317,15 +334,24 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
             placeholder="Type a message… (⌘↵ to send)"
             className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 pr-16 text-sm focus:ring-2 focus:ring-nava-green focus:border-transparent outline-none transition-all resize-none"
           />
-          <button
-            onClick={() => handleSend()}
-            disabled={isLoading || !userInput.trim()}
-            className="absolute bottom-4 right-4 p-3 bg-nava-green text-white rounded-xl shadow-lg hover:bg-nava-plum disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
-          >
-            {isLoading
-              ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}><Send className="w-4 h-4" /></motion.div>
-              : <Send className="w-4 h-4" />}
-          </button>
+          {isLoading ? (
+            <button
+              onClick={handleStop}
+              aria-label="Stop generating"
+              className="absolute bottom-4 right-4 p-3 bg-gray-900 text-white rounded-xl shadow-lg hover:bg-black transition-all active:scale-95"
+            >
+              <Square className="w-4 h-4" fill="currentColor" />
+            </button>
+          ) : (
+            <button
+              onClick={() => handleSend()}
+              disabled={!userInput.trim()}
+              aria-label="Send message"
+              className="absolute bottom-4 right-4 p-3 bg-nava-green text-white rounded-xl shadow-lg hover:bg-nava-plum disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          )}
         </div>
         {messages.length > 0 && (
           <div className="flex items-center justify-between mt-2 px-1">

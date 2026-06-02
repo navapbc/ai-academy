@@ -23,6 +23,12 @@ export interface StreamOptions {
   model?: string;
   /** Override the default max output tokens. */
   maxTokens?: number;
+  /**
+   * Cancels the in-flight request/stream when aborted (LLM-05) — e.g. a
+   * component unmounts mid-stream, a new send starts, or the user hits "stop".
+   * Aborting resolves `streamChat` cleanly (it does not throw).
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -55,6 +61,9 @@ export async function streamChat(
     // No session / auth not wired yet — anon key is fine.
   }
 
+  // Already cancelled before we even sent — nothing to do.
+  if (options.signal?.aborted) return;
+
   const response = await fetch(`${SUPABASE_URL}/functions/v1/chat`, {
     method: 'POST',
     headers: {
@@ -68,6 +77,7 @@ export async function streamChat(
       model: options.model,
       max_tokens: options.maxTokens,
     }),
+    signal: options.signal,
   });
 
   if (!response.ok || !response.body) {
@@ -85,10 +95,25 @@ export async function streamChat(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    const text = decoder.decode(value, { stream: true });
-    if (text) onChunk(text);
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const text = decoder.decode(value, { stream: true });
+      if (text) onChunk(text);
+    }
+  } catch (err) {
+    // An abort is intentional cancellation, not a failure to surface.
+    if (options.signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
+      return;
+    }
+    throw err;
+  } finally {
+    // Releasing a reader whose stream has errored/closed is safe; guard anyway.
+    try {
+      reader.releaseLock();
+    } catch {
+      // ignore
+    }
   }
 }
