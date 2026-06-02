@@ -72,8 +72,9 @@ resolved finding is marked **✅ Resolved** inline below.
 | `chore/strict-ts-eslint` | TYPE-01, TYPE-02 | ✅ merged |
 | `fix/progress-reliability` | DATA-02, FE-03 | ✅ merged |
 | `fix/quiz-integrity` | DATA-03, FE-04, FE-05 | ✅ merged |
+| `fix/migration-drift-1b` | DATA-01 | ✅ merged |
 
-**Open remaining:** P0 **0** · P1 6 · P2 16 · P3 19 *(updated as PRs land).*
+**Open remaining:** P0 **0** · P1 5 · P2 16 · P3 19 *(updated as PRs land).*
 
 ---
 
@@ -122,6 +123,7 @@ RLS enabled + owner-only SELECT/INSERT/UPDATE on `profiles`/`module_progress`/`q
 `supabase/migrations/20260602141611_stage_1b_content.sql` (superseded) vs `20260602190000_load_curriculum_content.sql` (winner).
 *Impact:* `141611` authors cells 1.1/1.2/1.7/1.8/1.11/1.12 (`body_md`, `quiz_json`, `status='in_review'`, `version=version+1`); the later `190000` `UPDATE`s all 28 cells, **overwriting** those six bodies/quizzes with different content. After `db reset`, `141611`'s lesson text/quizzes never reach runtime — only its `in_review` status + inflated `version` survive, leaving inconsistent provenance (190000's content + 141611's status).
 *Direction:* make `curriculum-content.json` canonical, regenerate `190000`, and either drop `141611`'s dead body/quiz writes or exclude those six cells from `190000`'s sweep; document the supersession.
+**✅ Resolved** (`fix/migration-drift-1b`): added forward migration `20260602260000_reconcile_stage_1b_provenance.sql` normalizing the six 1b cells to `status='published', version=1` (matching the 22 siblings and the 190000 content that actually reaches runtime); marked `141611` SUPERSEDED in its header. Verified via `supabase db reset` (all six now published/v1) + a gated regression test in `rls.integration.test.ts`. *(1.3 and 1.13 remain `in_review` by their own latest migrations — intentional authoring state, not this drift.)*
 
 **DATA-02 — Optimistic completion can be silently lost — "It will retry later" is false**
 `src/lib/useProgress.ts:95-97` (and `61-82`).

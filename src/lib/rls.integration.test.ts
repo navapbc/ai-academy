@@ -126,3 +126,24 @@ describe.skipIf(!RUN)('Owner-only RLS', () => {
     expect(mp.data?.every((r) => r.user_id !== aId)).toBe(true);
   });
 });
+
+describe.skipIf(!RUN)('Curriculum provenance (DATA-01)', () => {
+  test('the six Stage-1b cells are reconciled to published / version 1, like the rest', async () => {
+    const client = freshClient();
+    await client.auth.signUp({ email: uniqueEmail('prov', 'navapbc.com'), password: PASSWORD });
+
+    const { data, error } = await client
+      .from('modules')
+      .select('cell_id, status, version')
+      .in('cell_id', ['1.1', '1.2', '1.7', '1.8', '1.11', '1.12']);
+    expect(error).toBeNull();
+    expect(data?.length).toBe(6);
+    for (const row of data ?? []) {
+      expect(row.status).toBe('published');
+      expect(row.version).toBe(1);
+    }
+    // (1.3 and 1.13 are legitimately 'in_review' per their own latest migrations —
+    // a deliberate authoring state, not the DATA-01 overwrite drift — so they are
+    // intentionally left untouched.)
+  });
+});
