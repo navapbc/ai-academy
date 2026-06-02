@@ -18,3 +18,32 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+      # Unit + component tests (vitest). The Supabase integration tests in
+      # progress.test.ts SKIP automatically when no live local stack is
+      # reachable (no VITE_SUPABASE_* / no `supabase start`), so this stays
+      # green in CI without a database. E2E (Playwright) is intentionally NOT
+      # run here — it needs the local Supabase stack + a stubbed Claude; see the
+      # commented job below and docs/DEBT-REPORT.md for the local run.
+      - run: npm run test
+
+  # TODO(e2e): enable once CI provisions a local Supabase stack (supabase start)
+  # and a seeded @navapbc.com user. The specs in e2e/ STUB the Claude/Anthropic
+  # call at the network layer (intercept POST **/functions/v1/chat), so no
+  # ANTHROPIC_API_KEY is needed — only the DB + dev server. Run locally with:
+  #   npx supabase start && npx playwright install --with-deps chromium && npm run test:e2e
+  #
+  # e2e:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '22'
+  #         cache: 'npm'
+  #     - run: npm ci
+  #     - run: npx playwright install --with-deps chromium
+  #     - run: npx supabase start
+  #     - run: npm run test:e2e
+  #       env:
+  #         VITE_SUPABASE_URL: http://127.0.0.1:54321
+  #         VITE_SUPABASE_ANON_KEY: ${{ secrets.LOCAL_SUPABASE_ANON_KEY }}

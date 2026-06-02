@@ -11,6 +11,11 @@ supabase/functions/.env
 
 dist
 
+# Playwright E2E artifacts
+test-results
+playwright-report
+.playwright
+
 # Supabase local temp artifacts
 supabase/.branches
 supabase/.temp

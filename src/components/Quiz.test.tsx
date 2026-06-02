@@ -1,0 +1,114 @@
+// @vitest-environment jsdom
+import { StrictMode } from 'react';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import Quiz from './Quiz';
+import type { QuizQuestion } from '../types';
+
+// Component tests for the quiz — the module COMPLETION GATE. We mock auth (a
+// signed-in user) and the progress data layer so nothing hits the network, and
+// assert: options render, the score is computed, the 100%-to-pass gate holds,
+// recordQuizAttempt is called, and onComplete fires ONLY on a passing run.
+const { recordQuizAttempt, fetchQuizSummary } = vi.hoisted(() => ({
+  recordQuizAttempt: vi.fn(async () => {}),
+  fetchQuizSummary: vi.fn(async () => ({ best: null, latest: null })),
+}));
+
+vi.mock('../lib/auth', () => ({ useAuth: () => ({ user: { id: 'u1' } }) }));
+vi.mock('../lib/progress', () => ({ recordQuizAttempt, fetchQuizSummary }));
+
+const questions: QuizQuestion[] = [
+  { question: 'What is PII?', options: ['Public info', 'Personal info'], correctIndex: 1, explanation: 'PII is personal.' },
+  { question: '2 + 2?', options: ['3', '4'], correctIndex: 1, explanation: 'Four.' },
+];
+
+beforeEach(() => {
+  recordQuizAttempt.mockClear();
+  fetchQuizSummary.mockClear();
+});
+
+async function answer(option: string, then: 'Next Question' | 'See Results') {
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: option }));
+  await user.click(screen.getByRole('button', { name: 'Submit Answer' }));
+  await user.click(screen.getByRole('button', { name: then }));
+}
+
+describe('Quiz', () => {
+  test('renders the first question and its options', () => {
+    render(<Quiz moduleId="1.4" questions={questions} onComplete={() => {}} />);
+    expect(screen.getByText('What is PII?')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Public info' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Personal info' })).toBeInTheDocument();
+    expect(screen.getByText('Question 1 of 2')).toBeInTheDocument();
+  });
+
+  test('returns null for an empty question set', () => {
+    const { container } = render(<Quiz moduleId="1.4" questions={[]} onComplete={() => {}} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  test('a perfect run passes, records a passing attempt, and fires onComplete', async () => {
+    const onComplete = vi.fn();
+    render(<Quiz moduleId="1.4" questions={questions} onComplete={onComplete} />);
+
+    await answer('Personal info', 'Next Question');
+    await answer('4', 'See Results');
+
+    expect(screen.getByText('Checkpoint Result')).toBeInTheDocument();
+    expect(screen.getByText('You scored 2 out of 2')).toBeInTheDocument();
+
+    await waitFor(() => expect(recordQuizAttempt).toHaveBeenCalled());
+    expect(recordQuizAttempt).toHaveBeenCalledWith('u1', expect.objectContaining({
+      moduleId: '1.4',
+      score: 2,
+      maxScore: 2,
+      passed: true,
+    }));
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Continue to Next Sprint' }));
+    expect(onComplete).toHaveBeenCalledOnce();
+  });
+
+  test('a sub-100% run does NOT pass: no onComplete, records passed:false, offers a restart', async () => {
+    const onComplete = vi.fn();
+    render(<Quiz moduleId="1.4" questions={questions} onComplete={onComplete} />);
+
+    await answer('Public info', 'Next Question'); // wrong
+    await answer('4', 'See Results'); // right → 1/2, not a pass
+
+    expect(screen.getByText('You scored 1 out of 2')).toBeInTheDocument();
+    expect(screen.getByText(/require a 100% score/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Continue to Next Sprint' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Restart Quiz' })).toBeInTheDocument();
+
+    await waitFor(() => expect(recordQuizAttempt).toHaveBeenCalled());
+    expect(recordQuizAttempt).toHaveBeenCalledWith('u1', expect.objectContaining({
+      score: 1,
+      maxScore: 2,
+      passed: false,
+    }));
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  // DOCUMENTS: DATA-03 / FE-04 — the attempt is persisted in a useEffect keyed
+  // on [showResults] with a suppressed exhaustive-deps lint. Under React
+  // StrictMode (dev) the effect runs twice, writing TWO identical quiz_attempts
+  // rows (the table is append-only with no dedupe). The contract we want: one
+  // completed run records exactly one attempt. Unskip once the record is guarded
+  // (e.g. a useRef "already recorded" flag) so it survives StrictMode.
+  test.skip('records exactly one attempt per run, even under StrictMode (DOCUMENTS: DATA-03 / FE-04)', async () => {
+    const onComplete = vi.fn();
+    render(
+      <StrictMode>
+        <Quiz moduleId="1.4" questions={questions} onComplete={onComplete} />
+      </StrictMode>,
+    );
+    await answer('Personal info', 'Next Question');
+    await answer('4', 'See Results');
+    await waitFor(() => expect(recordQuizAttempt).toHaveBeenCalled());
+    expect(recordQuizAttempt).toHaveBeenCalledOnce();
+  });
+});
