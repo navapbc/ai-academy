@@ -162,14 +162,58 @@ describe('streamChat — not configured', () => {
   });
 });
 
-// DOCUMENTS: LLM-05 — streamChat takes no AbortSignal and never cancels the
-// reader, so a caller cannot abort an in-flight stream (unmount / new send
-// leaks the request + keeps billing). When abort support is added, unskip and
-// assert that aborting the passed signal rejects/stops the stream.
-describe.skip('streamChat — cancellation (DOCUMENTS: LLM-05)', () => {
-  test('aborts the in-flight stream when the caller signals abort', async () => {
-    // No AbortSignal parameter exists on StreamOptions today; this is the
-    // contract we want once LLM-05 is fixed.
-    expect(false).toBe(true);
+// LLM-05 — streamChat accepts an AbortSignal and cancels the in-flight stream
+// cleanly (resolves, does not throw) so callers can stop on unmount / new send.
+describe('streamChat — cancellation (LLM-05)', () => {
+  test('aborting mid-stream resolves cleanly and stops delivering chunks', async () => {
+    const streamChat = await loadStreamChat();
+    const encoder = new TextEncoder();
+    const ac = new AbortController();
+
+    let streamCtrl!: ReadableStreamDefaultController<Uint8Array>;
+    const fetchMock = vi.fn(async (_url: string, opts: RequestInit) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(c) {
+          streamCtrl = c;
+          c.enqueue(encoder.encode('partial'));
+          // Then stays open until aborted.
+        },
+      });
+      // Simulate the browser: aborting the fetch errors the body stream.
+      opts.signal?.addEventListener('abort', () => {
+        try {
+          streamCtrl.error(new DOMException('Aborted', 'AbortError'));
+        } catch {
+          /* already closed */
+        }
+      });
+      return { ok: true, status: 200, statusText: 'OK', body, json: async () => ({}) } as unknown as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const chunks: string[] = [];
+    const promise = streamChat([{ role: 'user', content: 'hi' }], { signal: ac.signal }, (t) =>
+      chunks.push(t),
+    );
+
+    // Let the first chunk flush, then abort.
+    await new Promise((r) => setTimeout(r, 10));
+    ac.abort();
+
+    await expect(promise).resolves.toBeUndefined();
+    expect(chunks.join('')).toBe('partial');
+  });
+
+  test('a pre-aborted signal makes streamChat a no-op (never fetches)', async () => {
+    const streamChat = await loadStreamChat();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const ac = new AbortController();
+    ac.abort();
+
+    await expect(
+      streamChat([{ role: 'user', content: 'hi' }], { signal: ac.signal }, () => {}),
+    ).resolves.toBeUndefined();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

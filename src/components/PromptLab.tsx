@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Play, Terminal, CheckCircle, FlaskConical, Lightbulb, Target, ChevronDown, Save } from 'lucide-react';
 import { streamChat } from '../lib/llm';
@@ -29,6 +29,9 @@ export default function PromptLab({ onComplete, labConfig }: PromptLabProps) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // Cancels the in-flight stream on unmount / re-run (LLM-05).
+  const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   // Graceful fallback: if the module has no (or an unexpected) lab config, show
   // a clear message instead of crashing. All hooks run above this guard.
@@ -57,10 +60,14 @@ export default function PromptLab({ onComplete, labConfig }: PromptLabProps) {
     setSaved(false);
     setSaveError(null);
 
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       await streamChat(
         [{ role: 'user', content: prompt }],
-        { model },
+        { model, signal: controller.signal },
         (chunk) => { setResponse(prev => prev + chunk); },
       );
     } catch (err) {

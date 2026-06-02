@@ -68,8 +68,9 @@ resolved finding is marked **✅ Resolved** inline below.
 |----|--------------|--------|
 | `fix/p0-crash-safety` | FE-01, FE-02, FE-07 | ✅ merged |
 | `fix/chat-edge-hardening` | SEC-01, SEC-02, SEC-03, SEC-04, SEC-05, LLM-01, LLM-02, LLM-03, LLM-04, LLM-06, LLM-07, LLM-08, LLM-12 + closes the "Edge Function SSE parser untested" coverage gap | ✅ merged |
+| `fix/stream-cancellation` | LLM-05 | ✅ merged |
 
-**Open remaining:** P0 **0** · P1 12 · P2 18 · P3 19 *(updated as PRs land).*
+**Open remaining:** P0 **0** · P1 12 · P2 17 · P3 19 *(updated as PRs land).*
 
 ---
 
@@ -163,6 +164,7 @@ RLS enabled + owner-only SELECT/INSERT/UPDATE on `profiles`/`module_progress`/`q
 ### P2
 
 **LLM-05 — Client streaming has no AbortSignal / cancellation** — `src/lib/llm.ts:35-94` (no `signal`; loop only exits on `done`); consumers `Playground.tsx:96`, `PromptLab.tsx:61`. Unmount/new-send leaks the request and keeps billing; `onChunk` can fire after unmount. No "stop generating" control. *Direction:* thread an `AbortSignal` into `StreamOptions`/`fetch`/`reader.cancel()`; abort in a cleanup effect. *Documented by:* `src/lib/llm.test.ts` → `describe.skip('… cancellation (DOCUMENTS: LLM-05)')`.
+**✅ Resolved** (`fix/stream-cancellation`): `StreamOptions.signal` threads into `fetch` + the read loop (intentional aborts resolve cleanly, not as errors). `Playground` and `PromptLab` abort on unmount and on a new send; the Playground gains a **Stop** button. Test unskipped → `src/lib/llm.test.ts` "cancellation (LLM-05)". *(The Edge-Function read/idle timeout for a stalled upstream remains a noted sub-item of LLM-07.)*
 
 **LLM-06 — Mid-stream Anthropic `error` events forwarded as inline text** — `chat/index.ts:181-183`. Since 200 was already sent, the client appends `[stream error: …]` as assistant *content*; `try/catch` never fires and bad output can be saved as a lab transcript. *Direction:* `controller.error()` or a sentinel the client converts to an error state.
 
@@ -335,7 +337,7 @@ and should be un-skipped by the fix that resolves the finding.
 
 | Test (file → name) | Documents | What it asserts (the desired contract) |
 |---|---|---|
-| `src/lib/llm.test.ts` → `describe.skip('streamChat — cancellation …')` | **LLM-05** | aborting a passed `AbortSignal` stops the in-flight stream |
+| ~~`src/lib/llm.test.ts` → `describe.skip('streamChat — cancellation …')`~~ | **LLM-05** | ✅ **Resolved & unskipped** (`fix/stream-cancellation`) — now an active passing test |
 | `src/lib/useProgress.test.tsx` → `test.skip('… retried/flushed …')` | **DATA-02** | a failed completion write is retried/flushed, not silently lost |
 | `src/lib/gating.extra.test.ts` → `test.skip('… not land on a locked Stage-2 module')` | **FE-03** | advancing past a Stage-1b cell never lands on a locked Stage-2 cell |
 | `src/components/Quiz.test.tsx` → `test.skip('… exactly one attempt … StrictMode')` | **DATA-03 / FE-04** | one completed run records exactly one `quiz_attempts` row under StrictMode |
