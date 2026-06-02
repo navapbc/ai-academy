@@ -18,6 +18,7 @@ import ToolTriage from './exercises/ToolTriage';
 import FailureSpotter from './exercises/FailureSpotter';
 import ScenarioExercise from './exercises/ScenarioExercise';
 import ReflectionCapture from './exercises/ReflectionCapture';
+import HarmRubric from './exercises/HarmRubric';
 
 interface Props {
   module: Module;
@@ -104,6 +105,8 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         return <ScenarioExercise config={module.labConfig} labId={module.cellId} />;
       case 'reflection':
         return <ReflectionCapture config={module.labConfig} labId={module.cellId} />;
+      case 'harm-rubric':
+        return <HarmRubric config={module.labConfig} labId={module.cellId} />;
       default:
         return null;
     }
