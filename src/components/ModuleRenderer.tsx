@@ -17,6 +17,7 @@ import DataClassifier from './exercises/DataClassifier';
 import ToolTriage from './exercises/ToolTriage';
 import FailureSpotter from './exercises/FailureSpotter';
 import ScenarioExercise from './exercises/ScenarioExercise';
+import ReflectionCapture from './exercises/ReflectionCapture';
 
 interface Props {
   module: Module;
@@ -101,6 +102,8 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
       case 'disclosure-builder':
       case 'regulatory-check':
         return <ScenarioExercise config={module.labConfig} labId={module.cellId} />;
+      case 'reflection':
+        return <ReflectionCapture config={module.labConfig} labId={module.cellId} />;
       default:
         return null;
     }
