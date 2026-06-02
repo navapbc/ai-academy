@@ -67,6 +67,11 @@ export interface QuizQuestion {
  * additional members of the LabConfig union (P3.5/P3.6) — keep them additive so
  * the ModuleRenderer switch and parallel PRs merge cleanly.
  */
+/** Anchor rubric used by the grading engine (P4.2). Carried on a lab's config. */
+export interface GradingRubric {
+  anchors: { id: string; label: string; description: string }[];
+}
+
 export interface PromptConstructionConfig {
   kind: 'prompt-construction';
   title?: string; // lab header; generic fallback if absent (P4.1)
@@ -75,6 +80,7 @@ export interface PromptConstructionConfig {
   brief: { task: string; constraints: string[] };
   /** Collapsible scaffolding tips — the parts of a strong prompt. */
   scaffoldHints: { label: string; hint: string }[];
+  rubric?: GradingRubric; // LLM-as-judge anchors (P4.2); optional
 }
 
 /** Scenario-sorter categories: how AI should (or shouldn't) be involved in a task. */
