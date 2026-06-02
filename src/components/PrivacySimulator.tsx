@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Cloud, Laptop, Shield, ShieldAlert, CheckCircle, Play, ShieldCheck } from 'lucide-react';
 
@@ -6,14 +6,24 @@ export default function PrivacySimulator({ onComplete }: { onComplete: () => voi
   const [mode, setMode] = useState<'cloud' | 'local'>('cloud');
   const [isSimulating, setIsSimulating] = useState(false);
   const [steps, setSteps] = useState<number>(0);
+  // Track the interval so it's cleared on unmount (FE-10) — otherwise navigating
+  // away mid-simulation leaks the timer and updates an unmounted component.
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
 
   const startSimulation = () => {
     setIsSimulating(true);
     setSteps(0);
-    const interval = setInterval(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
       setSteps(prev => {
         if (prev >= 3) {
-          clearInterval(interval);
+          if (intervalRef.current) clearInterval(intervalRef.current);
           setIsSimulating(false);
           return 3;
         }
