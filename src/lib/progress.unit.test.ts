@@ -56,6 +56,9 @@ describe('recordQuizAttempt', () => {
 
 describe('recordLabSubmission', () => {
   test('inserts the mapped submission payload into lab_submissions', async () => {
+    // recordLabSubmission now selects + returns the new row id (P4.2), so the
+    // insert resolves to a row instead of null.
+    supa.setResult({ data: { id: 'sub-1' }, error: null });
     await recordLabSubmission(USER, {
       labId: '1.4',
       transcript: { answers: [], score: 2, maxScore: 3 },

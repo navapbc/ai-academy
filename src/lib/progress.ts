@@ -1,4 +1,5 @@
 import { getSupabaseClient } from './supabaseClient';
+import type { GradeResult } from './grading';
 
 // Supabase data-access for learner progress and quiz scores. Pure async
 // functions (no React, no localStorage) so they can be unit-tested against the
@@ -113,15 +114,32 @@ export interface LabSubmissionInput {
 export async function recordLabSubmission(
   userId: string,
   submission: LabSubmissionInput,
-): Promise<void> {
-  const { error } = await getSupabaseClient()
+): Promise<string> {
+  const { data, error } = await getSupabaseClient()
     .from('lab_submissions')
     .insert({
       user_id: userId,
       lab_id: submission.labId,
       transcript: submission.transcript,
       status: submission.status,
-    });
+    })
+    .select('id')
+    .single();
+
+  if (error) throw error;
+  return data.id as string;
+}
+
+/** Updates a lab submission with its grade (P4.2). Owner-update RLS already exists. */
+export async function saveGrade(
+  submissionId: string,
+  result: GradeResult,
+  status: string,
+): Promise<void> {
+  const { error } = await getSupabaseClient()
+    .from('lab_submissions')
+    .update({ rubric_scores: result, grader: result.grader, status })
+    .eq('id', submissionId);
 
   if (error) throw error;
 }
