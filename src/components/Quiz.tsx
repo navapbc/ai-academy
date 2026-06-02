@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { HelpCircle, Check, X, ShieldCheck, ChevronRight } from 'lucide-react';
 import type { QuizQuestion } from '../types';
 import { useAuth } from '../lib/auth';
 import { recordQuizAttempt, fetchQuizSummary, type QuizSummary } from '../lib/progress';
+
+/** Single source of truth for the score: count answers matching the key (FE-05). */
+function computeScore(answers: Record<string, number>, questions: QuizQuestion[]): number {
+  return questions.reduce((n, q, i) => n + (answers[String(i)] === q.correctIndex ? 1 : 0), 0);
+}
 
 export default function Quiz({
   moduleId,
@@ -18,10 +23,12 @@ export default function Quiz({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [score, setScore] = useState(0);
   const [showResults, setShowResults] = useState(false);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [summary, setSummary] = useState<QuizSummary | null>(null);
+  // Guards against recording the same completed run twice (DATA-03 / FE-04) —
+  // e.g. StrictMode's double-invoked effect. Reset on restart.
+  const recordedRef = useRef(false);
 
   // Read back any prior attempts so we can show the learner their best score.
   useEffect(() => {
@@ -39,22 +46,23 @@ export default function Quiz({
     };
   }, [user, moduleId]);
 
-  // Persist the attempt once, when results are reached.
+  // Persist the attempt exactly once per completed run. The recordedRef guard
+  // makes this idempotent across StrictMode's double-invoked effect and any
+  // re-render while results are showing (DATA-03 / FE-04).
   useEffect(() => {
-    if (!showResults || !user) return;
-    const passed = score === questions.length;
+    if (!showResults || !user || recordedRef.current) return;
+    recordedRef.current = true;
+    const score = computeScore(answers, questions);
     recordQuizAttempt(user.id, {
       moduleId,
       score,
       maxScore: questions.length,
-      passed,
+      passed: score === questions.length,
       answers,
     }).catch(() => {
       // Score persistence is best-effort; the unlock flow still works locally.
     });
-    // Only fire on the transition into results.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showResults]);
+  }, [showResults, user, answers, questions, moduleId]);
 
   if (questions.length === 0) return null;
 
@@ -73,12 +81,13 @@ export default function Quiz({
   };
 
   const handleSubmit = () => {
+    if (selected === null) return; // the Submit button is disabled in this state
     setIsSubmitted(true);
-    setAnswers(prev => ({ ...prev, [String(currentIndex)]: selected! }));
-    if (isCorrect) setScore(prev => prev + 1);
+    setAnswers(prev => ({ ...prev, [String(currentIndex)]: selected }));
   };
 
   if (showResults) {
+    const score = computeScore(answers, questions);
     const passing = score === questions.length;
     return (
       <motion.div 
@@ -122,9 +131,9 @@ export default function Quiz({
                 setCurrentIndex(0);
                 setSelected(null);
                 setIsSubmitted(false);
-                setScore(0);
                 setShowResults(false);
                 setAnswers({});
+                recordedRef.current = false;
               }}
               className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-black transition-all"
             >

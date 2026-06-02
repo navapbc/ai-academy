@@ -93,13 +93,10 @@ describe('Quiz', () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
-  // DOCUMENTS: DATA-03 / FE-04 — the attempt is persisted in a useEffect keyed
-  // on [showResults] with a suppressed exhaustive-deps lint. Under React
-  // StrictMode (dev) the effect runs twice, writing TWO identical quiz_attempts
-  // rows (the table is append-only with no dedupe). The contract we want: one
-  // completed run records exactly one attempt. Unskip once the record is guarded
-  // (e.g. a useRef "already recorded" flag) so it survives StrictMode.
-  test.skip('records exactly one attempt per run, even under StrictMode (DOCUMENTS: DATA-03 / FE-04)', async () => {
+  // DATA-03 / FE-04 — the attempt is now recorded exactly once per completed
+  // run (a useRef guard makes it idempotent across StrictMode's double-invoked
+  // effect and results re-renders).
+  test('records exactly one attempt per run, even under StrictMode (DATA-03 / FE-04)', async () => {
     const onComplete = vi.fn();
     render(
       <StrictMode>
