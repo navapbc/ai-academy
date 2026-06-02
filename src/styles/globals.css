@@ -589,9 +589,15 @@ html {
   animation: pulse-gentle 3s ease-in-out infinite;
 }
 
-/* Respect user motion preferences */
+/* Respect user motion preferences (A11Y-14). motion/react animations honor this
+   via <MotionConfig reducedMotion="user">; here we also neutralize the CSS/
+   Tailwind animation utilities (spinners, pulses) for reduced-motion users. */
 @media (prefers-reduced-motion: reduce) {
-  .animate-pulse-gentle {
-    animation: none;
+  .animate-pulse-gentle,
+  .animate-spin,
+  .animate-pulse,
+  .animate-bounce,
+  .animate-ping {
+    animation: none !important;
   }
 }

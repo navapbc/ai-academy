@@ -77,8 +77,9 @@ resolved finding is marked **✅ Resolved** inline below.
 | `fix/a11y-modals-contrast` | A11Y-02, A11Y-04, A11Y-05 | ✅ merged |
 | `fix/a11y-p2` | A11Y-06, A11Y-07, A11Y-08, A11Y-09, A11Y-10, A11Y-11, A11Y-12, A11Y-13 | ✅ merged |
 | `fix/p2-remainder` | FE-06, DATA-04, DATA-05, TYPE-03, DEAD-01, DEAD-02, DEAD-03 | ✅ merged |
+| `chore/p3-build-frontend` | BUILD-01, BUILD-02, TYPE-04, TYPE-05, TYPE-06, DATA-10, FE-10, A11Y-14, A11Y-16 (+ accepted-as-is: FE-09, TYPE-07, A11Y-15) | ✅ merged |
 
-**Open remaining:** P0 **0** · **P1 0** · **P2 0** 🎉 · P3 ~22 (cleanup) *(updated as PRs land).*
+**Open remaining:** P0 **0** · **P1 0** · **P2 0** · P3 (data/security/llm minors) — see `fix/p3-final` *(updated as PRs land).*
 
 ---
 
@@ -154,6 +155,7 @@ RLS enabled + owner-only SELECT/INSERT/UPDATE on `profiles`/`module_progress`/`q
 - **DATA-08** — `seed.sql` demo progress uses legacy ids `p1-m0`/`p1-m1` that don't exist in `modules`; `resolveCurrentModuleId` ignores them so no crash, but the demo data is meaningless — `supabase/seed.sql:57-67`. *Direction:* use real cell ids.
 - **DATA-09** — `seed-data/curriculum-content.json` is generator-input only (no runtime import), so no runtime drift; but hand-editing the generated SQL can silently diverge from it. Informational.
 - **DATA-10** — `progressCache` has no version/invalidation and is clobbered by reconcile; `JSON.parse(...) as UserProgress` trusts stale shapes — `src/lib/progressCache.ts:20-39`. *Direction:* version the cached payload.
+  - **✅ Resolved** (`chore/p3-build-frontend`): progressCache stores `{ v, progress }` and discards on version mismatch / failed shape check; existing round-trip tests still pass.
 
 ### Passed (good)
 `module_progress` `unique(user_id,module_id)` matches the upsert `onConflict`; insert payloads match columns (`rubric_scores`/`grader` nullable, left null); `sorter_config_json` column added (`160616`) before runtime reads/seeds it; all post-`190000` seeds guard on `… is null` (re-run-safe); `130334` uses `on conflict (cell_id) do nothing`. All `progress.ts` errors `throw`; swallowing is intentional at React call-sites (except the DATA-02 caveat).
@@ -233,7 +235,9 @@ Key isolation correct. Pre-stream error handling is thorough (missing key→500,
 ### P3
 
 - **FE-09** — Array-index `key`s on dynamic lists — `Quiz.tsx:165`, `ModuleRenderer.tsx:175,217`, `UseCaseLib.tsx:74`, `Playground.tsx:266`, exercises. Benign for fixed-order/append-only lists today; fragile if they become reorderable. *Direction:* key on stable ids where available.
+  - **☑ Accepted** (`chore/p3-build-frontend`): accepted — index keys are benign for these fixed-order / append-only lists; `FailureSpotter`/`ScenarioSorter` already key by stable id.
 - **FE-10** — `PrivacySimulator` `setInterval` not cleared on unmount — `src/components/PrivacySimulator.tsx:10-23`. Dev warning + brief timer leak. *Direction:* store the id in a ref and clear in cleanup.
+  - **✅ Resolved** (`chore/p3-build-frontend`): interval id stored in a ref and cleared on unmount + before re-start.
 
 ### Passed (good)
 `App.tsx:77-99` `useMemo`s `allModules`/`allModuleIds`/`stage1a`, giving `useProgress`'s reconcile effect a stable array dep (no re-run-per-render). All async effects use a `cancelled` cleanup flag. `gating.ts:28` guards `total>0` so an empty/loading curriculum can't wrongly unlock Stage 2; `App.tsx:104-107` double-guards locked selection. `useProgress` keeps optimistic state on write failure with a dismissible error. Rules-of-Hooks: clean across all audited files (`Quiz`/`PromptLab` early-return *after* all hooks). Empty quiz handled (`Quiz.tsx:59`).
@@ -277,8 +281,11 @@ Key isolation correct. Pre-stream error handling is thorough (missing key→500,
 ### P3
 
 - **A11Y-14** — `prefers-reduced-motion` honored for only one custom class; framer-motion entrances, infinite spinners, blinking cursor not gated — `src/styles/globals.css:592-597` + components. SC 2.3.3/2.2.2. *Direction:* `MotionConfig reducedMotion="user"` + extend the media query.
+  - **✅ Resolved** (`chore/p3-build-frontend`): `<MotionConfig reducedMotion="user">` at the app root + extended the reduced-motion CSS to neutralize `animate-spin`/`pulse`/`bounce`/`ping`.
 - **A11Y-15** — Disabled buttons rely on `opacity-50` (may drop white-on-color text below contrast) — `Quiz.tsx:224`, `LockedNotice.tsx:38`, etc. (Disabled controls are 1.4.3-exempt; readability nit.)
+  - **☑ Accepted** (`chore/p3-build-frontend`): accepted — disabled controls are exempt from SC 1.4.3; the `disabled` attribute already exposes state.
 - **A11Y-16** — Persona tooltip is hover-only / `pointer-events-none` (not keyboard/SR reachable) — `Header.tsx:71-80`. SC 1.4.13.
+  - **✅ Resolved** (`chore/p3-build-frontend`): tooltip now also reveals on `group-focus-within` (keyboard focus), not hover-only.
 
 ### Passed (good)
 `<html lang="en">` + title; Login inputs use `<label htmlFor>`+`autoComplete`; Header sign-out has `aria-label`; Google `<svg>` is `aria-hidden`; almost all controls are real `<button>`/`<a>`/`<select>` (no clickable-div traps); locked sidebar rows are non-interactive `<div aria-disabled>`; `<main>`/`<nav>`/`<aside>` landmarks present; iframe has a `title`; ⌘/Ctrl+Enter send shortcut. *(`src/base.css` is leftover coverage-report CSS, not app UI.)*
@@ -309,11 +316,17 @@ Key isolation correct. Pre-stream error handling is thorough (missing key→500,
 ### P3
 
 - **BUILD-01** — `vite` in BOTH `dependencies` and `devDependencies` — `package.json` (both `^8.0.10`). *Direction:* keep only in devDependencies.
+  - **✅ Resolved** (`chore/p3-build-frontend`): removed `vite` from `dependencies` (kept in `devDependencies`).
 - **BUILD-02** — `tsconfig` declares `paths` without `baseUrl`; the `@/*` alias is effectively unused (all imports relative) — `tsconfig.json:18-22`. *Direction:* add `baseUrl` or drop the alias.
+  - **✅ Resolved** (`chore/p3-build-frontend`): added `"baseUrl": "."` to tsconfig.
 - **TYPE-04** — `selected!` non-null assertion — `Quiz.tsx:77` (UI-guarded). *Direction:* early-return instead.
+  - **✅ Resolved** (`chore/p3-build-frontend`): already addressed in `fix/quiz-integrity` — `selected!` replaced with an early-return guard.
 - **TYPE-05** — `module.quiz!` — `ModuleRenderer.tsx:164` (guarded; `:68` does it safely with `?? []`). *Direction:* use `?? []`.
+  - **✅ Resolved** (`chore/p3-build-frontend`): `module.quiz!` → `module.quiz ?? []` in ModuleRenderer.
 - **TYPE-06** — `JSON.parse(raw) as UserProgress` unvalidated — `progressCache.ts:28`. (Same as DATA-10.)
+  - **✅ Resolved** (`chore/p3-build-frontend`): progressCache now stores a versioned envelope and shape-checks on read (see DATA-10).
 - **TYPE-07** — `e.target.value as AIPersona` — `Header.tsx:63` (options generated from the union; very low risk).
+  - **☑ Accepted** (`chore/p3-build-frontend`): accepted — `<option>` values are generated from the `AIPersona` union, so the cast cannot drift; negligible risk.
 
 ### Inventories (complete)
 - **`any` in production source:** none. (`modules.test.ts:26-33` use `as any` deliberately to test the fallback; `quiz.ts:31` and `progress.test.ts:35` are false positives in strings/comments.)

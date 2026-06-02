@@ -179,7 +179,7 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
 
       {exercise}
 
-      {hasInlineQuiz && <Quiz moduleId={module.id} questions={module.quiz!} onComplete={onComplete} />}
+      {hasInlineQuiz && <Quiz moduleId={module.id} questions={module.quiz ?? []} onComplete={onComplete} />}
 
       {showNoActivityFallback && (
         <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm text-center space-y-2">

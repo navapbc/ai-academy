@@ -69,8 +69,9 @@ export default function Header({
             ))}
           </select>
 
-          {/* Persona Tooltip */}
-          <div className="absolute top-full right-0 mt-2 w-52 p-4 bg-white border border-gray-100 rounded-2xl shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all z-50 ring-1 ring-black/5">
+          {/* Persona Tooltip — also revealed on keyboard focus of the select
+              (A11Y-16), not hover-only. */}
+          <div className="absolute top-full right-0 mt-2 w-52 p-4 bg-white border border-gray-100 rounded-2xl shadow-2xl opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none transition-all z-50 ring-1 ring-black/5">
             <div className="flex items-center gap-2 text-nava-plum mb-2 pb-2 border-b border-gray-50">
               <UserCircle className="w-3.5 h-3.5" />
               <span className="font-bold text-[10px] uppercase tracking-wider">{selectedPersonaData.label}</span>
