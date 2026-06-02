@@ -90,9 +90,11 @@ export default function Quiz({
     const score = computeScore(answers, questions);
     const passing = score === questions.length;
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
+        role="status"
+        aria-live="polite"
         className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-8 text-center"
       >
          <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center ${passing ? 'bg-green-100' : 'bg-orange-100'}`}>
@@ -168,34 +170,46 @@ export default function Quiz({
       <div className="space-y-6">
         <p className="text-lg font-medium text-gray-800 leading-tight">{currentQuestion.question}</p>
         
-        <div className="space-y-3">
-          {currentQuestion.options.map((opt, idx) => (
-            <button
-              key={idx}
-              disabled={isSubmitted}
-              onClick={() => setSelected(idx)}
-              className={`
-                w-full p-4 rounded-xl text-left text-sm font-medium transition-all border-2
-                ${selected === idx ? 'border-nava-green bg-nava-mint text-nava-green shadow-sm' : 'border-gray-100 hover:border-nava-green/30'}
-                ${isSubmitted && idx === currentQuestion.correctIndex ? 'border-green-600 bg-green-50 text-green-900' : ''}
-                ${isSubmitted && selected === idx && idx !== currentQuestion.correctIndex ? 'border-red-600 bg-red-50 text-red-900' : ''}
-              `}
-            >
-              <div className="flex items-center justify-between">
-                <span>{opt}</span>
-                {isSubmitted && idx === currentQuestion.correctIndex && <Check className="w-4 h-4 text-green-600" />}
-                {isSubmitted && selected === idx && idx !== currentQuestion.correctIndex && <X className="w-4 h-4 text-red-600" />}
-              </div>
-            </button>
-          ))}
+        {/* A11Y-01: radiogroup semantics so the single-select state + post-grade
+            correctness are exposed non-visually (not by colour/icon alone). */}
+        <div className="space-y-3" role="radiogroup" aria-label={currentQuestion.question}>
+          {currentQuestion.options.map((opt, idx) => {
+            const isAnswer = isSubmitted && idx === currentQuestion.correctIndex;
+            const wrongPick = isSubmitted && selected === idx && idx !== currentQuestion.correctIndex;
+            return (
+              <button
+                key={idx}
+                role="radio"
+                aria-checked={selected === idx}
+                disabled={isSubmitted}
+                onClick={() => setSelected(idx)}
+                className={`
+                  w-full p-4 rounded-xl text-left text-sm font-medium transition-all border-2
+                  ${selected === idx ? 'border-nava-green bg-nava-mint text-nava-green shadow-sm' : 'border-gray-100 hover:border-nava-green/30'}
+                  ${isAnswer ? 'border-green-600 bg-green-50 text-green-900' : ''}
+                  ${wrongPick ? 'border-red-600 bg-red-50 text-red-900' : ''}
+                `}
+              >
+                <div className="flex items-center justify-between">
+                  <span>{opt}</span>
+                  {isAnswer && <Check className="w-4 h-4 text-green-600" />}
+                  {wrongPick && <X className="w-4 h-4 text-red-600" />}
+                </div>
+                {isAnswer && <span className="sr-only"> (correct answer)</span>}
+                {wrongPick && <span className="sr-only"> (your answer, incorrect)</span>}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <AnimatePresence>
         {isSubmitted && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
+            role="status"
+            aria-live="polite"
             className={`p-6 rounded-2xl ${isCorrect ? 'bg-green-50/50 border border-green-100' : 'bg-red-50/50 border border-red-100'}`}
           >
             <div className="flex gap-3">

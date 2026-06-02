@@ -30,7 +30,8 @@ beforeEach(() => {
 
 async function answer(option: string, then: 'Next Question' | 'See Results') {
   const user = userEvent.setup();
-  await user.click(screen.getByRole('button', { name: option }));
+  // Options are a radiogroup (A11Y-01), so they expose role="radio".
+  await user.click(screen.getByRole('radio', { name: option }));
   await user.click(screen.getByRole('button', { name: 'Submit Answer' }));
   await user.click(screen.getByRole('button', { name: then }));
 }
@@ -39,9 +40,22 @@ describe('Quiz', () => {
   test('renders the first question and its options', () => {
     render(<Quiz moduleId="1.4" questions={questions} onComplete={() => {}} />);
     expect(screen.getByText('What is PII?')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Public info' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Personal info' })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'What is PII?' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Public info' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Personal info' })).toBeInTheDocument();
     expect(screen.getByText('Question 1 of 2')).toBeInTheDocument();
+  });
+
+  test('exposes selection via aria-checked and announces feedback (A11Y-01/03)', async () => {
+    const user = userEvent.setup();
+    render(<Quiz moduleId="1.4" questions={questions} onComplete={() => {}} />);
+    const option = screen.getByRole('radio', { name: 'Personal info' });
+    expect(option).toHaveAttribute('aria-checked', 'false');
+    await user.click(option);
+    expect(option).toHaveAttribute('aria-checked', 'true');
+    await user.click(screen.getByRole('button', { name: 'Submit Answer' }));
+    // Feedback is announced via a polite live region.
+    expect(screen.getByRole('status')).toHaveTextContent(/Correct!/i);
   });
 
   test('returns null for an empty question set', () => {

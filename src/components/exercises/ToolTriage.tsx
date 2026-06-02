@@ -105,7 +105,7 @@ export default function ToolTriage({ config, labId }: Props) {
             >
               <p className="text-sm font-medium text-gray-800 leading-relaxed">{c.text}</p>
 
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2" role="radiogroup" aria-label={`Best tool for: ${c.text}`}>
                 {tools.map((t) => {
                   const selected = picks[i] === t.id;
                   const isAnswer = graded && t.id === c.tool;
@@ -113,6 +113,8 @@ export default function ToolTriage({ config, labId }: Props) {
                   return (
                     <button
                       key={t.id}
+                      role="radio"
+                      aria-checked={selected}
                       disabled={graded}
                       onClick={() => setPick(i, t.id)}
                       className={`text-left text-sm font-medium rounded-xl px-4 py-2.5 border-2 transition-all ${
@@ -130,6 +132,8 @@ export default function ToolTriage({ config, labId }: Props) {
                         {isAnswer && <Check className="w-4 h-4 text-green-600" />}
                         {wrongPick && <X className="w-4 h-4 text-red-600" />}
                       </div>
+                      {isAnswer && <span className="sr-only"> (correct answer)</span>}
+                      {wrongPick && <span className="sr-only"> (your answer, incorrect)</span>}
                     </button>
                   );
                 })}
@@ -140,6 +144,8 @@ export default function ToolTriage({ config, labId }: Props) {
                   <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
+                    role="status"
+                    aria-live="polite"
                     className={`flex gap-3 rounded-xl p-4 ${correct ? 'bg-green-100/60' : 'bg-red-100/50'}`}
                   >
                     <div
@@ -171,7 +177,7 @@ export default function ToolTriage({ config, labId }: Props) {
 
       {graded ? (
         <div className="flex items-center justify-between border-t border-gray-100 pt-6">
-          <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+          <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm font-bold text-gray-700">
             <ShieldCheck className="w-5 h-5 text-nava-green" />
             You scored {score} / {cases.length}
           </div>
