@@ -9,7 +9,7 @@ import { BRANDING, injectBranding } from '../branding';
 import { useAuth } from '../lib/auth';
 import { fetchQuizSummary, type QuizResult } from '../lib/progress';
 import PrivacySimulator from './PrivacySimulator';
-import PromptLab from './PromptLab';
+import Lab from './Lab';
 import Quiz from './Quiz';
 import UseCaseLib from './UseCaseLib';
 import ScenarioSorter from './ScenarioSorter';
@@ -89,9 +89,10 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
     switch (module.labConfig?.kind) {
       case 'prompt-construction':
         return (
-          <PromptLab
+          <Lab
+            config={module.labConfig}
+            labId={module.cellId}
             onComplete={onComplete}
-            labConfig={module.labConfig}
             selectedPersona={selectedPersona}
           />
         );
