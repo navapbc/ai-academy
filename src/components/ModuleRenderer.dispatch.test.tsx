@@ -28,6 +28,7 @@ vi.mock('./exercises/Critique', () => ({ default: () => <div>STUB:Critique</div>
 vi.mock('./exercises/Synthesis', () => ({ default: () => <div>STUB:Synthesis</div> }));
 vi.mock('./exercises/OutputAudit', () => ({ default: () => <div>STUB:OutputAudit</div> }));
 vi.mock('./exercises/Calibration', () => ({ default: () => <div>STUB:Calibration</div> }));
+vi.mock('./exercises/VoiceEdit', () => ({ default: () => <div>STUB:VoiceEdit</div> }));
 
 const base: Module = {
   id: '1.x',
@@ -79,6 +80,7 @@ describe('renderExercise — dispatch by labConfig.kind', () => {
     ['synthesis', 'STUB:Synthesis'],
     ['output-audit', 'STUB:OutputAudit'],
     ['calibration', 'STUB:Calibration'],
+    ['voice-edit', 'STUB:VoiceEdit'],
   ];
   test.each(kinds)('kind %s renders %s', (kind, marker) => {
     renderModule({ type: 'lab', labConfig: { kind } as LabConfig });

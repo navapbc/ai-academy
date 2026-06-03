@@ -24,6 +24,7 @@ import Critique from './exercises/Critique';
 import Synthesis from './exercises/Synthesis';
 import OutputAudit from './exercises/OutputAudit';
 import Calibration from './exercises/Calibration';
+import VoiceEdit from './exercises/VoiceEdit';
 
 interface Props {
   module: Module;
@@ -131,6 +132,11 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         // Auto-graded practice (P4.3c) — renders above the quiz, which remains
         // the completion gate; no onComplete (see CalibrationConfig).
         return <Calibration config={module.labConfig} labId={module.cellId} />;
+      case 'voice-edit':
+        // Graded practice (P4.4b) — generate an AI draft, revise it AI-off, graded
+        // in place; renders above the quiz, which remains the completion gate; no
+        // onComplete (see VoiceEditConfig).
+        return <VoiceEdit config={module.labConfig} labId={module.cellId} />;
       default:
         return null;
     }

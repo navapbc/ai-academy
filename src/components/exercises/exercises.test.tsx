@@ -10,6 +10,7 @@ import ReflectionCapture from './ReflectionCapture';
 import OutputAudit from './OutputAudit';
 import Calibration from './Calibration';
 import Synthesis from './Synthesis';
+import VoiceEdit from './VoiceEdit';
 import type {
   DataClassifierConfig,
   ToolTriageConfig,
@@ -19,6 +20,7 @@ import type {
   OutputAuditConfig,
   CalibrationConfig,
   SynthesisConfig,
+  VoiceEditConfig,
 } from '../../types';
 
 // The graded practice exercises. They render after the lesson, auto-grade
@@ -279,6 +281,22 @@ describe('Synthesis', () => {
     const onComplete = vi.fn();
     // @ts-expect-error onComplete is intentionally not part of Synthesis's props
     render(<Synthesis config={config} labId="2.7" onComplete={onComplete} />);
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+});
+
+describe('VoiceEdit', () => {
+  const config: VoiceEditConfig = {
+    kind: 'voice-edit',
+    brief: { instruction: 'Turn this case note into a plain-language notice.' },
+    source: { label: 'Internal case note', bodyMd: 'Submit Form CCS-9 by August 15, 2026.' },
+    rubric: { anchors: [{ id: 'a', label: 'Keep every specific', description: 'Keeps it.' }] },
+  };
+
+  test('does not accept an onComplete prop (the quiz is the gate, not this exercise)', () => {
+    const onComplete = vi.fn();
+    // @ts-expect-error onComplete is intentionally not part of VoiceEdit's props
+    render(<VoiceEdit config={config} labId="2.6" onComplete={onComplete} />);
     expect(onComplete).not.toHaveBeenCalled();
   });
 });
