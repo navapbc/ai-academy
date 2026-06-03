@@ -27,6 +27,7 @@ import Calibration from './exercises/Calibration';
 import VoiceEdit from './exercises/VoiceEdit';
 import PromptEval from './exercises/PromptEval';
 import IterationLab from './exercises/IterationLab';
+import PairedCalibration from './exercises/PairedCalibration';
 
 interface Props {
   module: Module;
@@ -153,6 +154,8 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         // output; renders above the quiz, which remains the completion gate; no
         // onComplete (see IterationConfig).
         return <IterationLab config={module.labConfig} labId={module.cellId} />;
+      case 'paired-calibration':
+        return <PairedCalibration config={module.labConfig} labId={module.cellId} />;
       default:
         return null;
     }
