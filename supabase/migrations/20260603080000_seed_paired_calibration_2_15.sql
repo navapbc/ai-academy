@@ -20,4 +20,4 @@ $json$::jsonb,
     status = 'in_review',
     version = version + 1,
     updated_at = now()
-where cell_id = '2.15';
+where cell_id = '2.15' and lab_config_json is null;

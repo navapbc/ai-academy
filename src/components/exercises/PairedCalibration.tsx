@@ -119,8 +119,8 @@ export default function PairedCalibration({ config, labId }: Props) {
           offOutput,
           onPrompt,
           onResponse,
-          offDefects: Number(offDefects) || 0,
-          onDefects: Number(onDefects) || 0,
+          offDefects: Math.max(0, Number(offDefects) || 0),
+          onDefects: Math.max(0, Number(onDefects) || 0),
           estimatePct,
           actualSpeedupPct: r.actualSpeedupPct,
           gapPct: r.gapPct,
@@ -334,7 +334,7 @@ export default function PairedCalibration({ config, labId }: Props) {
             <p className="text-lg font-black text-nava-plum">Calibration gap: {result.gapPct} points</p>
             <p className="text-xs text-gray-500 leading-relaxed">
               That gap is your perception-vs-reality number — discount your own speed sense by about that
-              much. Defects: {Number(offDefects) || 0} (no-AI) vs {Number(onDefects) || 0} (Claude).
+              much. Defects: {Math.max(0, Number(offDefects) || 0)} (no-AI) vs {Math.max(0, Number(onDefects) || 0)} (Claude).
             </p>
           </div>
           {saveError && <p className="text-xs text-red-600 font-medium">{saveError}</p>}
