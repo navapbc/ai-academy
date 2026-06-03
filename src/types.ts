@@ -341,6 +341,39 @@ export interface VoiceEditConfig {
   rubric: GradingRubric;
 }
 
+/**
+ * 2.10 prompt-eval (P4.5b): a test-driven / constraint-first prompting exercise.
+ * The learner reads a RECURRING task + the constraints to encode + a small seeded
+ * test set (2 complete records + 1 edge case = a record with a missing field), then
+ * writes ONE reusable, constraint-first prompt and RUNS it live (`streamChat`, one
+ * call per case) against each test input, collecting the outputs. On submit the
+ * prompt + its per-case outputs go to the P4.2 LLM-judge ({brief, sections}) — one
+ * section for the prompt plus one per case — and the anchor-scored result renders in
+ * place via GradeResultCard. This teaches cell 2.10's point: constraint-first
+ * prompting states the rules (length/format, must-include, must-exclude) before the
+ * ask, and test-driven prompting judges each result against those rules across
+ * cases, including an edge case a good prompt FLAGS rather than inventing data for.
+ * Reuses the VoiceEdit (#52) streaming pattern + the #48 judge + GradeResultCard.
+ * Like the other Stage-1b/2 exercises this is graded PRACTICE that records a
+ * lab_submissions row (`transcript.kind:'prompt-eval'`) — it does NOT gate
+ * completion (the inline quiz does), so the component takes no onComplete prop.
+ */
+export interface PromptEvalConfig {
+  kind: 'prompt-eval';
+  title?: string; // exercise header; generic fallback if absent
+  subtitle?: string;
+  /** The recurring task + the constraints to encode (shown in the brief). */
+  brief: { instruction: string; constraints?: string[] };
+  /**
+   * The seeded test set: 2 normal records + 1 edge case. `isEdge` marks the edge
+   * case (a record with a missing field) so the UI + the learner can see which
+   * input genuinely stresses the prompt; `note` is an optional per-case hint.
+   */
+  testCases: { id: string; label: string; input: string; note?: string; isEdge?: boolean }[];
+  /** P4.2 anchors: what a good reusable, constraint-first prompt does (judge-scored 0/1/2). */
+  rubric: GradingRubric;
+}
+
 export type LabConfig =
   | PromptConstructionConfig
   | DataClassifierConfig
@@ -354,7 +387,8 @@ export type LabConfig =
   | SynthesisConfig
   | OutputAuditConfig
   | CalibrationConfig
-  | VoiceEditConfig;
+  | VoiceEditConfig
+  | PromptEvalConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];
