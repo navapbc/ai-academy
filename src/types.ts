@@ -229,6 +229,29 @@ export interface CritiqueConfig {
   rubric: GradingRubric;
 }
 
+/**
+ * 2.7 synthesis (P4.4a): the learner reads a set of source excerpts (synthetic
+ * user-interview notes) in which most participants agree but one or two dissent,
+ * and writes a synthesis that PRESERVES the minority view instead of flattening
+ * it into a tidy false consensus. Graded by the P4.2 LLM-judge against `rubric`;
+ * the anchor-scored result renders in place. Structurally the critique's sibling
+ * (brief + one sourced markdown block + free-text + judge → GradeResultCard) and
+ * built on the same shared component. Graded PRACTICE that records a
+ * lab_submissions row (`transcript.kind:'synthesis'`) — it does NOT gate
+ * completion (the inline quiz does), so the component takes no onComplete prop.
+ */
+export interface SynthesisConfig {
+  kind: 'synthesis';
+  title?: string; // exercise header; generic fallback if absent
+  subtitle?: string;
+  /** What the learner must do. */
+  brief: { instruction: string };
+  /** The excerpts to synthesize (e.g. interview notes), rendered as markdown. */
+  sources: { label: string; bodyMd: string };
+  /** P4.2 anchors: what a good synthesis preserves. */
+  rubric: GradingRubric;
+}
+
 /** A learner's per-claim verdict in the output-audit exercise; also the answer-key value. */
 export type AuditStatus = 'supported' | 'fabricated';
 
@@ -298,6 +321,7 @@ export type LabConfig =
   | HarmRubricConfig
   | SignoffConfig
   | CritiqueConfig
+  | SynthesisConfig
   | OutputAuditConfig
   | CalibrationConfig;
 

@@ -9,6 +9,7 @@ import ScenarioExercise from './ScenarioExercise';
 import ReflectionCapture from './ReflectionCapture';
 import OutputAudit from './OutputAudit';
 import Calibration from './Calibration';
+import Synthesis from './Synthesis';
 import type {
   DataClassifierConfig,
   ToolTriageConfig,
@@ -17,6 +18,7 @@ import type {
   ReflectionConfig,
   OutputAuditConfig,
   CalibrationConfig,
+  SynthesisConfig,
 } from '../../types';
 
 // The graded practice exercises. They render after the lesson, auto-grade
@@ -261,6 +263,22 @@ describe('Calibration', () => {
     const onComplete = vi.fn();
     // @ts-expect-error onComplete is intentionally not part of Calibration's props
     render(<Calibration config={config} labId="2.8" onComplete={onComplete} />);
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+});
+
+describe('Synthesis', () => {
+  const config: SynthesisConfig = {
+    kind: 'synthesis',
+    brief: { instruction: 'Synthesize these notes into themes for the readout.' },
+    sources: { label: 'Interview notes', bodyMd: 'P1 — positive.\n\nP7 — could not finish.' },
+    rubric: { anchors: [{ id: 'a', label: 'Surface the dissenting voice', description: 'Keeps it.' }] },
+  };
+
+  test('does not accept an onComplete prop (the quiz is the gate, not this exercise)', () => {
+    const onComplete = vi.fn();
+    // @ts-expect-error onComplete is intentionally not part of Synthesis's props
+    render(<Synthesis config={config} labId="2.7" onComplete={onComplete} />);
     expect(onComplete).not.toHaveBeenCalled();
   });
 });
