@@ -20,7 +20,51 @@ npm install
 npm run dev
 ```
 
-## Local development
+### Local Development
+
+The full stack is three pieces: the Supabase backend, the Edge Functions (the
+Claude proxy), and the Vite frontend. **Docker Desktop must be running.**
+
+**One-time setup** (skip if your `.env` files already exist — see
+[Local development — setup & configuration](#local-development--setup--configuration)
+for what goes in them):
+
+```bash
+npm install
+cp .env.example .env                                   # frontend + Supabase + Google SSO vars
+cp supabase/functions/.env.example supabase/functions/.env  # set ANTHROPIC_API_KEY here
+```
+
+**Run the full stack** — use three terminals; terminals 2 and 3 stay running:
+
+```bash
+# Terminal 1 — local Supabase stack (Postgres + Auth + Studio)
+npx supabase start
+
+# Terminal 2 — Edge Functions (the server-side Claude proxy; AI features 503 without it)
+npx supabase functions serve --env-file supabase/functions/.env
+
+# Terminal 3 — frontend
+npm run dev
+```
+
+Then open **http://localhost:3000**. Studio (browse the DB) is at
+**http://127.0.0.1:54323**.
+
+Useful extras:
+
+```bash
+npx supabase status      # show local URLs + keys; confirm services are Up
+npx supabase stop        # stop the stack (preserves DB data)
+npm run lint             # tsc --noEmit && eslint
+npm test                 # vitest run
+```
+
+> Sign-in is Google SSO restricted to `@navapbc.com`. For local work without
+> Google configured, use the dev-only email/password fallback with the seeded
+> demo user `demo@navapbc.com` / `demo-password`.
+
+## Local development — setup & configuration
 
 The app uses a fully local Supabase backend (Postgres + Auth + Studio) run via
 the Supabase CLI and Docker.
