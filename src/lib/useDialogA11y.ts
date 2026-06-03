@@ -13,6 +13,13 @@ export function useDialogA11y<T extends HTMLElement>(
 ) {
   const ref = useRef<T>(null);
 
+  // Keep the latest onClose without making it an effect dependency. Callers
+  // typically pass an inline arrow (`() => setIsOpen(false)`), which is a new
+  // reference every render; depending on it would re-run this effect on every
+  // keystroke and re-steal focus to the first focusable (the close button).
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!isOpen) return;
     const node = ref.current;
@@ -27,7 +34,7 @@ export function useDialogA11y<T extends HTMLElement>(
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key === 'Tab' && node) {
@@ -54,7 +61,7 @@ export function useDialogA11y<T extends HTMLElement>(
       // Restore focus to whatever opened the dialog.
       previouslyFocused?.focus?.();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   return ref;
 }
