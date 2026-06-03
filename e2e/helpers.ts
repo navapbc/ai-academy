@@ -42,6 +42,32 @@ export async function stubClaude(page: Page, reply: string) {
   });
 }
 
+/**
+ * Intercepts the `grade` Edge Function (LLM-as-judge) and returns a canned JSON
+ * verdict — the shape src/lib/grading.ts reads ({ perAnchor, overall, maxOverall };
+ * the client stamps grader:'llm'). No ANTHROPIC_API_KEY needed. Mirrors stubClaude.
+ */
+export async function stubGrade(
+  page: Page,
+  verdict: {
+    perAnchor: { id: string; label: string; score: number; max: number; rationale: string }[];
+    overall: number;
+    maxOverall: number;
+  },
+) {
+  await page.route('**/functions/v1/grade', async (route) => {
+    if (route.request().method() === 'OPTIONS') {
+      await route.fulfill({ status: 200, body: 'ok' });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(verdict),
+    });
+  });
+}
+
 /** Reads the supabase access token the app stored in localStorage after sign-in. */
 async function accessToken(page: Page): Promise<string> {
   return page.evaluate(() => {

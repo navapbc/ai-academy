@@ -167,12 +167,12 @@ export default function Critique({ config, labId }: Props) {
 
       {/* Anchor-scored result (P4.2 judge) — provisional, pending review (P5.1). */}
       {grading && (
-        <p role="status" aria-live="polite" className="text-xs text-gray-500 flex items-center gap-2">
+        <div role="status" aria-live="polite" className="text-xs text-gray-500 flex items-center gap-2">
           <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
             <Sparkles className="w-3.5 h-3.5" />
           </motion.div>
           Grading your critique…
-        </p>
+        </div>
       )}
       {gradeError && <p role="status" aria-live="polite" className="text-xs text-gray-500">{gradeError}</p>}
       {gradeResult && <GradeResultCard result={gradeResult} />}
