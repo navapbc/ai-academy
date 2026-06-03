@@ -26,6 +26,7 @@ import OutputAudit from './exercises/OutputAudit';
 import Calibration from './exercises/Calibration';
 import VoiceEdit from './exercises/VoiceEdit';
 import PromptEval from './exercises/PromptEval';
+import IterationLab from './exercises/IterationLab';
 
 interface Props {
   module: Module;
@@ -146,6 +147,12 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         // run it against the seeded test cases, graded in place; renders above the
         // quiz, which remains the completion gate; no onComplete (see PromptEvalConfig).
         return <PromptEval config={module.labConfig} labId={module.cellId} />;
+      case 'iteration':
+        // Graded practice (P4.5c) — a multi-turn refinement conversation; the judge
+        // scores the learner's iteration (their steering turns), not the final
+        // output; renders above the quiz, which remains the completion gate; no
+        // onComplete (see IterationConfig).
+        return <IterationLab config={module.labConfig} labId={module.cellId} />;
       default:
         return null;
     }
