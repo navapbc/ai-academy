@@ -374,6 +374,37 @@ export interface PromptEvalConfig {
   rubric: GradingRubric;
 }
 
+/**
+ * 2.4 iteration (P4.5c): a multi-turn refinement exercise. The learner conducts a
+ * real back-and-forth conversation with Claude toward a constrained goal — each turn
+ * sends the GROWING messages[] array to `streamChat`, accumulating
+ * [user, assistant, user, assistant, …]. Once they've taken at least `minTurns`
+ * turns, they submit the whole conversation and the P4.2 LLM-judge ({brief,
+ * sections}) scores the QUALITY OF THE LEARNER'S ITERATION — their steering turns
+ * (specificity, building across turns, stress-testing/catching a weakness, knowing
+ * when it's done) — NOT the non-deterministic final output. This teaches cell 2.4's
+ * point: iteration is treating an AI conversation as a loop, not a vending machine,
+ * and it's the behavioral marker present in ~86% of effective conversations. Reuses
+ * streamChat (which already takes a messages[] array) + the VoiceEdit/PromptEval
+ * streaming pattern + the #48 judge + GradeResultCard. Like the other Stage-1b/2
+ * exercises this is graded PRACTICE that records a lab_submissions row
+ * (`transcript.kind:'iteration'`) — it does NOT gate completion (the inline quiz
+ * does), so the component takes no onComplete prop.
+ */
+export interface IterationConfig {
+  kind: 'iteration';
+  title?: string; // exercise header; generic fallback if absent
+  subtitle?: string;
+  /** The goal + the constraints the first output tends to miss (so iteration is needed). */
+  brief: { instruction: string; constraints?: string[] };
+  /** Optional seeded first-prompt hint shown above the input. */
+  starter?: string;
+  /** Minimum learner turns before Submit is enabled (e.g. 3). */
+  minTurns: number;
+  /** P4.2 anchors — written about the learner's ITERATION (judge-scored 0/1/2). */
+  rubric: GradingRubric;
+}
+
 export type LabConfig =
   | PromptConstructionConfig
   | DataClassifierConfig
@@ -388,7 +419,8 @@ export type LabConfig =
   | OutputAuditConfig
   | CalibrationConfig
   | VoiceEditConfig
-  | PromptEvalConfig;
+  | PromptEvalConfig
+  | IterationConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];
