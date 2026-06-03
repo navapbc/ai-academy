@@ -138,6 +138,55 @@ describe('ScenarioExercise (disclosure-builder / regulatory-check)', () => {
   });
 });
 
+describe('ScenarioExercise (context-diagnostic — 2.5, P4.5a)', () => {
+  // Same component, third kind: a context-window diagnostic. Confirms the kind
+  // routes through the shared grade/why/takeaway/record path with no special-casing.
+  const config: ScenarioExerciseConfig = {
+    kind: 'context-diagnostic',
+    items: [
+      {
+        prompt: 'The model contradicts a rule it stated correctly 40 minutes ago.',
+        options: ['Switch tools', 'Start a fresh thread and re-paste the rule', 'It will self-correct', 'Paste the whole manual'],
+        correctIndex: 1,
+        why: 'The fact scrolled out of the window; restart with just the rule.',
+      },
+      {
+        prompt: 'You have one narrow eligibility question and an 80-page manual.',
+        options: ['Paste the whole manual', 'Paste only the relevant section', 'Paste nothing', 'Split it across messages'],
+        correctIndex: 1,
+        why: 'Irrelevant context pulls the answer off target.',
+      },
+    ],
+    takeaway: {
+      title: 'Working with the context window — quick reference',
+      intro: 'Keep these moves handy.',
+    },
+  };
+
+  test('grades a correct + a wrong pick, reveals the why, shows the quick reference, and records (labId 2.5)', async () => {
+    const user = userEvent.setup();
+    render(<ScenarioExercise config={config} labId="2.5" />);
+
+    expect(screen.getByText('The model contradicts a rule it stated correctly 40 minutes ago.')).toBeInTheDocument();
+
+    // Item 1 correct, item 2 wrong (pick "Paste the whole manual" → correct is index 1).
+    const groups = screen.getAllByRole('radiogroup');
+    await user.click(within(groups[0]).getByRole('radio', { name: 'Start a fresh thread and re-paste the rule' }));
+    await user.click(within(groups[1]).getByRole('radio', { name: 'Paste the whole manual' }));
+    await user.click(screen.getByRole('button', { name: 'Submit answers' }));
+
+    expect(screen.getByText('You scored 1 / 2')).toBeInTheDocument();
+    expect(screen.getByText('Irrelevant context pulls the answer off target.')).toBeInTheDocument();
+    expect(screen.getByText('Working with the context window — quick reference')).toBeInTheDocument();
+
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({
+      labId: '2.5',
+      status: 'submitted',
+      transcript: expect.objectContaining({ score: 1, maxScore: 2 }),
+    })));
+  });
+});
+
 describe('ReflectionCapture', () => {
   const config: ReflectionConfig = {
     kind: 'reflection',
