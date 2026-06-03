@@ -21,6 +21,7 @@ import ReflectionCapture from './exercises/ReflectionCapture';
 import HarmRubric from './exercises/HarmRubric';
 import SignoffChecklist from './exercises/SignoffChecklist';
 import Critique from './exercises/Critique';
+import Synthesis from './exercises/Synthesis';
 import OutputAudit from './exercises/OutputAudit';
 import Calibration from './exercises/Calibration';
 
@@ -118,6 +119,10 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         // Graded practice (P4.3b) — renders above the quiz, which remains the
         // completion gate; no onComplete (see CritiqueConfig).
         return <Critique config={module.labConfig} labId={module.cellId} />;
+      case 'synthesis':
+        // Graded practice (P4.4a) — renders above the quiz, which remains the
+        // completion gate; no onComplete (see SynthesisConfig).
+        return <Synthesis config={module.labConfig} labId={module.cellId} />;
       case 'output-audit':
         // Auto-graded practice (P4.3a) — renders above the quiz, which remains
         // the completion gate; no onComplete (see OutputAuditConfig).
