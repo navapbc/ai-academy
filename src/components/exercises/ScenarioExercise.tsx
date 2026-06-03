@@ -23,6 +23,11 @@ const KIND_COPY: Record<ScenarioExerciseConfig['kind'], { title: string; blurb: 
     blurb:
       'For each topic, pick the statement that is accurate to put in a client response. This is graded practice — it doesn’t affect your module completion.',
   },
+  'context-diagnostic': {
+    title: 'Practice: Diagnose the context window',
+    blurb:
+      'For each AI session, pick the best diagnosis and fix. This is graded practice — it doesn’t affect your module completion.',
+  },
 };
 
 export default function ScenarioExercise({ config, labId }: Props) {

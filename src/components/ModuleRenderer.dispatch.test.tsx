@@ -75,6 +75,7 @@ describe('renderExercise — dispatch by labConfig.kind', () => {
     ['failure-spotter', 'STUB:FailureSpotter'],
     ['disclosure-builder', 'STUB:ScenarioExercise'],
     ['regulatory-check', 'STUB:ScenarioExercise'],
+    ['context-diagnostic', 'STUB:ScenarioExercise'],
     ['reflection', 'STUB:ReflectionCapture'],
     ['critique', 'STUB:Critique'],
     ['synthesis', 'STUB:Synthesis'],

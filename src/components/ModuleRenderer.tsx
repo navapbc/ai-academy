@@ -109,6 +109,9 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         return <FailureSpotter config={module.labConfig} labId={module.cellId} />;
       case 'disclosure-builder':
       case 'regulatory-check':
+      case 'context-diagnostic':
+        // 2.5 context-diagnostic (P4.5a) — auto-graded practice that records a
+        // submission; renders above the quiz, which remains the completion gate.
         return <ScenarioExercise config={module.labConfig} labId={module.cellId} />;
       case 'reflection':
         return <ReflectionCapture config={module.labConfig} labId={module.cellId} />;
