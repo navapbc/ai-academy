@@ -25,6 +25,7 @@ import Synthesis from './exercises/Synthesis';
 import OutputAudit from './exercises/OutputAudit';
 import Calibration from './exercises/Calibration';
 import VoiceEdit from './exercises/VoiceEdit';
+import PromptEval from './exercises/PromptEval';
 
 interface Props {
   module: Module;
@@ -140,6 +141,11 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         // in place; renders above the quiz, which remains the completion gate; no
         // onComplete (see VoiceEditConfig).
         return <VoiceEdit config={module.labConfig} labId={module.cellId} />;
+      case 'prompt-eval':
+        // Graded practice (P4.5b) — write one reusable, constraint-first prompt,
+        // run it against the seeded test cases, graded in place; renders above the
+        // quiz, which remains the completion gate; no onComplete (see PromptEvalConfig).
+        return <PromptEval config={module.labConfig} labId={module.cellId} />;
       default:
         return null;
     }
