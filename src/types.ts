@@ -405,6 +405,18 @@ export interface IterationConfig {
   rubric: GradingRubric;
 }
 
+/**
+ * 2.15 paired AI-on/AI-off calibration (P4.6): the learner does two comparable
+ * tasks in-app — one without AI, one with Claude — each app-timed. `offTask` is
+ * done WITHOUT AI; `onTask` (comparable, not identical) is done WITH Claude.
+ */
+export interface PairedCalibrationConfig {
+  kind: 'paired-calibration';
+  intro?: string;
+  offTask: { label: string; brief: string };
+  onTask: { label: string; brief: string };
+}
+
 export type LabConfig =
   | PromptConstructionConfig
   | DataClassifierConfig
@@ -420,7 +432,8 @@ export type LabConfig =
   | CalibrationConfig
   | VoiceEditConfig
   | PromptEvalConfig
-  | IterationConfig;
+  | IterationConfig
+  | PairedCalibrationConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];
