@@ -25,6 +25,7 @@ vi.mock('./exercises/FailureSpotter', () => ({ default: () => <div>STUB:FailureS
 vi.mock('./exercises/ScenarioExercise', () => ({ default: () => <div>STUB:ScenarioExercise</div> }));
 vi.mock('./exercises/ReflectionCapture', () => ({ default: () => <div>STUB:ReflectionCapture</div> }));
 vi.mock('./exercises/OutputAudit', () => ({ default: () => <div>STUB:OutputAudit</div> }));
+vi.mock('./exercises/Calibration', () => ({ default: () => <div>STUB:Calibration</div> }));
 
 const base: Module = {
   id: '1.x',
@@ -73,6 +74,7 @@ describe('renderExercise — dispatch by labConfig.kind', () => {
     ['regulatory-check', 'STUB:ScenarioExercise'],
     ['reflection', 'STUB:ReflectionCapture'],
     ['output-audit', 'STUB:OutputAudit'],
+    ['calibration', 'STUB:Calibration'],
   ];
   test.each(kinds)('kind %s renders %s', (kind, marker) => {
     renderModule({ type: 'lab', labConfig: { kind } as LabConfig });
