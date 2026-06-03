@@ -311,6 +311,35 @@ export interface CalibrationConfig {
   }[];
 }
 
+/**
+ * 2.6 voice-edit (P4.4b): the learner reads a dense source + a writing brief,
+ * generates an AI FIRST DRAFT live (streamChat), then revises it "AI off" in
+ * their own voice — restoring specifics the draft dropped/generalized and fixing
+ * reading level + tone. The revision is graded by the P4.2 LLM-judge against
+ * `rubric` (sections: Source + AI first draft + the revision); the anchor-scored
+ * result renders in place. This teaches cell 2.6's point: writing is the
+ * highest-volume AI use and the value is in what you do with the draft, since AI
+ * first drafts tend to flatten specifics into a generic voice. Like the other
+ * Stage-1b/2 exercises this is graded PRACTICE that records a lab_submissions row
+ * (`transcript.kind:'voice-edit'`) — it does NOT gate completion (the inline quiz
+ * does), so the component takes no onComplete prop.
+ */
+export interface VoiceEditConfig {
+  kind: 'voice-edit';
+  title?: string; // exercise header; generic fallback if absent
+  subtitle?: string;
+  /** The dense source to rewrite — contains the must-preserve specifics. */
+  source: { label: string; bodyMd: string };
+  /**
+   * The writing task + constraints (reading level, length, tone, "preserve every
+   * specific", one next step). Both seed the brief shown to the learner and the
+   * `streamChat` draft prompt.
+   */
+  brief: { instruction: string; constraints?: string[] };
+  /** P4.2 anchors: what a good revision preserves/fixes. */
+  rubric: GradingRubric;
+}
+
 export type LabConfig =
   | PromptConstructionConfig
   | DataClassifierConfig
@@ -323,7 +352,8 @@ export type LabConfig =
   | CritiqueConfig
   | SynthesisConfig
   | OutputAuditConfig
-  | CalibrationConfig;
+  | CalibrationConfig
+  | VoiceEditConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];
