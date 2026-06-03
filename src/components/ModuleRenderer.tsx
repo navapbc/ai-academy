@@ -21,6 +21,8 @@ import ReflectionCapture from './exercises/ReflectionCapture';
 import HarmRubric from './exercises/HarmRubric';
 import SignoffChecklist from './exercises/SignoffChecklist';
 import Critique from './exercises/Critique';
+import OutputAudit from './exercises/OutputAudit';
+import Calibration from './exercises/Calibration';
 
 interface Props {
   module: Module;
@@ -116,6 +118,14 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         // Graded practice (P4.3b) — renders above the quiz, which remains the
         // completion gate; no onComplete (see CritiqueConfig).
         return <Critique config={module.labConfig} labId={module.cellId} />;
+      case 'output-audit':
+        // Auto-graded practice (P4.3a) — renders above the quiz, which remains
+        // the completion gate; no onComplete (see OutputAuditConfig).
+        return <OutputAudit config={module.labConfig} labId={module.cellId} />;
+      case 'calibration':
+        // Auto-graded practice (P4.3c) — renders above the quiz, which remains
+        // the completion gate; no onComplete (see CalibrationConfig).
+        return <Calibration config={module.labConfig} labId={module.cellId} />;
       default:
         return null;
     }

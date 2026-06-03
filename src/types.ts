@@ -229,6 +229,65 @@ export interface CritiqueConfig {
   rubric: GradingRubric;
 }
 
+/** A learner's per-claim verdict in the output-audit exercise; also the answer-key value. */
+export type AuditStatus = 'supported' | 'fabricated';
+
+/**
+ * 1.2 output-audit (P4.3a): a "spot the confabulation" exercise. The learner
+ * reads a polished, realistic AI-generated artifact (rendered as markdown) and
+ * audits it claim-by-claim, marking each as `supported` (verifiable / correctly
+ * stated) or `fabricated` (confabulated / unverifiable — don't trust). It is
+ * AUTO-GRADED against the answer key (no LLM call) — the deterministic sibling
+ * of 2.2/2.3's `critique`. Like the other Stage-1b/2 exercises this is graded
+ * PRACTICE that records a lab_submissions row (`transcript.kind:'output-audit'`)
+ * — it does NOT gate completion (the inline quiz does), so the component takes
+ * no onComplete prop.
+ */
+export interface OutputAuditConfig {
+  kind: 'output-audit';
+  intro?: string;
+  /** The polished AI artifact under audit, rendered as markdown. */
+  artifact: { label: string; bodyMd: string };
+  claims: {
+    id: string;
+    text: string; // a discrete, checkable claim drawn from the artifact
+    status: AuditStatus; // the answer key ('fabricated' = confabulated/unverifiable)
+    why: string; // shown after grading
+  }[];
+}
+
+/**
+ * 2.8 calibration (P4.3c): a confidence-calibration exercise. The learner sees
+ * several outputs from the SAME AI tool across different task types/stakes and,
+ * for each, picks the right VERIFICATION POSTURE on an ordered `scale`. It is
+ * AUTO-GRADED against the answer key (no LLM call) — the deterministic sibling
+ * of 1.2's `output-audit` — and reports an OVER-/UNDER-reliance summary (where
+ * the learner trusted high-risk output too readily vs. over-verified safe
+ * output). Like the other Stage-1b/2 exercises this is graded PRACTICE that
+ * records a lab_submissions row (`transcript.kind:'calibration'`) — it does NOT
+ * gate completion (the inline quiz does), so the component takes no onComplete
+ * prop. (Distinct from the P3.5 scenario-sorter, which decides WHETHER to
+ * involve AI; this decides HOW MUCH to trust an output already received.)
+ */
+export interface CalibrationConfig {
+  kind: 'calibration';
+  intro?: string;
+  /**
+   * Verification postures, ORDERED from most-trusting (index 0) to
+   * least-trusting (last). The order is load-bearing: it defines the over/under
+   * axis — picking a lower index than the target is over-reliance (too
+   * trusting), a higher index is under-reliance (too skeptical).
+   */
+  scale: { id: string; label: string; description?: string }[];
+  items: {
+    id: string;
+    task: string; // what the SAME tool was asked to do
+    output?: string; // optional: the output, or a short description of it
+    target: string; // answer-key scale id = the calibrated posture
+    why: string; // shown after grading
+  }[];
+}
+
 export type LabConfig =
   | PromptConstructionConfig
   | DataClassifierConfig
@@ -238,7 +297,9 @@ export type LabConfig =
   | ReflectionConfig
   | HarmRubricConfig
   | SignoffConfig
-  | CritiqueConfig;
+  | CritiqueConfig
+  | OutputAuditConfig
+  | CalibrationConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];

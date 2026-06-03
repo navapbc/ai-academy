@@ -1,18 +1,22 @@
 // @vitest-environment jsdom
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DataClassifier from './DataClassifier';
 import ToolTriage from './ToolTriage';
 import FailureSpotter from './FailureSpotter';
 import ScenarioExercise from './ScenarioExercise';
 import ReflectionCapture from './ReflectionCapture';
+import OutputAudit from './OutputAudit';
+import Calibration from './Calibration';
 import type {
   DataClassifierConfig,
   ToolTriageConfig,
   FailureSpotterConfig,
   ScenarioExerciseConfig,
   ReflectionConfig,
+  OutputAuditConfig,
+  CalibrationConfig,
 } from '../../types';
 
 // The graded practice exercises. They render after the lesson, auto-grade
@@ -155,5 +159,108 @@ describe('ReflectionCapture', () => {
       labId: '1.8',
       transcript: expect.objectContaining({ kind: 'reflection' }),
     }));
+  });
+});
+
+describe('OutputAudit', () => {
+  const config: OutputAuditConfig = {
+    kind: 'output-audit',
+    intro: 'Audit each claim.',
+    artifact: { label: 'AI-generated notice', bodyMd: 'The payment standard is **$1,850 nationwide**.' },
+    claims: [
+      { id: 'c1', text: 'Governed by 24 CFR Part 982.', status: 'supported', why: 'Real, citable.' },
+      { id: 'c2', text: 'Payment standard is $1,850 nationwide.', status: 'fabricated', why: 'No fixed national figure.' },
+    ],
+  };
+
+  test('renders the artifact + claims, grades a mixed audit, reveals why, records the submission (kind=output-audit)', async () => {
+    const user = userEvent.setup();
+    render(<OutputAudit config={config} labId="1.2" />);
+
+    // Artifact rendered (markdown) and both claims shown.
+    expect(screen.getByText('AI-generated notice')).toBeInTheDocument();
+    expect(screen.getByText('Governed by 24 CFR Part 982.')).toBeInTheDocument();
+
+    // Audit: c1 correct (supported), c2 wrong (call it supported → it's fabricated).
+    const groups = screen.getAllByRole('radiogroup');
+    await user.click(within(groups[0]).getByRole('radio', { name: /^Supported/ }));
+    await user.click(within(groups[1]).getByRole('radio', { name: /^Supported/ }));
+    await user.click(screen.getByRole('button', { name: 'Submit answers' }));
+
+    expect(screen.getByText('You scored 1 / 2')).toBeInTheDocument();
+    // Per-claim rationale revealed after grading.
+    expect(screen.getByText('No fixed national figure.')).toBeInTheDocument();
+
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalled());
+    expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({
+      labId: '1.2',
+      status: 'submitted',
+      transcript: expect.objectContaining({ kind: 'output-audit', score: 1, maxScore: 2 }),
+    }));
+  });
+
+  test('does not accept an onComplete prop (the quiz is the gate, not this exercise)', () => {
+    // Structural guard: OutputAudit's Props are { config, labId } only. A TS
+    // error here (excess prop) is the real test; this also asserts no gate call.
+    const onComplete = vi.fn();
+    // @ts-expect-error onComplete is intentionally not part of OutputAudit's props
+    render(<OutputAudit config={config} labId="1.2" onComplete={onComplete} />);
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+});
+
+describe('Calibration', () => {
+  const config: CalibrationConfig = {
+    kind: 'calibration',
+    intro: 'Same tool, different tasks.',
+    scale: [
+      { id: 'use-as-is', label: 'Use as-is' },
+      { id: 'light-check', label: 'Light check' },
+      { id: 'verify-everything', label: 'Verify everything' },
+      { id: 'dont-rely', label: "Don't rely on it" },
+    ],
+    items: [
+      { id: 'easy', task: 'Reformat a list you wrote.', target: 'use-as-is', why: 'No facts at stake.' },
+      { id: 'risky', task: 'Compute an exact benefit figure for a notice.', target: 'verify-everything', why: 'Benefit math drives a determination.' },
+    ],
+  };
+
+  test('renders items + scale, grades, reveals per-item why + the over/under summary, records kind=calibration', async () => {
+    const user = userEvent.setup();
+    render(<Calibration config={config} labId="2.8" />);
+
+    expect(screen.getByText('Reformat a list you wrote.')).toBeInTheDocument();
+    const groups = screen.getAllByRole('radiogroup');
+    expect(groups).toHaveLength(2);
+
+    // easy: calibrated (use-as-is). risky: OVER-reliance (pick use-as-is, target verify-everything).
+    await user.click(within(groups[0]).getByRole('radio', { name: /Use as-is/ }));
+    await user.click(within(groups[1]).getByRole('radio', { name: /Use as-is/ }));
+    await user.click(screen.getByRole('button', { name: 'Submit answers' }));
+
+    // Summary card + per-item rationale.
+    expect(screen.getByText(/Your calibration: 1 of 2 matched/)).toBeInTheDocument();
+    expect(screen.getByText(/Over-reliance · 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Under-reliance · 0/)).toBeInTheDocument();
+    expect(screen.getByText('Benefit math drives a determination.')).toBeInTheDocument();
+
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalled());
+    expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({
+      labId: '2.8',
+      status: 'submitted',
+      transcript: expect.objectContaining({
+        kind: 'calibration',
+        score: 1,
+        maxScore: 2,
+        summary: expect.objectContaining({ over: 1, under: 0, calibrated: 1 }),
+      }),
+    }));
+  });
+
+  test('does not accept an onComplete prop (the quiz is the gate, not this exercise)', () => {
+    const onComplete = vi.fn();
+    // @ts-expect-error onComplete is intentionally not part of Calibration's props
+    render(<Calibration config={config} labId="2.8" onComplete={onComplete} />);
+    expect(onComplete).not.toHaveBeenCalled();
   });
 });
