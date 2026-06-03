@@ -20,6 +20,7 @@ import ScenarioExercise from './exercises/ScenarioExercise';
 import ReflectionCapture from './exercises/ReflectionCapture';
 import HarmRubric from './exercises/HarmRubric';
 import SignoffChecklist from './exercises/SignoffChecklist';
+import Critique from './exercises/Critique';
 import OutputAudit from './exercises/OutputAudit';
 import Calibration from './exercises/Calibration';
 
@@ -113,6 +114,10 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         return <HarmRubric config={module.labConfig} labId={module.cellId} />;
       case 'signoff-checklist':
         return <SignoffChecklist config={module.labConfig} labId={module.cellId} />;
+      case 'critique':
+        // Graded practice (P4.3b) — renders above the quiz, which remains the
+        // completion gate; no onComplete (see CritiqueConfig).
+        return <Critique config={module.labConfig} labId={module.cellId} />;
       case 'output-audit':
         // Auto-graded practice (P4.3a) — renders above the quiz, which remains
         // the completion gate; no onComplete (see OutputAuditConfig).

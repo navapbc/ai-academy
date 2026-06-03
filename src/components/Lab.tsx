@@ -5,6 +5,7 @@ import { streamChat } from '../lib/llm';
 import { CLAUDE_MODELS, DEFAULT_MODEL_ID } from '../lib/models';
 import { recordLabSubmission, saveGrade } from '../lib/progress';
 import { requestLlmGrade, type GradeResult } from '../lib/grading';
+import GradeResultCard from './GradeResultCard';
 import { useAuth } from '../lib/auth';
 import { AIPersona, LabConfig } from '../types';
 import { labHeader } from './labHeader';
@@ -92,10 +93,9 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
     setSaveError(null);
     setGradeError(null);
     try {
-      const submission = { brief: briefText, prompt, response };
       const id = await recordLabSubmission(user.id, {
         labId,
-        transcript: submission,
+        transcript: { brief: briefText, prompt, response },
         status: 'submitted',
       });
       setSaved(true);
@@ -106,7 +106,18 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
         // unmounts the lab before the grade can render.
         setGrading(true);
         try {
-          const result = await requestLlmGrade({ rubric: config.rubric, submission });
+          // The judge takes a brief + labelled sections (P4.3b). Passing these two
+          // labels keeps 2.1's judge input byte-identical to the pre-P4.3b prompt.
+          const result = await requestLlmGrade({
+            rubric: config.rubric,
+            submission: {
+              brief: briefText,
+              sections: [
+                { label: "THE LEARNER'S PROMPT", text: prompt },
+                { label: "CLAUDE'S OUTPUT FROM THAT PROMPT", text: response },
+              ],
+            },
+          });
           await saveGrade(id, result, 'reviewable');
           setGradeResult(result);
         } catch {
@@ -312,30 +323,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
             </button>
           </div>
         )}
-        {gradeResult && (
-          <div className="bg-nava-mint/30 border-2 border-nava-mint rounded-2xl p-6 space-y-4" id="grade-result">
-            <div className="flex items-center justify-between">
-              <h4 className="font-bold text-nava-plum">Anchor-scored feedback</h4>
-              <span className="text-sm font-bold text-gray-700">
-                {gradeResult.overall} / {gradeResult.maxOverall}
-              </span>
-            </div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-nava-plum/70">
-              Provisional — pending review
-            </p>
-            <ul className="space-y-3">
-              {gradeResult.perAnchor.map((a) => (
-                <li key={a.id} className="text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-semibold text-gray-800">{a.label}</span>
-                    <span className="text-xs font-bold text-gray-600">{a.score}/{a.max}</span>
-                  </div>
-                  <p className="text-xs text-gray-600 leading-relaxed">{a.rationale}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {gradeResult && <GradeResultCard result={gradeResult} />}
       </div>
     </div>
   );

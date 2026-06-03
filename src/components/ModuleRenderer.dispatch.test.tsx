@@ -24,6 +24,7 @@ vi.mock('./exercises/ToolTriage', () => ({ default: () => <div>STUB:ToolTriage</
 vi.mock('./exercises/FailureSpotter', () => ({ default: () => <div>STUB:FailureSpotter</div> }));
 vi.mock('./exercises/ScenarioExercise', () => ({ default: () => <div>STUB:ScenarioExercise</div> }));
 vi.mock('./exercises/ReflectionCapture', () => ({ default: () => <div>STUB:ReflectionCapture</div> }));
+vi.mock('./exercises/Critique', () => ({ default: () => <div>STUB:Critique</div> }));
 vi.mock('./exercises/OutputAudit', () => ({ default: () => <div>STUB:OutputAudit</div> }));
 vi.mock('./exercises/Calibration', () => ({ default: () => <div>STUB:Calibration</div> }));
 
@@ -73,6 +74,7 @@ describe('renderExercise — dispatch by labConfig.kind', () => {
     ['disclosure-builder', 'STUB:ScenarioExercise'],
     ['regulatory-check', 'STUB:ScenarioExercise'],
     ['reflection', 'STUB:ReflectionCapture'],
+    ['critique', 'STUB:Critique'],
     ['output-audit', 'STUB:OutputAudit'],
     ['calibration', 'STUB:Calibration'],
   ];
