@@ -208,6 +208,33 @@ export interface SignoffConfig {
   commitments: { id: string; text: string }[];
 }
 
+/** A learner's per-claim verdict in the output-audit exercise; also the answer-key value. */
+export type AuditStatus = 'supported' | 'fabricated';
+
+/**
+ * 1.2 output-audit (P4.3a): a "spot the confabulation" exercise. The learner
+ * reads a polished, realistic AI-generated artifact (rendered as markdown) and
+ * audits it claim-by-claim, marking each as `supported` (verifiable / correctly
+ * stated) or `fabricated` (confabulated / unverifiable — don't trust). It is
+ * AUTO-GRADED against the answer key (no LLM call) — the deterministic sibling
+ * of 2.2/2.3's `critique`. Like the other Stage-1b/2 exercises this is graded
+ * PRACTICE that records a lab_submissions row (`transcript.kind:'output-audit'`)
+ * — it does NOT gate completion (the inline quiz does), so the component takes
+ * no onComplete prop.
+ */
+export interface OutputAuditConfig {
+  kind: 'output-audit';
+  intro?: string;
+  /** The polished AI artifact under audit, rendered as markdown. */
+  artifact: { label: string; bodyMd: string };
+  claims: {
+    id: string;
+    text: string; // a discrete, checkable claim drawn from the artifact
+    status: AuditStatus; // the answer key ('fabricated' = confabulated/unverifiable)
+    why: string; // shown after grading
+  }[];
+}
+
 export type LabConfig =
   | PromptConstructionConfig
   | DataClassifierConfig
@@ -216,7 +243,8 @@ export type LabConfig =
   | ScenarioExerciseConfig
   | ReflectionConfig
   | HarmRubricConfig
-  | SignoffConfig;
+  | SignoffConfig
+  | OutputAuditConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];
