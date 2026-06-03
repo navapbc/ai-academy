@@ -208,6 +208,27 @@ export interface SignoffConfig {
   commitments: { id: string; text: string }[];
 }
 
+/**
+ * 2.2 / 2.3 critique (P4.3b): the learner reads a polished, realistic
+ * AI-generated artifact and writes a structured critique/validation of it. The
+ * critique is graded by the P4.2 LLM-judge against `rubric` and the anchor-scored
+ * result renders in place. Like the other Stage-1b/2 exercises this is graded
+ * PRACTICE that records a lab_submissions row (`transcript.kind:'critique'`) — it
+ * does NOT gate completion (the inline quiz does), so the component takes no
+ * onComplete prop.
+ */
+export interface CritiqueConfig {
+  kind: 'critique';
+  title?: string; // exercise header; generic fallback if absent
+  subtitle?: string;
+  /** What the learner must do. */
+  brief: { instruction: string };
+  /** The polished AI output under review, rendered as markdown. */
+  artifact: { label: string; bodyMd: string };
+  /** P4.2 anchors: what a good critique catches. */
+  rubric: GradingRubric;
+}
+
 export type LabConfig =
   | PromptConstructionConfig
   | DataClassifierConfig
@@ -216,7 +237,8 @@ export type LabConfig =
   | ScenarioExerciseConfig
   | ReflectionConfig
   | HarmRubricConfig
-  | SignoffConfig;
+  | SignoffConfig
+  | CritiqueConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];
