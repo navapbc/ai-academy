@@ -23,10 +23,16 @@ export interface GradeResult {
   maxOverall: number; // sum of anchor maxes
 }
 
+/** One labelled block of work the judge reads (P4.3b). */
+export interface GradeSection {
+  label: string;
+  text: string;
+}
+
 export interface GradeSubmission {
   brief: string;
-  prompt: string;
-  response: string;
+  /** Ordered labelled sections — e.g. [prompt, response] (2.1) or [artifact, critique]. */
+  sections: GradeSection[];
 }
 
 /** Calls the server-side `grade` function (LLM-as-judge) for an anchor-scored verdict. */

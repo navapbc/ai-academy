@@ -67,8 +67,17 @@ function isRubric(v: unknown): v is GradingRubric {
 }
 
 function isSubmission(v: unknown): v is GradeSubmission {
-  const s = v as Record<string, unknown>;
-  return !!s && typeof s.brief === 'string' && typeof s.prompt === 'string' && typeof s.response === 'string';
+  const s = v as { brief?: unknown; sections?: unknown };
+  return (
+    !!s &&
+    typeof s.brief === 'string' &&
+    Array.isArray(s.sections) &&
+    s.sections.length > 0 &&
+    s.sections.every((x) => {
+      const o = x as Record<string, unknown>;
+      return typeof o.label === 'string' && typeof o.text === 'string';
+    })
+  );
 }
 
 Deno.serve(async (req: Request) => {

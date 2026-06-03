@@ -4,7 +4,11 @@
 
 export interface RubricAnchor { id: string; label: string; description: string }
 export interface GradingRubric { anchors: RubricAnchor[] }
-export interface GradeSubmission { brief: string; prompt: string; response: string }
+/** One labelled block of the work the judge reads (P4.3b). */
+export interface GradeSection { label: string; text: string }
+/** A submission is a brief plus an ordered list of labelled sections. The prompt-
+ * construction lab passes [prompt, response]; a critique passes [artifact, critique]. */
+export interface GradeSubmission { brief: string; sections: GradeSection[] }
 export interface AnchorScore { id: string; label: string; score: number; max: number; rationale: string }
 export interface Verdict { perAnchor: AnchorScore[]; overall: number; maxOverall: number }
 
@@ -27,12 +31,10 @@ export function buildGradeUserMessage(rubric: GradingRubric, submission: GradeSu
     '',
     'THE BRIEF THE LEARNER WAS GIVEN:',
     submission.brief,
-    '',
-    "THE LEARNER'S PROMPT:",
-    submission.prompt,
-    '',
-    "CLAUDE'S OUTPUT FROM THAT PROMPT:",
-    submission.response,
+    // Each section renders as a blank line, its label (verbatim), then its text.
+    // Callers control the labels, so 2.1 passes its two original headers and the
+    // output stays byte-identical to the pre-P4.3b template.
+    ...submission.sections.flatMap((s) => ['', `${s.label}:`, s.text]),
     '',
     'Score each anchor now as strict JSON.',
   ].join('\n');

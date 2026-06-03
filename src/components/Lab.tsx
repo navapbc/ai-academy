@@ -92,10 +92,9 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
     setSaveError(null);
     setGradeError(null);
     try {
-      const submission = { brief: briefText, prompt, response };
       const id = await recordLabSubmission(user.id, {
         labId,
-        transcript: submission,
+        transcript: { brief: briefText, prompt, response },
         status: 'submitted',
       });
       setSaved(true);
@@ -106,7 +105,18 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
         // unmounts the lab before the grade can render.
         setGrading(true);
         try {
-          const result = await requestLlmGrade({ rubric: config.rubric, submission });
+          // The judge takes a brief + labelled sections (P4.3b). Passing these two
+          // labels keeps 2.1's judge input byte-identical to the pre-P4.3b prompt.
+          const result = await requestLlmGrade({
+            rubric: config.rubric,
+            submission: {
+              brief: briefText,
+              sections: [
+                { label: "THE LEARNER'S PROMPT", text: prompt },
+                { label: "CLAUDE'S OUTPUT FROM THAT PROMPT", text: response },
+              ],
+            },
+          });
           await saveGrade(id, result, 'reviewable');
           setGradeResult(result);
         } catch {

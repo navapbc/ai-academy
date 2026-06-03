@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { parseVerdict, type GradingRubric } from './verdict';
+import { parseVerdict, buildGradeUserMessage, type GradingRubric } from './verdict';
 
 const rubric: GradingRubric = {
   anchors: [
@@ -7,6 +7,57 @@ const rubric: GradingRubric = {
     { id: 'b', label: 'B', description: 'db' },
   ],
 };
+
+// P4.3b generalized the judge from a hardcoded prompt/response submission to a
+// neutral list of labelled sections. The prompt-construction lab (2.1) must keep
+// passing the SAME two labels so its judge input is BYTE-IDENTICAL — no grading
+// regression. Critique passes different labels.
+describe('buildGradeUserMessage', () => {
+  const oneAnchor: GradingRubric = { anchors: [{ id: 'a', label: 'A', description: 'da' }] };
+
+  test('2.1 back-compat: the two original labels render the exact legacy string', () => {
+    const msg = buildGradeUserMessage(oneAnchor, {
+      brief: 'B',
+      sections: [
+        { label: "THE LEARNER'S PROMPT", text: 'P' },
+        { label: "CLAUDE'S OUTPUT FROM THAT PROMPT", text: 'R' },
+      ],
+    });
+    expect(msg).toBe(
+      [
+        'RUBRIC ANCHORS:',
+        '- a (A): da',
+        '',
+        'THE BRIEF THE LEARNER WAS GIVEN:',
+        'B',
+        '',
+        "THE LEARNER'S PROMPT:",
+        'P',
+        '',
+        "CLAUDE'S OUTPUT FROM THAT PROMPT:",
+        'R',
+        '',
+        'Score each anchor now as strict JSON.',
+      ].join('\n'),
+    );
+  });
+
+  test('critique: renders the brief then each labelled section in order', () => {
+    const msg = buildGradeUserMessage(oneAnchor, {
+      brief: 'Critique this.',
+      sections: [
+        { label: 'Artifact under review', text: 'A polished summary.' },
+        { label: "The learner's critique", text: 'It cites an unverifiable date.' },
+      ],
+    });
+    expect(msg).toContain('THE BRIEF THE LEARNER WAS GIVEN:\nCritique this.');
+    expect(msg).toContain('Artifact under review:\nA polished summary.');
+    expect(msg).toContain("The learner's critique:\nIt cites an unverifiable date.");
+    // brief precedes the artifact, which precedes the critique.
+    expect(msg.indexOf('Critique this.')).toBeLessThan(msg.indexOf('A polished summary.'));
+    expect(msg.indexOf('A polished summary.')).toBeLessThan(msg.indexOf('It cites an unverifiable date.'));
+  });
+});
 
 describe('parseVerdict', () => {
   test('valid JSON → perAnchor + totals', () => {
