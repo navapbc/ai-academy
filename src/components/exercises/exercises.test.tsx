@@ -8,6 +8,7 @@ import FailureSpotter from './FailureSpotter';
 import ScenarioExercise from './ScenarioExercise';
 import ReflectionCapture from './ReflectionCapture';
 import OutputAudit from './OutputAudit';
+import Calibration from './Calibration';
 import type {
   DataClassifierConfig,
   ToolTriageConfig,
@@ -15,6 +16,7 @@ import type {
   ScenarioExerciseConfig,
   ReflectionConfig,
   OutputAuditConfig,
+  CalibrationConfig,
 } from '../../types';
 
 // The graded practice exercises. They render after the lesson, auto-grade
@@ -203,6 +205,62 @@ describe('OutputAudit', () => {
     const onComplete = vi.fn();
     // @ts-expect-error onComplete is intentionally not part of OutputAudit's props
     render(<OutputAudit config={config} labId="1.2" onComplete={onComplete} />);
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+});
+
+describe('Calibration', () => {
+  const config: CalibrationConfig = {
+    kind: 'calibration',
+    intro: 'Same tool, different tasks.',
+    scale: [
+      { id: 'use-as-is', label: 'Use as-is' },
+      { id: 'light-check', label: 'Light check' },
+      { id: 'verify-everything', label: 'Verify everything' },
+      { id: 'dont-rely', label: "Don't rely on it" },
+    ],
+    items: [
+      { id: 'easy', task: 'Reformat a list you wrote.', target: 'use-as-is', why: 'No facts at stake.' },
+      { id: 'risky', task: 'Compute an exact benefit figure for a notice.', target: 'verify-everything', why: 'Benefit math drives a determination.' },
+    ],
+  };
+
+  test('renders items + scale, grades, reveals per-item why + the over/under summary, records kind=calibration', async () => {
+    const user = userEvent.setup();
+    render(<Calibration config={config} labId="2.8" />);
+
+    expect(screen.getByText('Reformat a list you wrote.')).toBeInTheDocument();
+    const groups = screen.getAllByRole('radiogroup');
+    expect(groups).toHaveLength(2);
+
+    // easy: calibrated (use-as-is). risky: OVER-reliance (pick use-as-is, target verify-everything).
+    await user.click(within(groups[0]).getByRole('radio', { name: /Use as-is/ }));
+    await user.click(within(groups[1]).getByRole('radio', { name: /Use as-is/ }));
+    await user.click(screen.getByRole('button', { name: 'Submit answers' }));
+
+    // Summary card + per-item rationale.
+    expect(screen.getByText(/Your calibration: 1 of 2 matched/)).toBeInTheDocument();
+    expect(screen.getByText(/Over-reliance · 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Under-reliance · 0/)).toBeInTheDocument();
+    expect(screen.getByText('Benefit math drives a determination.')).toBeInTheDocument();
+
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalled());
+    expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({
+      labId: '2.8',
+      status: 'submitted',
+      transcript: expect.objectContaining({
+        kind: 'calibration',
+        score: 1,
+        maxScore: 2,
+        summary: expect.objectContaining({ over: 1, under: 0, calibrated: 1 }),
+      }),
+    }));
+  });
+
+  test('does not accept an onComplete prop (the quiz is the gate, not this exercise)', () => {
+    const onComplete = vi.fn();
+    // @ts-expect-error onComplete is intentionally not part of Calibration's props
+    render(<Calibration config={config} labId="2.8" onComplete={onComplete} />);
     expect(onComplete).not.toHaveBeenCalled();
   });
 });
