@@ -28,6 +28,7 @@ import VoiceEdit from './exercises/VoiceEdit';
 import PromptEval from './exercises/PromptEval';
 import IterationLab from './exercises/IterationLab';
 import PairedCalibration from './exercises/PairedCalibration';
+import DashboardCritique from './exercises/DashboardCritique';
 
 interface Props {
   module: Module;
@@ -156,6 +157,11 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         return <IterationLab config={module.labConfig} labId={module.cellId} />;
       case 'paired-calibration':
         return <PairedCalibration config={module.labConfig} labId={module.cellId} />;
+      case 'dashboard-critique':
+        // Graded practice (P4.7) — auto-keyed critique of a speed-only dashboard;
+        // renders above the quiz, which remains the completion gate; no
+        // onComplete (see DashboardCritiqueConfig).
+        return <DashboardCritique config={module.labConfig} labId={module.cellId} />;
       default:
         return null;
     }
