@@ -386,6 +386,7 @@ describe('DashboardCritique', () => {
 
     // Summary + per-signal rationale revealed after grading.
     expect(screen.getByText('You named 1 of 2 hidden signals')).toBeInTheDocument();
+    expect(screen.getByText('A third came back for correction.')).toBeInTheDocument(); // correct
     expect(screen.getByText('Net output barely moved.')).toBeInTheDocument(); // missed
     expect(screen.getByText('This is already on the dashboard.')).toBeInTheDocument(); // false flag
 
