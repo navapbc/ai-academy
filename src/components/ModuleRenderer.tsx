@@ -30,6 +30,7 @@ import PromptEval from './exercises/PromptEval';
 import IterationLab from './exercises/IterationLab';
 import PairedCalibration from './exercises/PairedCalibration';
 import DashboardCritique from './exercises/DashboardCritique';
+import UseCasePortfolio from './exercises/UseCasePortfolio';
 
 interface Props {
   module: Module;
@@ -163,6 +164,11 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         // renders above the quiz, which remains the completion gate; no
         // onComplete (see DashboardCritiqueConfig).
         return <DashboardCritique config={module.labConfig} labId={module.cellId} />;
+      case 'use-case-portfolio':
+        // Portfolio practice (P4.8) — a personal use-case library + a 4D Diligence
+        // Statement; captured (not LLM-graded) above the quiz, which remains the
+        // completion gate; no onComplete (see UseCasePortfolioConfig).
+        return <UseCasePortfolio config={module.labConfig} labId={module.cellId} />;
       default:
         return null;
     }
