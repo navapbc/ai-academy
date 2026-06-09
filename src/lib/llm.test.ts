@@ -204,6 +204,34 @@ describe('streamChat — cancellation (LLM-05)', () => {
     expect(chunks.join('')).toBe('partial');
   });
 
+  // D-05 (audit 2026-06-09): aborting while the request itself is still pending
+  // (no response yet — the fetch promise rejects with AbortError) must honor
+  // the same "resolves cleanly" contract as a mid-stream abort. This is the
+  // Playground Stop-before-first-token path.
+  test('aborting during the fetch phase (before any response) resolves cleanly', async () => {
+    const streamChat = await loadStreamChat();
+    const ac = new AbortController();
+    const fetchMock = vi.fn(
+      (_url: string, opts: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          opts.signal?.addEventListener('abort', () =>
+            reject(new DOMException('The user aborted a request.', 'AbortError')),
+          );
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const chunks: string[] = [];
+    const promise = streamChat([{ role: 'user', content: 'hi' }], { signal: ac.signal }, (t) =>
+      chunks.push(t),
+    );
+    await new Promise((r) => setTimeout(r, 10));
+    ac.abort();
+
+    await expect(promise).resolves.toBeUndefined();
+    expect(chunks).toEqual([]);
+  });
+
   test('a pre-aborted signal makes streamChat a no-op (never fetches)', async () => {
     const streamChat = await loadStreamChat();
     const fetchMock = vi.fn();

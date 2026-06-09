@@ -64,21 +64,31 @@ export async function streamChat(
   // Already cancelled before we even sent — nothing to do.
   if (options.signal?.aborted) return;
 
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/chat`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-      apikey: SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify({
-      messages,
-      system: options.system,
-      model: options.model,
-      max_tokens: options.maxTokens,
-    }),
-    signal: options.signal,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${SUPABASE_URL}/functions/v1/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        messages,
+        system: options.system,
+        model: options.model,
+        max_tokens: options.maxTokens,
+      }),
+      signal: options.signal,
+    });
+  } catch (err) {
+    // An abort while the request itself is pending (before the first byte) must
+    // honor the same contract as a mid-stream abort: resolve cleanly (D-05).
+    if (options.signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
+      return;
+    }
+    throw err;
+  }
 
   if (!response.ok || !response.body) {
     // The function returns a JSON `{ error }` on failure.

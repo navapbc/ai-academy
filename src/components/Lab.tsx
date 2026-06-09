@@ -26,6 +26,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
   const { user } = useAuth();
   const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState('');
+  const [runError, setRunError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [model, setModel] = useState<string>(DEFAULT_MODEL_ID);
   const [showTips, setShowTips] = useState(false);
@@ -58,14 +59,22 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
   const { title, subtitle } = labHeader(config);
 
   const briefText = `Task: ${brief.task}\nTarget output: ${brief.constraints.join(' · ')}.`;
-  const hasRun = response.trim().length > 0 && !isLoading;
+  // A failed run (even one that streamed partial text before erroring) is not
+  // saveable — the error string / truncated output must never become the
+  // recorded transcript or reach the judge (D-04). Re-run to get a clean output.
+  const hasRun = response.trim().length > 0 && !isLoading && !runError;
 
   const handleRun = async () => {
     if (!prompt.trim() || isLoading) return;
     setIsLoading(true);
     setResponse('');
+    setRunError(null);
     setSaved(false);
     setSaveError(null);
+    // A new run invalidates any previous grade — clear it so the old anchor
+    // scores can't render against the new output (D-13).
+    setGradeResult(null);
+    setGradeError(null);
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -78,7 +87,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
         (chunk) => { setResponse(prev => prev + chunk); },
       );
     } catch (err) {
-      setResponse(`Error: ${err instanceof Error ? err.message : 'Request to Claude failed.'}`);
+      setRunError(err instanceof Error ? err.message : 'Request to Claude failed.');
     } finally {
       setIsLoading(false);
     }
@@ -236,6 +245,11 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
                 ? <><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Sparkles className="w-4 h-4" /></motion.div> Running…</>
                 : <><Play className="w-4 h-4" /> Run prompt</>}
             </button>
+            {runError && (
+              <p role="alert" className="text-xs text-red-600 font-medium">
+                Claude couldn’t complete that run: {runError} Run the prompt again.
+              </p>
+            )}
           </div>
 
           {/* Self-check list */}
