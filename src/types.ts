@@ -482,6 +482,30 @@ export interface UseCasePortfolioConfig {
   };
 }
 
+/**
+ * P4.9 / cell 2.9 — a personal failure-mode log. Like the other Stage-2 portfolio
+ * exercises this is PRACTICE that records a lab_submissions row
+ * (`transcript.kind:'failure-log'`) and does NOT gate completion (the inline quiz
+ * does), so the component takes no onComplete prop. Captured (not LLM-graded): the
+ * learner logs dated entries — the task, what went wrong, how they caught it, and
+ * the tell to watch next time — behind a completeness gate. `targetEntries` (the
+ * "≥6 over time" goal) is shown; `minEntries` is the hard floor to record.
+ */
+export interface FailureLogConfig {
+  kind: 'failure-log';
+  intro?: string;
+  title: string;
+  helper: string;
+  /** Hard floor of complete entries to record (e.g. 3). */
+  minEntries: number;
+  /** Soft portfolio goal shown in the counter (e.g. 6, the "≥6 over time" target). */
+  targetEntries: number;
+  taskPlaceholder: string;
+  errorPlaceholder: string;
+  caughtPlaceholder: string;
+  tellPlaceholder: string;
+}
+
 export type LabConfig =
   | PromptConstructionConfig
   | DataClassifierConfig
@@ -500,7 +524,8 @@ export type LabConfig =
   | IterationConfig
   | PairedCalibrationConfig
   | DashboardCritiqueConfig
-  | UseCasePortfolioConfig;
+  | UseCasePortfolioConfig
+  | FailureLogConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];

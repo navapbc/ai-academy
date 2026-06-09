@@ -31,6 +31,7 @@ import IterationLab from './exercises/IterationLab';
 import PairedCalibration from './exercises/PairedCalibration';
 import DashboardCritique from './exercises/DashboardCritique';
 import UseCasePortfolio from './exercises/UseCasePortfolio';
+import FailureLog from './exercises/FailureLog';
 
 interface Props {
   module: Module;
@@ -169,6 +170,11 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         // Statement; captured (not LLM-graded) above the quiz, which remains the
         // completion gate; no onComplete (see UseCasePortfolioConfig).
         return <UseCasePortfolio config={module.labConfig} labId={module.cellId} />;
+      case 'failure-log':
+        // Portfolio practice (P4.9) — a dated personal failure-mode log; captured
+        // (not LLM-graded) above the quiz, which remains the completion gate; no
+        // onComplete (see FailureLogConfig).
+        return <FailureLog config={module.labConfig} labId={module.cellId} />;
       default:
         return null;
     }
