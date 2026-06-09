@@ -16,7 +16,13 @@ vi.mock('../lib/progress', () => ({ fetchQuizSummary: vi.fn(async () => ({ best:
 // hoisted vi.mock execution.
 vi.mock('./PrivacySimulator', () => ({ default: () => <div>STUB:PrivacySimulator</div> }));
 vi.mock('./Lab', () => ({ default: () => <div>STUB:Lab</div> }));
-vi.mock('./Quiz', () => ({ default: () => <div>STUB:Quiz</div> }));
+// Surfaces the `gates` prop so the 2.1 lab-gates wiring (W2-3/D8) is assertable;
+// keeps the STUB:Quiz text so the routing assertions are unaffected.
+vi.mock('./Quiz', () => ({
+  default: ({ gates = true }: { gates?: boolean }) => (
+    <div data-testid="stub-quiz" data-gates={String(gates)}>STUB:Quiz</div>
+  ),
+}));
 vi.mock('./UseCaseLib', () => ({ default: () => <div>STUB:UseCaseLib</div> }));
 vi.mock('./ScenarioSorter', () => ({ default: () => <div>STUB:ScenarioSorter</div> }));
 vi.mock('./exercises/DataClassifier', () => ({ default: () => <div>STUB:DataClassifier</div> }));
@@ -107,6 +113,24 @@ describe('completion affordance', () => {
     });
     expect(screen.queryByText(/completed this section/i)).not.toBeInTheDocument();
     expect(screen.getByText('STUB:Quiz')).toBeInTheDocument();
+    // The default: the inline quiz IS the gate (gates=true).
+    expect(screen.getByTestId('stub-quiz')).toHaveAttribute('data-gates', 'true');
+  });
+
+  // W2-3 / D8 / audit D-02: cell 2.1 — the hands-on prompt-construction lab gates,
+  // so its inline quiz is rendered as an ungated concept check (gates=false).
+  test('a prompt-construction module renders its inline quiz as practice (the lab gates, not the quiz)', () => {
+    renderModule({
+      type: 'content',
+      content: '# Lesson',
+      labConfig: { kind: 'prompt-construction' } as LabConfig,
+      quiz: [{ question: 'q', options: ['a', 'b'], correctIndex: 0, explanation: 'e' }],
+    });
+    // Both the lab and the quiz render…
+    expect(screen.getByText('STUB:Lab')).toBeInTheDocument();
+    expect(screen.getByText('STUB:Quiz')).toBeInTheDocument();
+    // …but the quiz is non-gating; the lab's own onComplete is the gate.
+    expect(screen.getByTestId('stub-quiz')).toHaveAttribute('data-gates', 'false');
   });
 
   // FE-06 — a type:'lab' module whose labConfig is missing (or whose kind is

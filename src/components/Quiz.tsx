@@ -14,10 +14,17 @@ export default function Quiz({
   moduleId,
   questions,
   onComplete,
+  gates = true,
 }: {
   moduleId: string;
   questions: QuizQuestion[];
   onComplete: () => void;
+  // Whether passing this quiz COMPLETES the module. Default true (the inline quiz
+  // is the gate for almost every cell). Set false where another instrument owns
+  // completion — cell 2.1, where the hands-on lab gates and the quiz is an
+  // ungated concept check (decision D8 / audit D-02): the attempt is still
+  // recorded, but passing shows practice copy and does not advance the module.
+  gates?: boolean;
 }) {
   const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -112,17 +119,26 @@ export default function Quiz({
         </div>
 
         {passing ? (
-          <div className="space-y-6">
+          gates ? (
+            <div className="space-y-6">
+              <p className="text-green-700 font-medium bg-green-50 p-4 rounded-xl">
+                Excellent! You have a firm grasp on these concepts. You are ready for the next phase.
+              </p>
+              <button
+                onClick={onComplete}
+                className="w-full py-4 bg-nava-green text-white rounded-2xl font-bold hover:bg-nava-plum transition-all shadow-lg"
+              >
+                Continue to Next Sprint
+              </button>
+            </div>
+          ) : (
+            // Practice concept check (e.g. 2.1) — passing is recorded but the hands-on
+            // lab is what completes the module, so there's no advance button here.
             <p className="text-green-700 font-medium bg-green-50 p-4 rounded-xl">
-              Excellent! You have a firm grasp on these concepts. You are ready for the next phase.
+              Nice — you have a firm grasp on these concepts. Complete the hands-on lab above to
+              finish this section.
             </p>
-            <button
-              onClick={onComplete}
-              className="w-full py-4 bg-nava-green text-white rounded-2xl font-bold hover:bg-nava-plum transition-all shadow-lg"
-            >
-              Continue to Next Sprint
-            </button>
-          </div>
+          )
         ) : (
           <div className="space-y-6">
              <p className="text-orange-700 font-medium bg-orange-50 p-4 rounded-xl">

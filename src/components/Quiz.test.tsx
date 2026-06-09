@@ -88,6 +88,25 @@ describe('Quiz', () => {
     expect(onComplete).toHaveBeenCalledOnce();
   });
 
+  // W2-3 / D8 / audit D-02: as an ungated concept check (gates=false, e.g. cell
+  // 2.1 where the hands-on lab gates), a passing run is still recorded but shows
+  // practice copy, offers NO advance button, and never fires onComplete.
+  test('gates=false: a passing run records the attempt but is practice — no advance, no onComplete', async () => {
+    const onComplete = vi.fn();
+    render(<Quiz moduleId="2.1" questions={questions} onComplete={onComplete} gates={false} />);
+
+    await answer('Personal info', 'Next Question');
+    await answer('4', 'See Results');
+
+    expect(screen.getByText('You scored 2 out of 2')).toBeInTheDocument();
+    await waitFor(() => expect(recordQuizAttempt).toHaveBeenCalledWith('u1', expect.objectContaining({
+      moduleId: '2.1', score: 2, maxScore: 2, passed: true,
+    })));
+    expect(screen.getByText(/Complete the hands-on lab above to finish/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Continue to Next Sprint' })).not.toBeInTheDocument();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
   test('a sub-100% run does NOT pass: no onComplete, records passed:false, offers a restart', async () => {
     const onComplete = vi.fn();
     render(<Quiz moduleId="1.4" questions={questions} onComplete={onComplete} />);
