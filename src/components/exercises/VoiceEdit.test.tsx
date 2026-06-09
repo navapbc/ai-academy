@@ -159,4 +159,38 @@ describe('VoiceEdit', () => {
     expect(recordLabSubmission).toHaveBeenCalled();
     expect(screen.queryByText('Anchor-scored feedback')).not.toBeInTheDocument();
   });
+
+  // D-03 regression (audit 2026-06-09): a stream that errors AFTER partial
+  // chunks must not present the truncated text as a finished draft. The error
+  // and the regenerate button live in the phase-1 block, which only renders
+  // while there is no "ready" draft — so the partial draft must be discarded.
+  test('a mid-stream draft failure keeps the error + regenerate visible and does not prefill the revision', async () => {
+    streamChat.mockImplementationOnce(
+      async (_messages: unknown, _options: unknown, onChunk: (t: string) => void) => {
+        onChunk('Your child care benefits are'); // partial chunks land first…
+        throw new Error('stream dropped'); // …then the stream errors
+      },
+    );
+    render(<VoiceEdit config={config} labId="2.6" />);
+    fireEvent.click(screen.getByRole('button', { name: /Generate AI first draft/i }));
+
+    // The failure is announced, and the learner can immediately regenerate.
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/Couldn’t generate a draft/));
+    expect(screen.getByRole('button', { name: /Generate AI first draft/i })).toBeInTheDocument();
+    // No phase-2: the truncated text is not shown as a draft, no revision box.
+    // (waitFor: AnimatePresence keeps the streaming panel mounted briefly
+    // during its exit animation after the draft is discarded.)
+    expect(screen.queryByLabelText(/Your revision/i)).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByText(/Your child care benefits are/)).not.toBeInTheDocument(),
+    );
+
+    // Recovery: the next generate succeeds and phase 2 opens normally.
+    fireEvent.click(screen.getByRole('button', { name: /Generate AI first draft/i }));
+    await waitFor(() =>
+      expect((screen.getByLabelText(/Your revision/i) as HTMLTextAreaElement).value).toContain(
+        'send your documents soon',
+      ),
+    );
+  });
 });

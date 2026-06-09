@@ -103,8 +103,11 @@ export default function IterationLab({ config, labId }: Props) {
       setRunError(
         `Claude couldn’t reply: ${err instanceof Error ? err.message : 'request failed.'}`,
       );
-      // Roll back the unanswered user turn so the conversation stays consistent.
+      // Roll back the unanswered user turn so the conversation stays consistent,
+      // and put the learner's text back in the composer — their steering message
+      // is the graded artifact and must survive a transient failure (D-15).
       setMessages(messages);
+      setInput(userMsg.content);
     } finally {
       setStreaming('');
       setIsStreaming(false);

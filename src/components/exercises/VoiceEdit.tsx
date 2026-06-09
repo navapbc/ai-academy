@@ -117,6 +117,10 @@ export default function VoiceEdit({ config, labId }: Props) {
       setDraftError(
         `Couldn’t generate a draft: ${err instanceof Error ? err.message : 'request to Claude failed.'}`,
       );
+      // Discard any partial stream: a non-empty draft would flip `draftReady`,
+      // unmounting the phase-1 block that holds this error message and the only
+      // regenerate button — presenting a truncated draft as finished (D-03).
+      setDraft('');
     } finally {
       setGenerating(false);
     }

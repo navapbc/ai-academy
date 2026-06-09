@@ -165,4 +165,26 @@ describe('IterationLab', () => {
     render(<IterationLab config={config} labId="2.4" onComplete={onComplete} />);
     expect(onComplete).not.toHaveBeenCalled();
   });
+
+  // D-15 regression (audit 2026-06-09): the learner's steering turns ARE the
+  // graded artifact — a transient send failure must not discard the typed text.
+  test('a failed send rolls back the turn but restores the typed message into the composer', async () => {
+    streamChat.mockRejectedValueOnce(new Error('network down'));
+    render(<IterationLab config={config} labId="2.4" />);
+    const longTurn =
+      'You dropped the $1,248.00 amount and the appeal deadline — restore both, and bring the reading level down to sixth grade.';
+    fireEvent.change(screen.getByLabelText(/Your message to Claude/i), { target: { value: longTurn } });
+    fireEvent.click(screen.getByRole('button', { name: /^Send$/i }));
+
+    await waitFor(() => expect(screen.getByText(/Claude couldn’t reply/)).toBeInTheDocument());
+    // The unanswered turn is rolled back from the log…
+    expect(streamChat).toHaveBeenCalledTimes(1);
+    // …but the text survives in the input, ready to resend.
+    expect((screen.getByLabelText(/Your message to Claude/i) as HTMLTextAreaElement).value).toBe(longTurn);
+
+    // Recovery: resending the restored text works.
+    fireEvent.click(screen.getByRole('button', { name: /^Send$/i }));
+    await waitFor(() => expect(screen.getAllByText(/ASSISTANT_DRAFT/).length).toBeGreaterThan(0));
+    expect(screen.getByText(longTurn)).toBeInTheDocument();
+  });
 });
