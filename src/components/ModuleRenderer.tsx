@@ -186,6 +186,12 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
   // forward — silently blocking gated content. We surface a clear fallback.
   const interactive = renderInteractive();
   const exercise = renderExercise();
+  // Cell 2.1 (decision D8 / audit D-02): the hands-on prompt-construction lab is
+  // the completion gate, so its inline quiz renders as an ungated concept check
+  // (the lab's onComplete still gates). Every other cell keeps the quiz as the
+  // gate. The lab is the only exercise kind that takes onComplete, so keying on
+  // it is exact and contained.
+  const labGatesCompletion = module.labConfig?.kind === 'prompt-construction';
   const hasCompletionButton =
     (module.type === 'content' || module.type === 'glossary') && !hasInlineQuiz;
   const showNoActivityFallback =
@@ -248,7 +254,12 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
 
       {hasInlineQuiz && (
         <SectionBoundary label="quiz">
-          <Quiz moduleId={module.id} questions={module.quiz ?? []} onComplete={onComplete} />
+          <Quiz
+            moduleId={module.id}
+            questions={module.quiz ?? []}
+            onComplete={onComplete}
+            gates={!labGatesCompletion}
+          />
         </SectionBoundary>
       )}
 
