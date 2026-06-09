@@ -127,24 +127,42 @@ describe.skipIf(!RUN)('Owner-only RLS', () => {
   });
 });
 
-describe.skipIf(!RUN)('Curriculum provenance (DATA-01)', () => {
-  test('the six Stage-1b cells are reconciled to published / version 1, like the rest', async () => {
+describe.skipIf(!RUN)('Curriculum provenance (DATA-01 / D-24)', () => {
+  // The original DATA-01 invariant ("all six Stage-1b cells are published/v1
+  // after the #22 reconcile") predates the P4.x lab-config seeds. The invariant
+  // that is actually intended now (audit W2-5): a Stage-1b cell's provenance is
+  // DETERMINISTIC from the migration chain —
+  //   • cells with no later lab-config seed stay reconciled: published / v1;
+  //   • cells whose interactive config landed after the reconcile carry the
+  //     not-yet-SME-reviewed marker: in_review / v2 with a non-null config
+  //     (1.2 via 20260603010000; 1.12 via 20260602240000, restored by
+  //     20260609000000 after the reconcile clobbered it — audit D-24).
+  test('Stage-1b provenance is deterministic: reconciled cells published/v1, lab-config cells in_review/v2', async () => {
     const client = freshClient();
     await client.auth.signUp({ email: uniqueEmail('prov', 'navapbc.com'), password: PASSWORD });
 
     const { data, error } = await client
       .from('modules')
-      .select('cell_id, status, version')
+      .select('cell_id, status, version, lab_config_json')
       .in('cell_id', ['1.1', '1.2', '1.7', '1.8', '1.11', '1.12']);
     expect(error).toBeNull();
     expect(data?.length).toBe(6);
+
+    const reconciled = ['1.1', '1.7', '1.8', '1.11'];
+    const labSeeded = ['1.2', '1.12'];
     for (const row of data ?? []) {
-      expect(row.status).toBe('published');
-      expect(row.version).toBe(1);
+      if (reconciled.includes(row.cell_id)) {
+        expect(row.status, `cell ${row.cell_id}`).toBe('published');
+        expect(row.version, `cell ${row.cell_id}`).toBe(1);
+      } else {
+        expect(labSeeded).toContain(row.cell_id);
+        expect(row.status, `cell ${row.cell_id}`).toBe('in_review');
+        expect(row.version, `cell ${row.cell_id}`).toBe(2);
+        expect(row.lab_config_json, `cell ${row.cell_id}`).not.toBeNull();
+      }
     }
     // (1.3 and 1.13 are legitimately 'in_review' per their own latest migrations —
-    // a deliberate authoring state, not the DATA-01 overwrite drift — so they are
-    // intentionally left untouched.)
+    // a deliberate authoring state — so they are intentionally left untouched.)
   });
 });
 

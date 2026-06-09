@@ -26,6 +26,31 @@ jobs:
       # commented job below and docs/DEBT-REPORT.md for the local run.
       - run: npm run test
 
+  # DB-gated integration tests (audit W2-5 / D-07): the RLS/trigger suite
+  # (rls.integration.test.ts, RUN_DB_TESTS=1) and the live-stack data-layer
+  # suite (progress.test.ts) previously NEVER ran in CI — which is exactly how
+  # a failing provenance invariant hid on main. This job stands up the local
+  # Supabase stack (Docker is available on ubuntu-latest; the CLI is a
+  # devDependency) and runs the full vitest suite against it, so the gated
+  # suites execute instead of skipping. No secrets: the stack generates its
+  # own local keys, read back via `supabase status -o env`.
+  db-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx supabase start
+      - name: Run vitest against the live local stack (gated suites included)
+        run: |
+          eval "$(npx supabase status -o env | grep -E '^(API_URL|PUBLISHABLE_KEY)=')"
+          export VITE_SUPABASE_URL="$API_URL"
+          export VITE_SUPABASE_ANON_KEY="$PUBLISHABLE_KEY"
+          RUN_DB_TESTS=1 npm run test
+
   # TODO(e2e): enable once CI provisions a local Supabase stack (supabase start)
   # and a seeded @navapbc.com user. The specs in e2e/ STUB the Claude/Anthropic
   # call at the network layer (intercept POST **/functions/v1/chat), so no
