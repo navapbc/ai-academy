@@ -13,6 +13,7 @@ import Synthesis from './Synthesis';
 import VoiceEdit from './VoiceEdit';
 import DashboardCritique from './DashboardCritique';
 import UseCasePortfolio from './UseCasePortfolio';
+import FailureLog from './FailureLog';
 import type {
   DataClassifierConfig,
   ToolTriageConfig,
@@ -25,6 +26,7 @@ import type {
   VoiceEditConfig,
   DashboardCritiqueConfig,
   UseCasePortfolioConfig,
+  FailureLogConfig,
 } from '../../types';
 
 // The graded practice exercises. They render after the lesson, auto-grade
@@ -493,6 +495,64 @@ describe('UseCasePortfolio (2.11, P4.8)', () => {
     const onComplete = vi.fn();
     // @ts-expect-error onComplete is intentionally not part of UseCasePortfolio's props
     render(<UseCasePortfolio config={config} labId="2.11" onComplete={onComplete} />);
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+});
+
+describe('FailureLog (2.9, P4.9)', () => {
+  const config: FailureLogConfig = {
+    kind: 'failure-log',
+    intro: 'Log how AI breaks on your work.',
+    title: 'Your personal failure-mode log',
+    helper: 'Log a real failure per entry.',
+    minEntries: 2,
+    targetEntries: 6,
+    taskPlaceholder: 'The task',
+    errorPlaceholder: 'What went wrong',
+    caughtPlaceholder: 'How you caught it',
+    tellPlaceholder: 'The tell',
+  };
+
+  const fillEntry = async (user: ReturnType<typeof userEvent.setup>, i: number, n: number) => {
+    // The date input (type=date) is set via fireEvent for reliability in jsdom.
+    fireEvent.change(document.getElementById(`failure-${i}-date`)!, { target: { value: `2026-03-0${n}` } });
+    await user.type(screen.getByLabelText('The task', { selector: `#failure-${i}-task` }), `task ${n}`);
+    await user.type(screen.getByLabelText('What went wrong', { selector: `#failure-${i}-error` }), `error ${n}`);
+    await user.type(screen.getByLabelText('How you caught it', { selector: `#failure-${i}-caught` }), `caught ${n}`);
+    await user.type(screen.getByLabelText('The tell to watch next time', { selector: `#failure-${i}-tell` }), `tell ${n}`);
+  };
+
+  test('gates submit until minEntries complete dated entries exist, then records kind=failure-log', async () => {
+    const user = userEvent.setup();
+    render(<FailureLog config={config} labId="2.9" />);
+
+    const saveBtn = () => screen.getByRole('button', { name: /Save failure log/i });
+    expect(saveBtn()).toBeDisabled();
+    expect(screen.getByText(/Before you submit/i)).toBeInTheDocument();
+
+    await fillEntry(user, 0, 1);
+    await user.click(screen.getByRole('button', { name: /Add an entry/i }));
+    await fillEntry(user, 1, 2);
+
+    await waitFor(() => expect(saveBtn()).toBeEnabled());
+    await user.click(saveBtn());
+
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalled());
+    expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({
+      labId: '2.9',
+      status: 'submitted',
+      transcript: expect.objectContaining({ kind: 'failure-log', entryCount: 2 }),
+    }));
+    // Only complete entries are recorded, so the array length matches entryCount.
+    const recorded = (recordLabSubmission.mock.calls[0] as unknown[])[1] as { transcript: { entries: unknown[] } };
+    expect(recorded.transcript.entries).toHaveLength(2);
+    expect(screen.getByText('Failure log saved')).toBeInTheDocument();
+  });
+
+  test('does not accept an onComplete prop (the quiz is the gate, not this exercise)', () => {
+    const onComplete = vi.fn();
+    // @ts-expect-error onComplete is intentionally not part of FailureLog's props
+    render(<FailureLog config={config} labId="2.9" onComplete={onComplete} />);
     expect(onComplete).not.toHaveBeenCalled();
   });
 });
