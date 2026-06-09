@@ -308,14 +308,16 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
           </div>
         )}
 
-        {/* Grade result (P4.2) — provisional, pending champion review (P5.1). */}
+        {/* Grade result (P4.2) — provisional, pending champion review (P5.1). The
+            status is announced to match the four sibling judge-graded labs (D-19);
+            a div (not p) so the spinner's motion.div isn't an invalid p > div. */}
         {grading && (
-          <p className="text-xs text-gray-500 flex items-center gap-2">
+          <div role="status" aria-live="polite" className="text-xs text-gray-500 flex items-center gap-2">
             <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
               <Sparkles className="w-3.5 h-3.5" />
             </motion.div>
             Grading your work…
-          </p>
+          </div>
         )}
         {gradeError && <GradeError note={gradeError} onRetry={retry} />}
         {config.rubric && saved && !grading && (gradeResult || gradeError) && (

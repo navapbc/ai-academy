@@ -136,6 +136,31 @@ describe('Lab — error paths (W2-4)', () => {
     expect(saveGrade).toHaveBeenCalledTimes(1);
   });
 
+  // D-19 (a11y): the grading status must be announced, matching the four sibling
+  // judge-graded labs (Lab predated the role="status" pattern).
+  test('the in-flight grading status is announced (role=status)', async () => {
+    let resolveGrade!: (v: Awaited<ReturnType<typeof requestLlmGrade>>) => void;
+    requestLlmGrade.mockImplementationOnce(() => new Promise((res) => { resolveGrade = res; }));
+    render(<Lab onComplete={() => {}} labId="2.1" config={config} />);
+    await runPrompt();
+    await waitFor(() => expect(screen.getByRole('button', { name: /Save & complete/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Save & complete/i }));
+
+    // While the judge runs, the spinner sits inside a polite live region
+    // (role="status"), matching the sibling labs.
+    const spinner = await screen.findByText(/Grading your work/i);
+    expect(spinner.closest('[role="status"]')).not.toBeNull();
+
+    // Let it finish so no pending promise leaks into the next test.
+    resolveGrade({
+      grader: 'llm',
+      perAnchor: [{ id: 'role-context', label: 'Role & context', score: 2, max: 2, rationale: 'ok' }],
+      overall: 2,
+      maxOverall: 2,
+    });
+    await waitFor(() => expect(screen.getByText(/Role & context/)).toBeInTheDocument());
+  });
+
   test('happy path still saves, grades, and offers Continue (gate semantics unchanged)', async () => {
     const onComplete = vi.fn();
     render(<Lab onComplete={onComplete} labId="2.1" config={config} />);
