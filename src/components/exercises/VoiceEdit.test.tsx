@@ -160,6 +160,23 @@ describe('VoiceEdit', () => {
     expect(screen.queryByText('Anchor-scored feedback')).not.toBeInTheDocument();
   });
 
+  // D-17: the failed grade is retryable in place — re-grade the saved revision
+  // (no regenerate, no second submission).
+  test('retrying after a grading failure re-grades the saved revision and shows the card', async () => {
+    requestLlmGrade.mockRejectedValueOnce(new Error('grader down'));
+    render(<VoiceEdit config={config} labId="2.6" />);
+    await generateDraft();
+    fireEvent.change(screen.getByLabelText(/Your revision/i), { target: { value: goodRevision } });
+    fireEvent.click(screen.getByRole('button', { name: /Save revision/i }));
+    await waitFor(() => expect(screen.getByText(/grading is unavailable/i)).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Try grading again/i }));
+    await waitFor(() => expect(screen.getByText('Anchor-scored feedback')).toBeInTheDocument());
+    expect(screen.queryByText(/grading is unavailable/i)).not.toBeInTheDocument();
+    expect(recordLabSubmission).toHaveBeenCalledTimes(1); // no second submission
+    expect(saveGrade).toHaveBeenCalledTimes(1);
+  });
+
   // D-03 regression (audit 2026-06-09): a stream that errors AFTER partial
   // chunks must not present the truncated text as a finished draft. The error
   // and the regenerate button live in the phase-1 block, which only renders
