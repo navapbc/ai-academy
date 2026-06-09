@@ -5,9 +5,10 @@ import remarkGfm from 'remark-gfm';
 import { Save, Sparkles } from 'lucide-react';
 import type { GradingRubric } from '../../types';
 import { useAuth } from '../../lib/auth';
-import { recordLabSubmission, saveGrade } from '../../lib/progress';
-import { requestLlmGrade, type GradeResult } from '../../lib/grading';
+import { recordLabSubmission } from '../../lib/progress';
+import { useLabGrading } from '../../lib/useLabGrading';
 import GradeResultCard from '../GradeResultCard';
+import GradeError from '../GradeError';
 
 // Shared "read one sourced markdown block → write free text → LLM-graded in place"
 // exercise. Both the 2.2/2.3 critique (P4.3b) and the 2.7 synthesis (P4.4a) are
@@ -62,9 +63,7 @@ export default function SourcedFreeTextLab({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [grading, setGrading] = useState(false);
-  const [gradeResult, setGradeResult] = useState<GradeResult | null>(null);
-  const [gradeError, setGradeError] = useState<string | null>(null);
+  const { grading, gradeResult, gradeError, grade, retry, reset: resetGrade } = useLabGrading();
 
   const wordCount = countWords(text);
   const reachedTarget = wordCount >= minWords;
@@ -73,7 +72,7 @@ export default function SourcedFreeTextLab({
   const handleSave = async () => {
     if (!canSave) return;
     setSaveError(null);
-    setGradeError(null);
+    resetGrade();
 
     if (!user) {
       setSaveError(`Sign in to save your ${noun} — it’s graded below.`);
@@ -91,26 +90,19 @@ export default function SourcedFreeTextLab({
 
       // Grade in place against the rubric (P4.2 judge). Completion never depends
       // on grading — the inline quiz is the gate, so a grading failure is a quiet,
-      // non-blocking note rather than an error.
-      setGrading(true);
-      try {
-        const result = await requestLlmGrade({
-          rubric,
-          submission: {
-            brief: brief.instruction,
-            sections: [
-              { label: sourceSectionLabel, text: source.bodyMd },
-              { label: `The learner's ${noun}`, text: text.trim() },
-            ],
-          },
-        });
-        await saveGrade(id, result, 'reviewable');
-        setGradeResult(result);
-      } catch {
-        setGradeError(`Grading is unavailable right now — your ${noun} is saved.`);
-      } finally {
-        setGrading(false);
-      }
+      // non-blocking note, retryable in place (D-17).
+      await grade({
+        submissionId: id,
+        rubric,
+        submission: {
+          brief: brief.instruction,
+          sections: [
+            { label: sourceSectionLabel, text: source.bodyMd },
+            { label: `The learner's ${noun}`, text: text.trim() },
+          ],
+        },
+        failureNote: `Grading is unavailable right now — your ${noun} is saved.`,
+      });
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : `Could not save your ${noun}.`);
     } finally {
@@ -200,7 +192,7 @@ export default function SourcedFreeTextLab({
           Grading your {noun}…
         </div>
       )}
-      {gradeError && <p role="status" aria-live="polite" className="text-xs text-gray-500">{gradeError}</p>}
+      {gradeError && <GradeError note={gradeError} onRetry={retry} />}
       {gradeResult && <GradeResultCard result={gradeResult} />}
     </div>
   );

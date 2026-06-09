@@ -111,4 +111,20 @@ describe('Synthesis', () => {
     expect(recordLabSubmission).toHaveBeenCalled();
     expect(screen.queryByText('Anchor-scored feedback')).not.toBeInTheDocument();
   });
+
+  // D-17: the failed grade is retryable in place — re-grade the saved synthesis
+  // (no rewrite, no second submission).
+  test('retrying after a grading failure re-grades the saved synthesis and shows the card', async () => {
+    requestLlmGrade.mockRejectedValueOnce(new Error('grader down'));
+    render(<Synthesis config={config} labId="2.7" />);
+    fireEvent.change(screen.getByLabelText(/Your synthesis/i), { target: { value: longSynthesis } });
+    fireEvent.click(screen.getByRole('button', { name: /Save/i }));
+    await waitFor(() => expect(screen.getByText(/grading is unavailable/i)).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Try grading again/i }));
+    await waitFor(() => expect(screen.getByText('Anchor-scored feedback')).toBeInTheDocument());
+    expect(screen.queryByText(/grading is unavailable/i)).not.toBeInTheDocument();
+    expect(recordLabSubmission).toHaveBeenCalledTimes(1); // no second submission
+    expect(saveGrade).toHaveBeenCalledTimes(1);
+  });
 });

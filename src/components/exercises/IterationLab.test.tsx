@@ -159,6 +159,24 @@ describe('IterationLab', () => {
     expect(screen.queryByText('Anchor-scored feedback')).not.toBeInTheDocument();
   });
 
+  // D-17: the failed grade is retryable in place — re-grade the saved
+  // conversation (no extra turns, no second submission).
+  test('retrying after a grading failure re-grades the saved conversation and shows the card', async () => {
+    requestLlmGrade.mockRejectedValueOnce(new Error('grader down'));
+    render(<IterationLab config={config} labId="2.4" />);
+    await sendTurn('Turn 1.');
+    await sendTurn('Turn 2.');
+    await sendTurn('Turn 3.');
+    fireEvent.click(await screen.findByRole('button', { name: /Submit iteration for grading/i }));
+    await waitFor(() => expect(screen.getByText(/grading is unavailable/i)).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Try grading again/i }));
+    await waitFor(() => expect(screen.getByText('Anchor-scored feedback')).toBeInTheDocument());
+    expect(screen.queryByText(/grading is unavailable/i)).not.toBeInTheDocument();
+    expect(recordLabSubmission).toHaveBeenCalledTimes(1); // no second submission
+    expect(saveGrade).toHaveBeenCalledTimes(1);
+  });
+
   test('does not accept an onComplete prop (the quiz is the gate, not this exercise)', () => {
     const onComplete = vi.fn();
     // @ts-expect-error onComplete is intentionally not part of IterationLab's props

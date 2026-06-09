@@ -114,6 +114,28 @@ describe('Lab — error paths (W2-4)', () => {
     expect(screen.queryByRole('button', { name: /^Continue$/i })).not.toBeInTheDocument();
   });
 
+  // D-17: a grading failure is recoverable in place — re-grade the already-saved
+  // submission instead of redoing the whole lab.
+  test('a grading failure offers retry; retrying re-grades the saved submission and shows the card', async () => {
+    requestLlmGrade.mockRejectedValueOnce(new Error('judge down'));
+    render(<Lab onComplete={() => {}} labId="2.1" config={config} />);
+    await runPrompt();
+    await waitFor(() => expect(screen.getByRole('button', { name: /Save & complete/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Save & complete/i }));
+
+    // The non-blocking note + a retry affordance appear; no card yet.
+    await waitFor(() => expect(screen.getByText(/grading is unavailable/i)).toBeInTheDocument());
+    expect(screen.queryByText(/Role & context/)).not.toBeInTheDocument();
+    expect(recordLabSubmission).toHaveBeenCalledTimes(1);
+
+    // Retry (judge now recovers) → anchor card renders, note clears, no second submission.
+    fireEvent.click(screen.getByRole('button', { name: /Try grading again/i }));
+    await waitFor(() => expect(screen.getByText(/Role & context/)).toBeInTheDocument());
+    expect(screen.queryByText(/grading is unavailable/i)).not.toBeInTheDocument();
+    expect(recordLabSubmission).toHaveBeenCalledTimes(1);
+    expect(saveGrade).toHaveBeenCalledTimes(1);
+  });
+
   test('happy path still saves, grades, and offers Continue (gate semantics unchanged)', async () => {
     const onComplete = vi.fn();
     render(<Lab onComplete={onComplete} labId="2.1" config={config} />);

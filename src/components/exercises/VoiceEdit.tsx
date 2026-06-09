@@ -7,9 +7,10 @@ import type { VoiceEditConfig } from '../../types';
 import { useAuth } from '../../lib/auth';
 import { streamChat } from '../../lib/llm';
 import { CLAUDE_MODELS, DEFAULT_MODEL_ID } from '../../lib/models';
-import { recordLabSubmission, saveGrade } from '../../lib/progress';
-import { requestLlmGrade, type GradeResult } from '../../lib/grading';
+import { recordLabSubmission } from '../../lib/progress';
+import { useLabGrading } from '../../lib/useLabGrading';
 import GradeResultCard from '../GradeResultCard';
+import GradeError from '../GradeError';
 
 // The voice-edit exercise (P4.4b) on cell 2.6 "AI for writing tasks". Two phases:
 //   1. Generate — read a dense source + a writing brief, then generate an AI FIRST
@@ -73,9 +74,7 @@ export default function VoiceEdit({ config, labId }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [grading, setGrading] = useState(false);
-  const [gradeResult, setGradeResult] = useState<GradeResult | null>(null);
-  const [gradeError, setGradeError] = useState<string | null>(null);
+  const { grading, gradeResult, gradeError, grade, retry, reset: resetGrade } = useLabGrading();
 
   // Cancels the in-flight draft stream on unmount / re-run (LLM-05), mirroring Lab.tsx.
   const abortRef = useRef<AbortController | null>(null);
@@ -93,8 +92,7 @@ export default function VoiceEdit({ config, labId }: Props) {
     setDraftError(null);
     // A re-generate replaces the draft and re-seeds the revision below.
     setSaved(false);
-    setGradeResult(null);
-    setGradeError(null);
+    resetGrade();
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -129,7 +127,7 @@ export default function VoiceEdit({ config, labId }: Props) {
   const handleSave = async () => {
     if (!canSave) return;
     setSaveError(null);
-    setGradeError(null);
+    resetGrade();
 
     if (!user) {
       setSaveError('Sign in to save your revision — it’s graded below.');
@@ -147,27 +145,20 @@ export default function VoiceEdit({ config, labId }: Props) {
 
       // Grade the revision against the source + the draft (P4.2 judge). Completion
       // never depends on grading — the inline quiz is the gate — so a grading
-      // failure is a quiet, non-blocking note rather than an error.
-      setGrading(true);
-      try {
-        const result = await requestLlmGrade({
-          rubric,
-          submission: {
-            brief: brief.instruction,
-            sections: [
-              { label: 'Source', text: source.bodyMd },
-              { label: 'AI first draft', text: draft },
-              { label: "The learner's revision", text: revision.trim() },
-            ],
-          },
-        });
-        await saveGrade(id, result, 'reviewable');
-        setGradeResult(result);
-      } catch {
-        setGradeError('Grading is unavailable right now — your revision is saved.');
-      } finally {
-        setGrading(false);
-      }
+      // failure is a quiet, non-blocking note, retryable in place (D-17).
+      await grade({
+        submissionId: id,
+        rubric,
+        submission: {
+          brief: brief.instruction,
+          sections: [
+            { label: 'Source', text: source.bodyMd },
+            { label: 'AI first draft', text: draft },
+            { label: "The learner's revision", text: revision.trim() },
+          ],
+        },
+        failureNote: 'Grading is unavailable right now — your revision is saved.',
+      });
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Could not save your revision.');
     } finally {
@@ -353,7 +344,7 @@ export default function VoiceEdit({ config, labId }: Props) {
           Grading your revision…
         </div>
       )}
-      {gradeError && <p role="status" aria-live="polite" className="text-xs text-gray-500">{gradeError}</p>}
+      {gradeError && <GradeError note={gradeError} onRetry={retry} />}
       {gradeResult && <GradeResultCard result={gradeResult} />}
     </div>
   );

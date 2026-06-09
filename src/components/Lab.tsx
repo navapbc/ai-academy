@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Play, Terminal, CheckCircle, FlaskConical, Lightbulb, Target, ChevronDown, Save } from 'lucide-react';
 import { streamChat } from '../lib/llm';
 import { CLAUDE_MODELS, DEFAULT_MODEL_ID } from '../lib/models';
-import { recordLabSubmission, saveGrade } from '../lib/progress';
-import { requestLlmGrade, type GradeResult } from '../lib/grading';
+import { recordLabSubmission } from '../lib/progress';
+import { useLabGrading } from '../lib/useLabGrading';
 import GradeResultCard from './GradeResultCard';
+import GradeError from './GradeError';
 import { useAuth } from '../lib/auth';
 import { AIPersona, LabConfig } from '../types';
 import { labHeader } from './labHeader';
@@ -33,9 +34,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [grading, setGrading] = useState(false);
-  const [gradeResult, setGradeResult] = useState<GradeResult | null>(null);
-  const [gradeError, setGradeError] = useState<string | null>(null);
+  const { grading, gradeResult, gradeError, grade, retry, reset: resetGrade } = useLabGrading();
   // Cancels the in-flight stream on unmount / re-run (LLM-05).
   const abortRef = useRef<AbortController | null>(null);
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -73,8 +72,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
     setSaveError(null);
     // A new run invalidates any previous grade — clear it so the old anchor
     // scores can't render against the new output (D-13).
-    setGradeResult(null);
-    setGradeError(null);
+    resetGrade();
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -100,7 +98,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
     }
     setSaving(true);
     setSaveError(null);
-    setGradeError(null);
+    resetGrade();
     try {
       const id = await recordLabSubmission(user.id, {
         labId,
@@ -112,28 +110,22 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
       if (config.rubric) {
         // Grade in place; the learner advances via "Continue" after seeing the
         // result. We must NOT onComplete() here — it advances the cursor and
-        // unmounts the lab before the grade can render.
-        setGrading(true);
-        try {
-          // The judge takes a brief + labelled sections (P4.3b). Passing these two
-          // labels keeps 2.1's judge input byte-identical to the pre-P4.3b prompt.
-          const result = await requestLlmGrade({
-            rubric: config.rubric,
-            submission: {
-              brief: briefText,
-              sections: [
-                { label: "THE LEARNER'S PROMPT", text: prompt },
-                { label: "CLAUDE'S OUTPUT FROM THAT PROMPT", text: response },
-              ],
-            },
-          });
-          await saveGrade(id, result, 'reviewable');
-          setGradeResult(result);
-        } catch {
-          setGradeError('Grading is unavailable right now — your work is saved. You can continue.');
-        } finally {
-          setGrading(false);
-        }
+        // unmounts the lab before the grade can render. A failed grade is
+        // retryable in place against this saved submission (D-17).
+        // The judge takes a brief + labelled sections (P4.3b). Passing these two
+        // labels keeps 2.1's judge input byte-identical to the pre-P4.3b prompt.
+        await grade({
+          submissionId: id,
+          rubric: config.rubric,
+          submission: {
+            brief: briefText,
+            sections: [
+              { label: "THE LEARNER'S PROMPT", text: prompt },
+              { label: "CLAUDE'S OUTPUT FROM THAT PROMPT", text: response },
+            ],
+          },
+          failureNote: 'Grading is unavailable right now — your work is saved. You can continue.',
+        });
       } else {
         // No rubric: complete immediately (unchanged one-click behavior).
         onComplete();
@@ -325,7 +317,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
             Grading your work…
           </p>
         )}
-        {gradeError && <p className="text-xs text-gray-500">{gradeError}</p>}
+        {gradeError && <GradeError note={gradeError} onRetry={retry} />}
         {config.rubric && saved && !grading && (gradeResult || gradeError) && (
           <div className="flex justify-end">
             <button

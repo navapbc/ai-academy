@@ -5,9 +5,10 @@ import type { IterationConfig } from '../../types';
 import { useAuth } from '../../lib/auth';
 import { streamChat, type ChatMessage } from '../../lib/llm';
 import { CLAUDE_MODELS, DEFAULT_MODEL_ID } from '../../lib/models';
-import { recordLabSubmission, saveGrade } from '../../lib/progress';
-import { requestLlmGrade, type GradeResult } from '../../lib/grading';
+import { recordLabSubmission } from '../../lib/progress';
+import { useLabGrading } from '../../lib/useLabGrading';
 import GradeResultCard from '../GradeResultCard';
+import GradeError from '../GradeError';
 
 // The iteration lab (P4.5c) on cell 2.4 "Iteration as the literate behavior". The
 // learner conducts a real MULTI-TURN refinement conversation with Claude toward a
@@ -52,9 +53,7 @@ export default function IterationLab({ config, labId }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [grading, setGrading] = useState(false);
-  const [gradeResult, setGradeResult] = useState<GradeResult | null>(null);
-  const [gradeError, setGradeError] = useState<string | null>(null);
+  const { grading, gradeResult, gradeError, grade, retry, reset: resetGrade } = useLabGrading();
 
   // Cancels the in-flight turn on unmount / re-send (LLM-05), mirroring Lab/VoiceEdit.
   const abortRef = useRef<AbortController | null>(null);
@@ -78,8 +77,7 @@ export default function IterationLab({ config, labId }: Props) {
     setRunError(null);
     // A new turn changes the conversation, so any prior grade no longer matches.
     setSaved(false);
-    setGradeResult(null);
-    setGradeError(null);
+    resetGrade();
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -117,7 +115,7 @@ export default function IterationLab({ config, labId }: Props) {
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSaveError(null);
-    setGradeError(null);
+    resetGrade();
 
     if (!user) {
       setSaveError('Sign in to submit your iteration — it’s graded below.');
@@ -143,27 +141,20 @@ export default function IterationLab({ config, labId }: Props) {
 
       // Grade the QUALITY OF THE ITERATION (the learner's turns), not the model's
       // output. Completion never depends on grading — the inline quiz is the gate —
-      // so a grading failure is a quiet, non-blocking note rather than an error.
-      setGrading(true);
-      try {
-        const result = await requestLlmGrade({
-          rubric,
-          submission: {
-            brief: brief.instruction,
-            sections: [
-              { label: 'The goal', text: buildGoalText(brief) },
-              { label: "The learner's turns, in order", text: learnerTurns },
-              { label: 'Full transcript', text: fullTranscript },
-            ],
-          },
-        });
-        await saveGrade(id, result, 'reviewable');
-        setGradeResult(result);
-      } catch {
-        setGradeError('Grading is unavailable right now — your conversation is saved.');
-      } finally {
-        setGrading(false);
-      }
+      // so a grading failure is a quiet, non-blocking note, retryable in place (D-17).
+      await grade({
+        submissionId: id,
+        rubric,
+        submission: {
+          brief: brief.instruction,
+          sections: [
+            { label: 'The goal', text: buildGoalText(brief) },
+            { label: "The learner's turns, in order", text: learnerTurns },
+            { label: 'Full transcript', text: fullTranscript },
+          ],
+        },
+        failureNote: 'Grading is unavailable right now — your conversation is saved.',
+      });
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Could not save your submission.');
     } finally {
@@ -360,7 +351,7 @@ export default function IterationLab({ config, labId }: Props) {
           Grading how you iterated…
         </div>
       )}
-      {gradeError && <p role="status" aria-live="polite" className="text-xs text-gray-500">{gradeError}</p>}
+      {gradeError && <GradeError note={gradeError} onRetry={retry} />}
       <AnimatePresence>{gradeResult && <GradeResultCard result={gradeResult} />}</AnimatePresence>
     </div>
   );
