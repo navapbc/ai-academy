@@ -33,6 +33,7 @@ const base: Module = {
   content: '# Lesson body text',
   phaseId: 'stage-2',
   stage: '2',
+  status: 'published',
   dimension: ['Diligence'],
   evidenceType: 'performance-task',
   selfReportValidity: 'medium',

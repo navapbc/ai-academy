@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion } from 'motion/react';
-import { CheckCircle, ExternalLink, PlayCircle, Library, Award } from 'lucide-react';
+import { CheckCircle, ExternalLink, PlayCircle, Library, Award, FileClock } from 'lucide-react';
 import { Module, AIPersona } from '../types';
 import { GLOSSARY_TERMS } from '../constants';
 import { BRANDING, injectBranding } from '../branding';
@@ -205,6 +205,19 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
       exit={{ opacity: 0, y: -20 }}
       className="space-y-12 pb-24"
     >
+      {/* Editorial state (W3-2 / D10): content that hasn't passed SME accuracy
+          review is shown but clearly marked, so it stays testable without being
+          mistaken for finished. */}
+      {module.status !== 'published' && (
+        <div
+          role="status"
+          className="-mb-6 w-fit inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-800"
+        >
+          <FileClock className="w-3.5 h-3.5" aria-hidden="true" />
+          Draft — under review
+        </div>
+      )}
+
       {quizBest && (
         <div className="flex justify-end -mb-6">
           <span

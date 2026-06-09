@@ -5,6 +5,7 @@ import { mapRowToModule } from './modules';
 const baseRow = {
   cell_id: '1.3',
   stage: '1a',
+  status: 'published',
   title: 'Recognizing when AI is appropriate',
   type: 'sorter',
   dimension: ['Delegation'],

@@ -24,6 +24,9 @@ export type SelfReportValidity = 'low' | 'medium' | 'high' | 'na';
 /** Matrix stage a cell belongs to. */
 export type Stage = '1a' | '1b' | '2';
 
+/** Editorial state of a module's content (mirrors modules.status). */
+export type ModuleStatus = 'draft' | 'in_review' | 'published';
+
 export interface Module {
   id: string;
   title: string;
@@ -35,6 +38,10 @@ export interface Module {
   // --- Matrix metadata (P3.1) ---
   cellId: string; // matrix cell id (== id for matrix cells, e.g. '1.4')
   stage: Stage;
+  // Editorial state from modules.status (W3-2 / D10). Until SME accuracy review
+  // flips a row to 'published', learners see it with a "draft — under review"
+  // badge — content stays testable but is clearly marked (closes audit D-08).
+  status: ModuleStatus;
   dimension: Dimension[]; // 4D tag(s)
   evidenceType: EvidenceType; // matrix "primary evidence"
   selfReportValidity: SelfReportValidity;

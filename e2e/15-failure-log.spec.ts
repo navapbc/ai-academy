@@ -14,6 +14,9 @@ test('the 2.9 failure log captures dated entries and does not gate completion', 
   await openModule(page, '2.9');
   const log = page.locator('#failure-log');
   await expect(log).toBeVisible();
+  // 2.9 is seeded status='in_review', so the "draft — under review" badge shows
+  // (W3-2/D10: modules.status is now real, end to end from the DB).
+  await expect(page.getByText(/Draft — under review/i)).toBeVisible();
 
   // Save is gated until the floor of complete entries is met.
   const save = page.getByRole('button', { name: /Save failure log/i });
