@@ -448,6 +448,40 @@ export interface DashboardCritiqueConfig {
   signals: { id: string; label: string; hidden: boolean; why: string }[];
 }
 
+/**
+ * P4.8 / cell 2.11 — a personal AI use-case library + a 4D Diligence Statement.
+ * Like the other Stage-2 exercises this is PRACTICE that records a lab_submissions
+ * row (`transcript.kind:'use-case-portfolio'`) and does NOT gate completion (the
+ * inline quiz does), so the component takes no onComplete prop. It is an exit
+ * artifact captured (not LLM-graded) with a completeness gate — the learner logs
+ * where AI helps / doesn't, then writes one high-stakes Diligence Statement across
+ * Anthropic's 4D AI Fluency (Delegation, Description, Discernment, Diligence).
+ */
+export interface UseCasePortfolioConfig {
+  kind: 'use-case-portfolio';
+  intro?: string;
+  /** The use-case library builder section. */
+  library: {
+    title: string;
+    helper: string;
+    /** Minimum complete entries to submit; ≥1 must be a "Doesn't help" entry. */
+    minEntries: number;
+    taskPlaceholder: string;
+    approachPlaceholder: string;
+    watchPlaceholder: string;
+  };
+  /** The 4D Diligence Statement section. */
+  diligence: {
+    title: string;
+    helper: string;
+    /** One labelled prompt per 4D dimension, in order (Delegation … Diligence). */
+    dimensions: { id: string; label: string; prompt: string }[];
+    /** Combined soft target (shown) and hard floor (gates submit) across the 4 fields. */
+    targetWords: number;
+    minWords: number;
+  };
+}
+
 export type LabConfig =
   | PromptConstructionConfig
   | DataClassifierConfig
@@ -465,7 +499,8 @@ export type LabConfig =
   | PromptEvalConfig
   | IterationConfig
   | PairedCalibrationConfig
-  | DashboardCritiqueConfig;
+  | DashboardCritiqueConfig
+  | UseCasePortfolioConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];

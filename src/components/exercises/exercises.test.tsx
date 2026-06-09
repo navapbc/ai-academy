@@ -12,6 +12,7 @@ import Calibration from './Calibration';
 import Synthesis from './Synthesis';
 import VoiceEdit from './VoiceEdit';
 import DashboardCritique from './DashboardCritique';
+import UseCasePortfolio from './UseCasePortfolio';
 import type {
   DataClassifierConfig,
   ToolTriageConfig,
@@ -23,6 +24,7 @@ import type {
   SynthesisConfig,
   VoiceEditConfig,
   DashboardCritiqueConfig,
+  UseCasePortfolioConfig,
 } from '../../types';
 
 // The graded practice exercises. They render after the lesson, auto-grade
@@ -409,6 +411,88 @@ describe('DashboardCritique', () => {
     const onComplete = vi.fn();
     // @ts-expect-error onComplete is intentionally not part of DashboardCritique's props
     render(<DashboardCritique config={config} labId="2.13" onComplete={onComplete} />);
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+});
+
+describe('UseCasePortfolio (2.11, P4.8)', () => {
+  const config: UseCasePortfolioConfig = {
+    kind: 'use-case-portfolio',
+    intro: 'Build your library, then write one Diligence Statement.',
+    library: {
+      title: 'Your personal AI use-case library',
+      helper: 'Log where AI helps and where it doesn’t.',
+      minEntries: 2,
+      taskPlaceholder: 'The task',
+      approachPlaceholder: 'The prompt or approach',
+      watchPlaceholder: 'The failure mode to watch',
+    },
+    diligence: {
+      title: 'Diligence Statement',
+      helper: 'One high-stakes use case across the 4 dimensions.',
+      dimensions: [
+        { id: 'delegation', label: 'Delegation', prompt: 'What did you hand over?' },
+        { id: 'description', label: 'Description', prompt: 'How did you frame it?' },
+        { id: 'discernment', label: 'Discernment', prompt: 'How did you check it?' },
+        { id: 'diligence', label: 'Diligence', prompt: 'How were you accountable?' },
+      ],
+      targetWords: 40,
+      minWords: 12,
+    },
+  };
+
+  const fillEntry = async (user: ReturnType<typeof userEvent.setup>, n: number, text: string) => {
+    await user.type(screen.getByLabelText(`Use case ${n}: the task`), `${text} task`);
+    await user.type(screen.getByLabelText(`Use case ${n}: the prompt or approach`), `${text} approach`);
+    await user.type(screen.getByLabelText(`Use case ${n}: the failure mode to watch`), `${text} watch`);
+  };
+
+  const threeWords = 'one two three';
+
+  test('gates submit until the library + 4D statement are complete, then records kind=use-case-portfolio', async () => {
+    const user = userEvent.setup();
+    render(<UseCasePortfolio config={config} labId="2.11" />);
+
+    const saveBtn = () => screen.getByRole('button', { name: /Save portfolio/i });
+    expect(saveBtn()).toBeDisabled();
+    // The readiness line tells the learner what's missing.
+    expect(screen.getByText(/Before you submit/i)).toBeInTheDocument();
+
+    // Entry 1 (Helps, the default).
+    await fillEntry(user, 1, 'first');
+    // Add a second entry and mark it "Doesn't help" (one toggle per entry).
+    await user.click(screen.getByRole('button', { name: /Add a use case/i }));
+    await fillEntry(user, 2, 'second');
+    const doesntToggles = screen.getAllByRole('button', { name: /Doesn’t help/i });
+    await user.click(doesntToggles[1]);
+
+    // Fill all four dimensions (≥12 words total).
+    for (const d of config.diligence.dimensions) {
+      await user.type(screen.getByLabelText(d.label), threeWords);
+    }
+
+    await waitFor(() => expect(saveBtn()).toBeEnabled());
+    await user.click(saveBtn());
+
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalled());
+    expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({
+      labId: '2.11',
+      status: 'submitted',
+      transcript: expect.objectContaining({
+        kind: 'use-case-portfolio',
+        // Both counts are over COMPLETE entries (1 Helps + 1 Doesn't help here).
+        helpsCount: 1,
+        doesntCount: 1,
+        wordCount: 12,
+      }),
+    }));
+    expect(screen.getByText('Portfolio saved')).toBeInTheDocument();
+  });
+
+  test('does not accept an onComplete prop (the quiz is the gate, not this exercise)', () => {
+    const onComplete = vi.fn();
+    // @ts-expect-error onComplete is intentionally not part of UseCasePortfolio's props
+    render(<UseCasePortfolio config={config} labId="2.11" onComplete={onComplete} />);
     expect(onComplete).not.toHaveBeenCalled();
   });
 });
