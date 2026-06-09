@@ -11,6 +11,7 @@ import OutputAudit from './OutputAudit';
 import Calibration from './Calibration';
 import Synthesis from './Synthesis';
 import VoiceEdit from './VoiceEdit';
+import DashboardCritique from './DashboardCritique';
 import type {
   DataClassifierConfig,
   ToolTriageConfig,
@@ -21,6 +22,7 @@ import type {
   CalibrationConfig,
   SynthesisConfig,
   VoiceEditConfig,
+  DashboardCritiqueConfig,
 } from '../../types';
 
 // The graded practice exercises. They render after the lesson, auto-grade
@@ -346,6 +348,67 @@ describe('VoiceEdit', () => {
     const onComplete = vi.fn();
     // @ts-expect-error onComplete is intentionally not part of VoiceEdit's props
     render(<VoiceEdit config={config} labId="2.6" onComplete={onComplete} />);
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+});
+
+describe('DashboardCritique', () => {
+  const config: DashboardCritiqueConfig = {
+    kind: 'dashboard-critique',
+    intro: 'This dashboard looks great. Name what it leaves out.',
+    dashboard: {
+      title: 'AI-Assisted Drafting — Team Productivity',
+      metrics: [
+        { label: 'Drafts/day', value: '12', trend: '▲30%' },
+        { label: 'Avg draft time', value: '4m', trend: '▼' },
+      ],
+    },
+    signals: [
+      { id: 'rework', label: 'Rework / correction rate', hidden: true, why: 'A third came back for correction.' },
+      { id: 'drafts', label: 'Drafts per day', hidden: false, why: 'This is already on the dashboard.' },
+      { id: 'throughput', label: 'Net throughput', hidden: true, why: 'Net output barely moved.' },
+    ],
+  };
+
+  test('renders metrics + signals, grades a mixed selection, reveals why, records kind=dashboard-critique', async () => {
+    const user = userEvent.setup();
+    render(<DashboardCritique config={config} labId="2.13" />);
+
+    // Dashboard metric + checklist signal rendered.
+    expect(screen.getByText('Drafts/day')).toBeInTheDocument();
+    expect(screen.getByText('Rework / correction rate')).toBeInTheDocument();
+
+    // Name one hidden signal (rework), miss the other (throughput), and wrongly
+    // flag a visible decoy (drafts).
+    await user.click(screen.getByRole('checkbox', { name: 'Rework / correction rate' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Drafts per day' }));
+    await user.click(screen.getByRole('button', { name: 'Check my answer' }));
+
+    // Summary + per-signal rationale revealed after grading.
+    expect(screen.getByText('You named 1 of 2 hidden signals')).toBeInTheDocument();
+    expect(screen.getByText('A third came back for correction.')).toBeInTheDocument(); // correct
+    expect(screen.getByText('Net output barely moved.')).toBeInTheDocument(); // missed
+    expect(screen.getByText('This is already on the dashboard.')).toBeInTheDocument(); // false flag
+
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalled());
+    expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({
+      labId: '2.13',
+      status: 'submitted',
+      transcript: expect.objectContaining({
+        kind: 'dashboard-critique',
+        correct: ['rework'],
+        missed: ['throughput'],
+        falseFlags: ['drafts'],
+        hiddenTotal: 2,
+        namedCount: 1,
+      }),
+    }));
+  });
+
+  test('does not accept an onComplete prop (the quiz is the gate, not this exercise)', () => {
+    const onComplete = vi.fn();
+    // @ts-expect-error onComplete is intentionally not part of DashboardCritique's props
+    render(<DashboardCritique config={config} labId="2.13" onComplete={onComplete} />);
     expect(onComplete).not.toHaveBeenCalled();
   });
 });

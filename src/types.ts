@@ -417,6 +417,37 @@ export interface PairedCalibrationConfig {
   onTask: { label: string; brief: string };
 }
 
+/**
+ * 2.13 dashboard-critique (P4.7): the learner reads one realistic, speed-only
+ * productivity dashboard and a checklist of candidate dimensions, then marks
+ * which signals the dashboard HIDES. It is AUTO-GRADED against the answer key
+ * (no LLM call) — the deterministic sibling of 1.2's `output-audit` and 2.8's
+ * `calibration`. A `signal` with `hidden:true` is a quality/rework dimension the
+ * dashboard omits (the learner SHOULD flag it as missing); `hidden:false` is a
+ * decoy already visible on the dashboard (the learner should NOT flag it).
+ * Reports correctly-named / missed / false-flag buckets. Like the other
+ * Stage-1b/2 exercises this is graded PRACTICE that records a lab_submissions
+ * row (`transcript.kind:'dashboard-critique'`) — it does NOT gate completion
+ * (the inline quiz does), so the component takes no onComplete prop. (Distinct
+ * from the free-text `critique` exercise for cells 2.2/2.3, which is LLM-judged.)
+ */
+export interface DashboardCritiqueConfig {
+  kind: 'dashboard-critique';
+  intro?: string;
+  /** The speed-only productivity dashboard under review. */
+  dashboard: {
+    title: string;
+    /** Visible metric cards, e.g. { label: 'Drafts/day', value: '12', trend: '▲30%' }. */
+    metrics: { label: string; value: string; trend?: string }[];
+  };
+  /**
+   * Candidate dimensions shown as a checklist. `hidden:true` = a quality/rework
+   * signal the dashboard OMITS (answer key — learner SHOULD flag as missing).
+   * `hidden:false` = a decoy already visible on the dashboard (should NOT flag).
+   */
+  signals: { id: string; label: string; hidden: boolean; why: string }[];
+}
+
 export type LabConfig =
   | PromptConstructionConfig
   | DataClassifierConfig
@@ -433,7 +464,8 @@ export type LabConfig =
   | VoiceEditConfig
   | PromptEvalConfig
   | IterationConfig
-  | PairedCalibrationConfig;
+  | PairedCalibrationConfig
+  | DashboardCritiqueConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];
