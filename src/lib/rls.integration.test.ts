@@ -177,3 +177,39 @@ describe.skipIf(!RUN)('content_versions lockdown (SEC-07)', () => {
     expect(data ?? []).toHaveLength(0);
   });
 });
+
+describe.skipIf(!RUN)('Role self-escalation guard (W2-2 / D-06 / LB-3)', () => {
+  test('an authenticated user CANNOT escalate their own role to admin', async () => {
+    const client = freshClient();
+    const signup = await client.auth.signUp({
+      email: uniqueEmail('escalate', 'navapbc.com'),
+      password: PASSWORD,
+    });
+    expect(signup.error).toBeNull();
+    const uid = signup.data.user!.id;
+
+    // The exact escalation the audit flagged. The owner-update RLS policy permits
+    // the row, but the BEFORE UPDATE trigger raises on the role change.
+    const { error } = await client.from('profiles').update({ role: 'admin' }).eq('id', uid);
+    expect(error).toBeTruthy();
+
+    // The role is unchanged at the database boundary.
+    const { data } = await client.from('profiles').select('role').eq('id', uid).single();
+    expect(data?.role).toBe('learner');
+  });
+
+  test('a non-role profile update (full_name) still succeeds for the owner', async () => {
+    const client = freshClient();
+    const signup = await client.auth.signUp({
+      email: uniqueEmail('rename', 'navapbc.com'),
+      password: PASSWORD,
+    });
+    const uid = signup.data.user!.id;
+
+    const { error } = await client.from('profiles').update({ full_name: 'Casey Nava' }).eq('id', uid);
+    expect(error).toBeNull();
+    const { data } = await client.from('profiles').select('full_name, role').eq('id', uid).single();
+    expect(data?.full_name).toBe('Casey Nava');
+    expect(data?.role).toBe('learner');
+  });
+});
