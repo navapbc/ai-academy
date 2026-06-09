@@ -11,6 +11,7 @@ import { fetchQuizSummary, type QuizResult } from '../lib/progress';
 import PrivacySimulator from './PrivacySimulator';
 import Lab from './Lab';
 import Quiz from './Quiz';
+import SectionBoundary from './SectionBoundary';
 import UseCaseLib from './UseCaseLib';
 import ScenarioSorter from './ScenarioSorter';
 import DataClassifier from './exercises/DataClassifier';
@@ -220,11 +221,18 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         </div>
       )}
 
-      {interactive}
+      {/* Each widget region gets its own scoped boundary (D-16): a malformed
+          authored row crashes only its own card, never the page — and a broken
+          exercise can't take down the quiz (the completion gate) beside it. */}
+      {interactive && <SectionBoundary label="activity">{interactive}</SectionBoundary>}
 
-      {exercise}
+      {exercise && <SectionBoundary label="interactive exercise">{exercise}</SectionBoundary>}
 
-      {hasInlineQuiz && <Quiz moduleId={module.id} questions={module.quiz ?? []} onComplete={onComplete} />}
+      {hasInlineQuiz && (
+        <SectionBoundary label="quiz">
+          <Quiz moduleId={module.id} questions={module.quiz ?? []} onComplete={onComplete} />
+        </SectionBoundary>
+      )}
 
       {showNoActivityFallback && (
         <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm text-center space-y-2">
