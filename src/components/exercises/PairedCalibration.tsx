@@ -20,6 +20,17 @@ function fmt(ms: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
+// One persistent announcer so the six-phase content swap is audible, not just
+// visible (D-09): screen readers hear each phase change as it happens.
+const PHASE_ANNOUNCEMENT: Record<Phase, string> = {
+  intro: 'Paired calibration: read both tasks, then start the timed task without AI.',
+  off: 'Timer started — do the task without AI.',
+  onIntro: 'First task recorded. Next: the comparable task with Claude.',
+  on: 'Timer started — do the task with Claude.',
+  report: 'Both tasks recorded. Report your estimated speedup and defect counts.',
+  reveal: 'Calibration result revealed.',
+};
+
 // Paired AI-on/AI-off calibration (P4.6, cell 2.15). The app times two comparable
 // tasks (one without AI, one with Claude), captures the learner's speedup estimate
 // BEFORE revealing actual times, and computes their perception gap. Graded practice
@@ -72,6 +83,10 @@ export default function PairedCalibration({ config, labId }: Props) {
   };
 
   const finishOn = () => {
+    // Stop the clock AND the stream: tokens arriving after the learner stops
+    // the timer are work outside the measured window and must not leak into
+    // the saved transcript (D-14). Aborting resolves streamChat cleanly.
+    abortRef.current?.abort();
     setOnMs(startedAt ? Date.now() - startedAt : 0);
     setStartedAt(null);
     setPhase('report');
@@ -98,12 +113,9 @@ export default function PairedCalibration({ config, labId }: Props) {
     }
   };
 
-  const handleSubmit = async () => {
-    const estimatePct = Number(estimate);
-    if (Number.isNaN(estimatePct)) return;
-    const r = computePairedCalibration({ offMs, onMs, estimatePct });
-    setResult(r);
-    setPhase('reveal');
+  // Save is separable from submit so a failed save can be retried without
+  // touching the timed runs — they are unrepeatable evidence (D-18).
+  const saveSubmission = async (r: CalibrationResult) => {
     if (!user) {
       setSaveError('Sign in to record your calibration — your result is shown below.');
       return;
@@ -121,7 +133,7 @@ export default function PairedCalibration({ config, labId }: Props) {
           onResponse,
           offDefects: Math.max(0, Number(offDefects) || 0),
           onDefects: Math.max(0, Number(onDefects) || 0),
-          estimatePct,
+          estimatePct: Number(estimate),
           actualSpeedupPct: r.actualSpeedupPct,
           gapPct: r.gapPct,
         },
@@ -134,7 +146,20 @@ export default function PairedCalibration({ config, labId }: Props) {
     }
   };
 
+  const handleSubmit = async () => {
+    const estimatePct = Number(estimate);
+    if (Number.isNaN(estimatePct)) return;
+    const r = computePairedCalibration({ offMs, onMs, estimatePct });
+    setResult(r);
+    setPhase('reveal');
+    await saveSubmission(r);
+  };
+
   const reset = () => {
+    // Kill any orphan stream from the previous attempt: it would otherwise keep
+    // appending ghost text into onResponse and hold Run disabled (D-14).
+    abortRef.current?.abort();
+    setIsStreaming(false);
     setPhase('intro');
     setStartedAt(null);
     setOffMs(0);
@@ -152,6 +177,10 @@ export default function PairedCalibration({ config, labId }: Props) {
 
   return (
     <div className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-6" id="paired-calibration">
+      {/* D-09: audible phase transitions for screen readers. */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {PHASE_ANNOUNCEMENT[phase]}
+      </p>
       <div className="flex items-center gap-3 border-b border-nava-mint pb-6">
         <div className="w-10 h-10 bg-nava-mint rounded-xl flex items-center justify-center text-nava-green">
           <Timer className="w-5 h-5" />
@@ -170,12 +199,12 @@ export default function PairedCalibration({ config, labId }: Props) {
           {intro && <p className="text-sm text-gray-600 leading-relaxed">{intro}</p>}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="rounded-2xl border-2 border-gray-100 p-4">
-              <p className="text-[11px] font-black uppercase tracking-widest text-gray-400">Without AI</p>
+              <p className="text-[11px] font-black uppercase tracking-widest text-gray-500">Without AI</p>
               <p className="text-sm font-bold text-gray-800 mt-1">{offTask.label}</p>
               <p className="text-xs text-gray-600 mt-1 leading-relaxed">{offTask.brief}</p>
             </div>
             <div className="rounded-2xl border-2 border-gray-100 p-4">
-              <p className="text-[11px] font-black uppercase tracking-widest text-gray-400">With Claude</p>
+              <p className="text-[11px] font-black uppercase tracking-widest text-gray-500">With Claude</p>
               <p className="text-sm font-bold text-gray-800 mt-1">{onTask.label}</p>
               <p className="text-xs text-gray-600 mt-1 leading-relaxed">{onTask.brief}</p>
             </div>
@@ -276,11 +305,18 @@ export default function PairedCalibration({ config, labId }: Props) {
               <Square className="w-4 h-4" /> Done — stop timer
             </button>
           </div>
-          {runError && <p className="text-xs text-red-600 font-medium">{runError}</p>}
+          {runError && <p role="alert" className="text-xs text-red-600 font-medium">{runError}</p>}
           <AnimatePresence>
             {(onResponse || isStreaming) && (
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm text-gray-700 whitespace-pre-wrap">
-                {onResponse || <span className="text-gray-400 italic">Waiting for Claude…</span>}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                role="status"
+                aria-live="polite"
+                aria-busy={isStreaming}
+                className="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm text-gray-700 whitespace-pre-wrap"
+              >
+                {onResponse || <span className="text-gray-500 italic">Waiting for Claude…</span>}
               </motion.div>
             )}
           </AnimatePresence>
@@ -337,8 +373,24 @@ export default function PairedCalibration({ config, labId }: Props) {
               much. Defects: {Math.max(0, Number(offDefects) || 0)} (no-AI) vs {Math.max(0, Number(onDefects) || 0)} (Claude).
             </p>
           </div>
-          {saveError && <p className="text-xs text-red-600 font-medium">{saveError}</p>}
-          <div className="flex justify-end">
+          {saveError && <p role="alert" className="text-xs text-red-600 font-medium">{saveError}</p>}
+          <div className="flex justify-end gap-3">
+            {/* D-18: a failed save must be retryable — the timed runs are
+                unrepeatable evidence; "Start over" would wipe them. */}
+            {saveError && user && result && (
+              <button
+                type="button"
+                onClick={() => saveSubmission(result)}
+                disabled={saving}
+                className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm hover:bg-nava-plum disabled:opacity-50 transition-all active:scale-95"
+              >
+                {saving ? (
+                  <><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Sparkles className="w-4 h-4" /></motion.div> Saving…</>
+                ) : (
+                  'Retry save'
+                )}
+              </button>
+            )}
             <button
               type="button"
               onClick={reset}
