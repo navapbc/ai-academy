@@ -46,6 +46,7 @@ const base: Module = {
   content: '',
   phaseId: 'stage-1a',
   stage: '1a',
+  status: 'published',
   dimension: ['Diligence'],
   evidenceType: 'quiz',
   selfReportValidity: 'medium',
@@ -139,5 +140,17 @@ describe('completion affordance', () => {
   test('a lab module with no labConfig shows a fallback instead of a silent dead-end (FE-06)', () => {
     renderModule({ type: 'lab', content: '# Lab intro' });
     expect(screen.getByText(/isn't available yet|not configured/i)).toBeInTheDocument();
+  });
+});
+
+describe('editorial-status badge (W3-2 / D10 / audit D-08)', () => {
+  test('an in_review module shows the "draft — under review" badge', () => {
+    renderModule({ type: 'content', content: '# Lesson', status: 'in_review' });
+    expect(screen.getByText(/Draft — under review/i)).toBeInTheDocument();
+  });
+
+  test('a published module shows no draft badge', () => {
+    renderModule({ type: 'content', content: '# Lesson', status: 'published' });
+    expect(screen.queryByText(/Draft — under review/i)).not.toBeInTheDocument();
   });
 });

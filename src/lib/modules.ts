@@ -3,6 +3,7 @@ import type {
   EvidenceType,
   LabConfig,
   Module,
+  ModuleStatus,
   ModuleType,
   Phase,
   QuizQuestion,
@@ -48,6 +49,7 @@ const STAGE_ORDER: Stage[] = ['1a', '1b', '2'];
 interface ModuleRow {
   cell_id: string;
   stage: Stage;
+  status: ModuleStatus;
   title: string;
   type: ModuleType;
   dimension: Dimension[];
@@ -62,7 +64,7 @@ interface ModuleRow {
 }
 
 const MODULE_COLUMNS =
-  'cell_id, stage, title, type, dimension, evidence_type, self_report_validity, body_md, mastery_anchor, emergent_anchor, quiz_json, lab_config_json, sorter_config_json';
+  'cell_id, stage, status, title, type, dimension, evidence_type, self_report_validity, body_md, mastery_anchor, emergent_anchor, quiz_json, lab_config_json, sorter_config_json';
 
 /**
  * Runtime guard for a `modules` row (TYPE-03). The Supabase client returns
@@ -83,8 +85,12 @@ export function assertModuleRow(row: unknown): asserts row is ModuleRow {
   };
   requireString('cell_id');
   requireString('stage');
+  requireString('status');
   requireString('title');
   requireString('type');
+  if (!['draft', 'in_review', 'published'].includes(r.status as string)) {
+    throw new Error(`modules row has unknown status "${String(r.status)}" — schema drift?`);
+  }
   if (!((r.stage as string) in STAGE_META)) {
     throw new Error(`modules row has unknown stage "${String(r.stage)}" — schema drift?`);
   }
@@ -103,6 +109,7 @@ export function mapRowToModule(row: ModuleRow): Module {
     content: row.body_md ?? '',
     phaseId: STAGE_META[row.stage].id,
     stage: row.stage,
+    status: row.status,
     dimension: row.dimension,
     evidenceType: row.evidence_type,
     selfReportValidity: row.self_report_validity,

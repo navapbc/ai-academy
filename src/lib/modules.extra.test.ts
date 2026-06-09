@@ -9,6 +9,7 @@ import type { Module, Stage } from '../types';
 const row = (over: Record<string, unknown> = {}) => ({
   cell_id: '1.4',
   stage: '1a' as Stage,
+  status: 'published',
   title: 'Data classification',
   type: 'content',
   dimension: ['Diligence'],
@@ -97,6 +98,9 @@ describe('assertModuleRow (TYPE-03 — schema-drift guard)', () => {
   });
   test('throws on an unknown stage', () => {
     expect(() => assertModuleRow({ ...good, stage: '9z' })).toThrow(/stage|schema drift/i);
+  });
+  test('throws on an out-of-enum status (W3-2)', () => {
+    expect(() => assertModuleRow({ ...good, status: 'archived' })).toThrow(/status|schema drift/i);
   });
   test('throws on a non-object', () => {
     expect(() => assertModuleRow(null)).toThrow(/schema drift/i);
