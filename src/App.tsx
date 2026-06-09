@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { AIPersona, Phase } from './types';
 import { BRANDING } from './branding';
@@ -126,11 +126,37 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
   );
   const currentModuleLocked = isModuleLocked(currentModule, stage1a.done);
 
+  // Focus + scroll management on content change (a11y D-10, WCAG SC 2.4.3). The
+  // content region swaps wholesale when the module or view changes — including on
+  // auto-advance after a completion — which otherwise drops focus to <body> and
+  // leaves the learner scrolled mid-page in the new module. On such a change we
+  // reset the scroll to the top and move focus into the new content.
+  //
+  // Focus only moves when the change was user-initiated (a nav click, an
+  // auto-advance, a view toggle): `navIntentRef` is armed by those entry points
+  // and consumed here. That deliberately excludes the async progress reconcile,
+  // which can also shift `currentModuleId`/lock state but must NOT yank focus out
+  // of whatever the learner is already doing (e.g. typing in a lab).
+  const contentRef = useRef<HTMLDivElement>(null);
+  const navIntentRef = useRef(false);
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+    if (navIntentRef.current) {
+      navIntentRef.current = false;
+      el.focus({ preventScroll: true });
+    }
+  }, [progress.currentModuleId, view, currentModuleLocked]);
+
   const handleModuleSelect = (moduleId: string) => {
     // A locked module is never selectable (the nav already disables it); guard
     // here too so no path can navigate into a gated Stage-2 module.
     const target = allModules.find(m => m.id === moduleId);
     if (target && isModuleLocked(target, stage1a.done)) return;
+    // Arm focus only for a real move; re-selecting the current module changes no
+    // dep, so the flag would otherwise linger and be consumed by a later reconcile.
+    if (moduleId !== progress.currentModuleId) navIntentRef.current = true;
     selectModule(moduleId);
     // Auto-close sidebar on mobile
     if (window.innerWidth < 1024) {
@@ -144,7 +170,14 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
   };
 
   const handleComplete = (moduleId: string) => {
+    // Auto-advance moves the learner to the next module — focus should follow.
+    navIntentRef.current = true;
     completeModule(moduleId);
+  };
+
+  const handleViewChange = (next: 'learning' | 'playground') => {
+    if (next !== view) navIntentRef.current = true;
+    setView(next);
   };
 
   const overallProgress = Math.round((progress.completedModuleIds.length / allModules.length) * 100);
@@ -160,7 +193,7 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
         overallProgress={overallProgress}
         onOpenSupport={() => setIsSupportOpen(true)}
         activeView={view}
-        onViewChange={setView}
+        onViewChange={handleViewChange}
         stage1aDone={stage1a.done}
         stage1aCompleted={stage1a.completed}
         stage1aTotal={stage1a.total}
@@ -189,7 +222,19 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto w-full">
+        <div
+          ref={contentRef}
+          id="content-region"
+          tabIndex={-1}
+          aria-label={
+            view === 'playground'
+              ? 'Prompting playground'
+              : currentModuleLocked
+                ? 'Section locked'
+                : currentModule.title
+          }
+          className="flex-1 overflow-y-auto w-full focus:outline-none"
+        >
           <div className={view === 'playground' ? 'h-full p-4 lg:p-6' : 'hidden'}>
             <Playground
               selectedPersona={selectedPersona}

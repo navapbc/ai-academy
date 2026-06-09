@@ -139,6 +139,7 @@ export default function HarmRubric({ config, labId }: Props) {
                     className={`flex gap-3 rounded-xl p-4 ${correct ? 'bg-green-100/60' : 'bg-red-100/50'}`}
                   >
                     <div
+                      aria-hidden="true"
                       className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
                         correct ? 'bg-green-200' : 'bg-red-200'
                       }`}
@@ -150,6 +151,8 @@ export default function HarmRubric({ config, labId }: Props) {
                       )}
                     </div>
                     <p className={`text-xs leading-relaxed ${correct ? 'text-green-800' : 'text-red-800'}`}>
+                      {/* Correctness must not be conveyed by colour + icon alone (D-20). */}
+                      <span className="sr-only">{correct ? 'Correct. ' : 'Incorrect. '}</span>
                       <span className="font-bold">{labelFor(s.correct)}.</span> {s.why}
                     </p>
                   </motion.div>
