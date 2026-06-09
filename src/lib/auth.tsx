@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient';
+import { clearProgressCache } from './progressCache';
 
 // Owns the Supabase auth session for the whole app. RLS on the data tables is
 // owner-only, so progress/quiz reads and writes only work once a user is signed
@@ -101,6 +102,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Drop the signing-out user's cached progress while we still know who they
+    // are (audit D-01 sign-out hygiene). The pending-writes outbox is kept on
+    // purpose: it is owner-keyed and a parked completion is durable evidence of
+    // work done (DATA-02) — it retries when this same user signs back in.
+    if (session?.user) clearProgressCache(session.user.id);
     await getSupabaseClient().auth.signOut();
   };
 

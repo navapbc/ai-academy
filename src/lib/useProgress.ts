@@ -79,9 +79,12 @@ export function useProgress(
   allModuleIds: string[],
   isLocked?: IsModuleLockedFn,
 ): UseProgressResult {
+  // Cache and outbox are keyed by userId (audit D-01); `userId` is stable for
+  // the life of a hook instance (App keys AcademyApp on session.user.id, so a
+  // user change remounts), which is what makes this lazy initializer safe.
   const [progress, setProgress] = useState<UserProgress>(
     () =>
-      readProgressCache() ?? {
+      readProgressCache(userId) ?? {
         completedModuleIds: [],
         currentModuleId: allModuleIds[0],
       },
@@ -91,8 +94,8 @@ export function useProgress(
   // Persist to cache on every change so the next load paints instantly and the
   // app survives offline.
   useEffect(() => {
-    writeProgressCache(progress);
-  }, [progress]);
+    writeProgressCache(userId, progress);
+  }, [userId, progress]);
 
   // Reconcile with Supabase when the signed-in user is known. Also retries any
   // completion writes parked in the outbox (DATA-02) so a failed sync isn't lost.
@@ -100,9 +103,9 @@ export function useProgress(
     let cancelled = false;
 
     // Retry parked writes; drop each from the outbox once confirmed.
-    for (const id of readPendingCompletions()) {
+    for (const id of readPendingCompletions(userId)) {
       setModuleStatus(userId, id, 'completed')
-        .then(() => removePendingCompletion(id))
+        .then(() => removePendingCompletion(userId, id))
         .catch(() => {
           /* still offline — keep it parked for the next reconcile */
         });
@@ -116,7 +119,7 @@ export function useProgress(
           // local completions and anything still pending in the outbox, so a
           // completion can never regress here (DATA-02). Completions are
           // monotonic in this app (no "un-complete"), so union is safe.
-          const pending = readPendingCompletions();
+          const pending = readPendingCompletions(userId);
           const mergedCompleted = Array.from(
             new Set([...snapshot.completedModuleIds, ...prev.completedModuleIds, ...pending]),
           );
@@ -161,10 +164,10 @@ export function useProgress(
         };
       });
       setModuleStatus(userId, moduleId, 'completed')
-        .then(() => removePendingCompletion(moduleId))
+        .then(() => removePendingCompletion(userId, moduleId))
         .catch(() => {
           // Park the write so the next reconcile retries it (DATA-02).
-          addPendingCompletion(moduleId);
+          addPendingCompletion(userId, moduleId);
           setError('Your progress was saved locally but could not sync. It will retry automatically.');
         });
     },
