@@ -187,7 +187,7 @@ Phase 0 ▣▣▣▣ · Phase 1 ▣▣▣▣▣ · Phase 2 ▣▣▣▣ ✓ · *
 |---|---|---|---|---|---|
 | **P5.1** | **Roles & RLS** (the security boundary — gate the rest of Phase 5 on it) | | P1.5, **W2-2** | | |
 | P5.1a | Server-side role assignment | Admin-only service_role Edge Function sets `profiles.role` (client `UPDATE` is blocked by the W2-2 trigger) + an admin-bootstrap path; gated RLS test | P1.5, W2-2 | Code | **Done** ✓ `admin-set-role` Edge Function (env `BOOTSTRAP_ADMIN_EMAILS` allowlist or `profiles.role='admin'`), blocks self-demotion, audits to `role_changes` (locked-down RLS); `admin-core` unit tests + gated integration test (service_role write path + audit lockdown); CI `db-tests` exports the service key |
-| P5.1b | Cohort substrate | `cohorts` + `enrollments` (user↔cohort) + champion↔cohort assignment tables, owner/admin RLS; idempotent seed. *(Pulled forward from P5.5 — P5.1c needs it.)* | P1.3 | Code | Not started |
+| P5.1b | Cohort substrate | `cohorts` + `enrollments` (user↔cohort) + champion↔cohort assignment tables, owner/admin RLS; idempotent seed. *(Pulled forward from P5.5 — P5.1c needs it.)* | P1.3 | Code | **Done** ✓ `cohorts` + `enrollments` (`unique(user_id)` = one cohort/learner) + `cohort_champions` (many-to-many); baseline RLS (authenticated read cohorts, owner-read-own join tables, no client writes); demo cohort in `seed.sql`; gated integration test (owner-read / no-client-write / service_role path / one-cohort constraint). Admin/champion cross-user reads → P5.1c |
 | P5.1c | Champion/admin read policies | Expand owner-only RLS on `module_progress`/`quiz_attempts`/`lab_submissions`/`profiles`: champion reads its cohort, admin reads all; full `RUN_DB_TESTS` suite proving the boundary | P5.1b | Code | Not started |
 | P5.1d | Role-aware client | `useRole` + route guard so admin/champion views are reachable and gated; learners can't reach them | P5.1c | Design → Code | Not started |
 | **P5.2** | **Live dashboard (staff)** | | P5.1, P1.4 | | |
@@ -205,7 +205,7 @@ Phase 0 ▣▣▣▣ · Phase 1 ▣▣▣▣▣ · Phase 2 ▣▣▣▣ ✓ · *
 | P5.4d | Quiz / lab / sorter config editors | Edit `quiz_json` / `lab_config_json` / `sorter_config_json` with write-time schema validation — the home for the D-16 validation W2-7 deferred "to the P5.4 CMS" | P5.4b | Design → Code | Not started |
 | P5.4e | Versioned rollback UI | Restore a `content_versions` snapshot | P5.4a | Design → Code | Not started |
 | **P5.5** | **Cohorts + review queue** | | P5.1 | | |
-| P5.5a | Cohort/enrollment management UI | CRUD over the P5.1b substrate + champion assignment | P5.1d | Design → Code | Not started |
+| P5.5a | Cohort/enrollment management UI | CRUD over the P5.1b substrate + champion assignment. Note: reassigning a learner is an UPDATE to their `enrollments` row (or delete+insert), not a plain INSERT — `enrollments.unique(user_id)` enforces one cohort/learner | P5.1d | Design → Code | Not started |
 | P5.5b | Review queue | List `lab_submissions WHERE status='reviewable'` for the champion's cohort; open a submission (transcript + rubric_scores) — closes the audit gap "graded rows queue unreadably behind owner-only RLS" | P5.1c | Design → Code | Not started |
 | P5.5c | Champion grade action | Approve/override the LLM verdict + status transition (reviewable→reviewed/returned) — P4.2's deferred champion-review UI; launch item W4-5 | P5.5b | Design → Code | Not started |
 | **P5.6** | **Evidence exports** | | P5.2 | | |

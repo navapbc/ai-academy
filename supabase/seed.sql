@@ -68,3 +68,23 @@ values (
   4, 5, true,
   '{"q1":"a","q2":"c","q3":"b"}'
 );
+
+-- Demo cohort + enroll the demo learner, so Studio and the (future) staff
+-- dashboard have something to show. Lives here (not a migration) because it
+-- references the seed-only demo auth user. Fixed UUIDs + ON CONFLICT make it
+-- idempotent across `supabase db reset`.
+insert into public.cohorts (id, name, created_by)
+values (
+  '00000000-0000-0000-0000-0000000000c0',
+  'Demo Cohort',
+  '00000000-0000-0000-0000-000000000001'
+)
+on conflict (id) do nothing;
+
+insert into public.enrollments (cohort_id, user_id, enrolled_by)
+values (
+  '00000000-0000-0000-0000-0000000000c0',
+  '00000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000001'
+)
+on conflict (user_id) do nothing;
