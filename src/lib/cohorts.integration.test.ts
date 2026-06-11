@@ -147,6 +147,13 @@ describe.skipIf(!RUN)('cohort substrate RLS (P5.1b)', () => {
       .eq('user_id', champ.uid);
     expect(champRead.error).toBeNull();
     expect(champRead.data?.some((r) => r.cohort_id === cohortId)).toBe(true);
+
+    // A different user cannot see the champion's assignment (owner RLS) —
+    // symmetric to the enrollment isolation above.
+    const outsider = await newUser();
+    const outsiderRead = await outsider.client.from('cohort_champions').select('user_id');
+    expect(outsiderRead.error).toBeNull();
+    expect(outsiderRead.data?.some((r) => r.user_id === champ.uid)).toBe(false);
   });
 
   test('a learner can be enrolled in only one cohort (unique user_id)', async () => {

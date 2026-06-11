@@ -205,7 +205,7 @@ Phase 0 ▣▣▣▣ · Phase 1 ▣▣▣▣▣ · Phase 2 ▣▣▣▣ ✓ · *
 | P5.4d | Quiz / lab / sorter config editors | Edit `quiz_json` / `lab_config_json` / `sorter_config_json` with write-time schema validation — the home for the D-16 validation W2-7 deferred "to the P5.4 CMS" | P5.4b | Design → Code | Not started |
 | P5.4e | Versioned rollback UI | Restore a `content_versions` snapshot | P5.4a | Design → Code | Not started |
 | **P5.5** | **Cohorts + review queue** | | P5.1 | | |
-| P5.5a | Cohort/enrollment management UI | CRUD over the P5.1b substrate + champion assignment | P5.1d | Design → Code | Not started |
+| P5.5a | Cohort/enrollment management UI | CRUD over the P5.1b substrate + champion assignment. Note: reassigning a learner is an UPDATE to their `enrollments` row (or delete+insert), not a plain INSERT — `enrollments.unique(user_id)` enforces one cohort/learner | P5.1d | Design → Code | Not started |
 | P5.5b | Review queue | List `lab_submissions WHERE status='reviewable'` for the champion's cohort; open a submission (transcript + rubric_scores) — closes the audit gap "graded rows queue unreadably behind owner-only RLS" | P5.1c | Design → Code | Not started |
 | P5.5c | Champion grade action | Approve/override the LLM verdict + status transition (reviewable→reviewed/returned) — P4.2's deferred champion-review UI; launch item W4-5 | P5.5b | Design → Code | Not started |
 | **P5.6** | **Evidence exports** | | P5.2 | | |
