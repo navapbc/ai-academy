@@ -86,7 +86,8 @@ describe.skipIf(!RUN)('service_role role assignment (P5.1a)', () => {
     });
     expect(insErr).toBeNull();
 
-    // An authenticated client cannot read role_changes (RLS on, no policy).
+    // A non-service client cannot read role_changes (RLS on, no policy) — the
+    // local signup may yield an anon or authenticated session; both are denied.
     const { data: clientRead, error: readErr } = await user.from('role_changes').select('*');
     expect(readErr).toBeNull();
     expect(clientRead ?? []).toHaveLength(0);

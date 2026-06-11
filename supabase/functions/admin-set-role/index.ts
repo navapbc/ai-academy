@@ -113,7 +113,7 @@ Deno.serve(async (req: Request) => {
 
   // --- Guardrail: block self-demotion (self-promotion stays allowed) ---
   if (isSelfDemotion(caller.id, target.id as string, role)) {
-    return jsonError('You cannot change your own admin role. Ask another admin.', 422);
+    return jsonError('You cannot change your own role to a non-admin role. Ask another admin.', 422);
   }
 
   // old_role is read before the update; under concurrent admin calls the audit
@@ -131,7 +131,7 @@ Deno.serve(async (req: Request) => {
   // --- Audit (best-effort: the role change is the primary, already-applied effect) ---
   const { error: auditErr } = await admin.from('role_changes').insert({
     actor_id: caller.id,
-    actor_email: caller.email ?? null,
+    actor_email: caller.email?.toLowerCase() ?? null,
     target_id: target.id,
     target_email: targetEmail,
     old_role: oldRole,

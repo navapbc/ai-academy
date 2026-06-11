@@ -11,8 +11,9 @@ create table public.role_changes (
   actor_email  text,
   target_id    uuid not null references auth.users (id) on delete cascade,
   target_email text,
-  old_role     text,
-  new_role     text not null,
+  old_role     text,                              -- no role CHECK here on purpose: the
+  new_role     text not null,                     -- function validates roles (isRole), and an
+                                                   -- audit log should record history verbatim
   created_at   timestamptz not null default now()
 );
 
