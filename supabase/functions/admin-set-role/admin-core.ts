@@ -47,11 +47,19 @@ export function isAllowlistedAdmin(
   return allow.includes(email.toLowerCase());
 }
 
-/** Caller stripping their OWN admin (target is self and the new role isn't admin). */
+/**
+ * Self-lockout guard. index.ts calls this only AFTER verifying the caller is an
+ * admin, so a caller setting their own role to anything other than 'admin'
+ * (i.e. champion or learner) is demoting themselves out of admin — block it.
+ * Self-promotion / idempotent self-set to 'admin' is allowed (the bootstrap path).
+ */
 export function isSelfDemotion(callerId: string, targetId: string, newRole: Role): boolean {
   return callerId === targetId && newRole !== 'admin';
 }
 
+// emailDomainAllowed + buildCorsHeaders below are intentionally self-contained
+// copies of the chat/grade helpers — Edge Functions bundle independently, so
+// cross-function imports aren't viable. Keep them in sync if the originals change.
 /** Email domain restriction (mirrors chat/grade). */
 export function emailDomainAllowed(email: string | undefined | null, domain: string): boolean {
   if (!email) return false;

@@ -41,6 +41,9 @@ describe('isAllowlistedAdmin', () => {
     expect(isAllowlistedAdmin('Boss@navapbc.com', ' boss@navapbc.com , other@navapbc.com ')).toBe(true);
     expect(isAllowlistedAdmin('nope@navapbc.com', 'boss@navapbc.com')).toBe(false);
   });
+  test('requires an exact match, not a prefix', () => {
+    expect(isAllowlistedAdmin('boss@navapbc.co', 'boss@navapbc.com')).toBe(false);
+  });
   test('empty/undefined allowlist or email is never admin', () => {
     expect(isAllowlistedAdmin('a@navapbc.com', '')).toBe(false);
     expect(isAllowlistedAdmin('a@navapbc.com', undefined)).toBe(false);
@@ -60,6 +63,7 @@ describe('isSelfDemotion', () => {
 describe('emailDomainAllowed', () => {
   test('matches the domain case-insensitively', () => {
     expect(emailDomainAllowed('a@navapbc.com', 'navapbc.com')).toBe(true);
+    expect(emailDomainAllowed('A@NavaPBC.com', 'navapbc.com')).toBe(true);
     expect(emailDomainAllowed('a@gmail.com', 'navapbc.com')).toBe(false);
     expect(emailDomainAllowed(undefined, 'navapbc.com')).toBe(false);
   });
