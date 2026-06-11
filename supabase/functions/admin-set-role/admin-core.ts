@@ -83,3 +83,28 @@ export function buildCorsHeaders(
   }
   return { ...CORS_BASE };
 }
+
+// --- Rate limiting (mirrors chat-core's fixedWindowAllow so the limiter is
+// unit-tested instead of re-implemented inline in index.ts). Fixed-window over
+// a caller-owned Map; per-isolate, best-effort first layer. ---
+export interface RateLimitState {
+  count: number;
+  windowStart: number;
+}
+
+export function fixedWindowAllow(
+  store: Map<string, RateLimitState>,
+  key: string,
+  now: number,
+  limit: number,
+  windowMs: number,
+): boolean {
+  const entry = store.get(key);
+  if (!entry || now - entry.windowStart >= windowMs) {
+    store.set(key, { count: 1, windowStart: now });
+    return true;
+  }
+  if (entry.count >= limit) return false;
+  entry.count += 1;
+  return true;
+}

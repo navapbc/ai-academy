@@ -11,9 +11,11 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import {
   buildCorsHeaders,
   emailDomainAllowed,
+  fixedWindowAllow,
   isAllowlistedAdmin,
   isSelfDemotion,
   parseSetRoleRequest,
+  type RateLimitState,
 } from './admin-core.ts';
 
 const ALLOWED_EMAIL_DOMAIN = 'navapbc.com';
@@ -27,17 +29,7 @@ const ALLOWED_ORIGINS = [
 
 const RATE_LIMIT = 20; // requests
 const RATE_WINDOW_MS = 60_000; // per minute (per-isolate, best-effort — mirrors grade)
-const rateStore = new Map<string, { count: number; windowStart: number }>();
-function rateLimitAllow(userId: string, now: number): boolean {
-  const s = rateStore.get(userId);
-  if (!s || now - s.windowStart >= RATE_WINDOW_MS) {
-    rateStore.set(userId, { count: 1, windowStart: now });
-    return true;
-  }
-  if (s.count >= RATE_LIMIT) return false;
-  s.count += 1;
-  return true;
-}
+const rateStore = new Map<string, RateLimitState>();
 
 Deno.serve(async (req: Request) => {
   const cors = buildCorsHeaders(req.headers.get('Origin'), ALLOWED_ORIGINS);
@@ -69,7 +61,7 @@ Deno.serve(async (req: Request) => {
     return jsonError(`Access is restricted to @${ALLOWED_EMAIL_DOMAIN} accounts.`, 403);
   }
 
-  if (!rateLimitAllow(caller.id, Date.now())) {
+  if (!fixedWindowAllow(rateStore, caller.id, Date.now(), RATE_LIMIT, RATE_WINDOW_MS)) {
     return jsonError('Rate limit exceeded. Please slow down and try again shortly.', 429);
   }
 
@@ -102,6 +94,10 @@ Deno.serve(async (req: Request) => {
   if (!callerIsAdmin) return jsonError('Only an admin may set roles.', 403);
 
   // --- Resolve the target by email ---
+  // targetEmail is already lowercased by parseSetRoleRequest; GoTrue normalizes
+  // auth.users.email to lowercase and handle_new_user copies it verbatim, so
+  // profiles.email is lowercase for every real signup and an exact match is
+  // safe (ilike would mis-match emails containing `_` or `%`).
   const { data: target, error: targetErr } = await admin
     .from('profiles')
     .select('id, role')
@@ -111,6 +107,8 @@ Deno.serve(async (req: Request) => {
     console.error('Target lookup failed:', targetErr.message);
     return jsonError('Failed to look up the target user.', 500);
   }
+  // Admin-only tool: echoing the email back (and that it has no profile) is
+  // operationally useful; revisit if an admin account ever becomes untrusted.
   if (!target) return jsonError(`No profile found for ${targetEmail}.`, 404);
 
   // --- Guardrail: block self-demotion (self-promotion stays allowed) ---
@@ -118,6 +116,9 @@ Deno.serve(async (req: Request) => {
     return jsonError('You cannot change your own admin role. Ask another admin.', 422);
   }
 
+  // old_role is read before the update; under concurrent admin calls the audit
+  // may record a slightly stale prior value. The DB role itself is always the
+  // last writer's value.
   const oldRole = (target.role as string) ?? null;
 
   // --- Apply the role change as service_role (the trigger permits this path) ---

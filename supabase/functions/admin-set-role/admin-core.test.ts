@@ -6,6 +6,8 @@ import {
   isRole,
   emailDomainAllowed,
   buildCorsHeaders,
+  fixedWindowAllow,
+  type RateLimitState,
 } from './admin-core.ts';
 
 describe('parseSetRoleRequest', () => {
@@ -76,5 +78,26 @@ describe('buildCorsHeaders', () => {
       'http://localhost:3000',
     );
     expect(buildCorsHeaders('http://evil.com', allowed)['access-control-allow-origin']).toBeUndefined();
+  });
+});
+
+describe('fixedWindowAllow', () => {
+  test('allows up to the limit, then blocks within the window', () => {
+    const store = new Map<string, RateLimitState>();
+    expect(fixedWindowAllow(store, 'u', 1000, 2, 60_000)).toBe(true);
+    expect(fixedWindowAllow(store, 'u', 1500, 2, 60_000)).toBe(true);
+    expect(fixedWindowAllow(store, 'u', 1600, 2, 60_000)).toBe(false);
+  });
+  test('resets after the window elapses', () => {
+    const store = new Map<string, RateLimitState>();
+    expect(fixedWindowAllow(store, 'u', 1000, 1, 60_000)).toBe(true);
+    expect(fixedWindowAllow(store, 'u', 2000, 1, 60_000)).toBe(false);
+    expect(fixedWindowAllow(store, 'u', 1000 + 60_000, 1, 60_000)).toBe(true);
+  });
+  test('limits each key independently', () => {
+    const store = new Map<string, RateLimitState>();
+    expect(fixedWindowAllow(store, 'a', 1000, 1, 60_000)).toBe(true);
+    expect(fixedWindowAllow(store, 'b', 1000, 1, 60_000)).toBe(true);
+    expect(fixedWindowAllow(store, 'a', 1100, 1, 60_000)).toBe(false);
   });
 });
