@@ -46,9 +46,10 @@ jobs:
       - run: npx supabase start
       - name: Run vitest against the live local stack (gated suites included)
         run: |
-          eval "$(npx supabase status -o env | grep -E '^(API_URL|PUBLISHABLE_KEY)=')"
+          eval "$(npx supabase status -o env | grep -E '^(API_URL|PUBLISHABLE_KEY|SERVICE_ROLE_KEY)=')"
           export VITE_SUPABASE_URL="$API_URL"
           export VITE_SUPABASE_ANON_KEY="$PUBLISHABLE_KEY"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
           RUN_DB_TESTS=1 npm run test
 
   # TODO(e2e): enable once CI provisions a local Supabase stack (supabase start)
