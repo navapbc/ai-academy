@@ -171,14 +171,47 @@ Phase 0 ▣▣▣▣ · Phase 1 ▣▣▣▣▣ · Phase 2 ▣▣▣▣ ✓ · *
 
 ## Phase 5 — Admin portal (live dashboard + CMS)
 
+> **Sliced per D11 (`/ce-plan`).** The six original P5.1–P5.6 tasks are broken into shippable
+> sub-tasks below. **Load-bearing dependency:** the *cohort* substrate (originally inside P5.5)
+> is **pulled forward into P5.1b** — champion-scoped RLS (P5.1c) cannot be written without a
+> cohort/enrollment table, so the schema must exist first. **Build order:**
+> `P5.1a → P5.1b → P5.1c → P5.1d` (foundation) → **P5.3a** (cheapest standalone — no new RLS) →
+> `P5.2a/b/c(/d)` → `P5.5a/b/c` → `P5.4a–e` → `P5.6a/b/c`. **Hard prereq:** P5.1a strictly after
+> W2-2 (#68) — role changes must route through a server-side service_role action, never a client
+> `UPDATE` (the `prevent_self_role_change` trigger blocks the authenticated path).
+> **Product calls (not just build):** (1) does CMS `published` require SME accuracy sign-off
+> recorded first (ties to W3-1/P4.11)? (2) review-queue grade semantics — champion *overrides*
+> vs. *annotates* the LLM verdict?
+
 | ID | Task | Definition of done | Depends | Agent | Status |
 |---|---|---|---|---|---|
-| P5.1 | Roles & RLS | RLS: learner = own, champion = cohort, admin = all; verified | P1.5 | Code | Not started |
-| P5.2 | Live dashboard (all users) | Realtime completion %, score distributions, review queue, GLAT pass rates, cohort filters, per-user drill-down | P5.1, P1.4 | Design → Code | Not started |
-| P5.3 | Learner dashboard | Own progress, scores, lab status, calibration number, portfolio | P5.1, P1.4 | Design → Code | Not started |
-| P5.4 | CMS | Markdown editor + live preview, quiz/lab/metadata editors, draft→review→publish + versioned rollback; change reaches learners w/o redeploy | P3.2, P5.1 | Design → Code | Not started |
-| P5.5 | Cohorts + review queue | Cohort/enrollment mgmt, Champion assignment, open-ended/portfolio review queue | P5.1 | Design → Code | Not started |
-| P5.6 | Evidence exports | CSV/PDF cohort reports mapped to DOL / EU AI Act Art. 4 / M-25-21 cross-walk | P5.2 | Code | Not started |
+| **P5.1** | **Roles & RLS** (the security boundary — gate the rest of Phase 5 on it) | | P1.5, **W2-2** | | |
+| P5.1a | Server-side role assignment | Admin-only service_role Edge Function sets `profiles.role` (client `UPDATE` is blocked by the W2-2 trigger) + an admin-bootstrap path; gated RLS test | P1.5, W2-2 | Code | Not started |
+| P5.1b | Cohort substrate | `cohorts` + `enrollments` (user↔cohort) + champion↔cohort assignment tables, owner/admin RLS; idempotent seed. *(Pulled forward from P5.5 — P5.1c needs it.)* | P1.3 | Code | Not started |
+| P5.1c | Champion/admin read policies | Expand owner-only RLS on `module_progress`/`quiz_attempts`/`lab_submissions`/`profiles`: champion reads its cohort, admin reads all; full `RUN_DB_TESTS` suite proving the boundary | P5.1b | Code | Not started |
+| P5.1d | Role-aware client | `useRole` + route guard so admin/champion views are reachable and gated; learners can't reach them | P5.1c | Design → Code | Not started |
+| **P5.2** | **Live dashboard (staff)** | | P5.1, P1.4 | | |
+| P5.2a | Aggregation layer | SQL views/RPCs for completion %, score distribution, GLAT pass rate, review-queue counts — all under P5.1c RLS | P5.1c | Code | Not started |
+| P5.2b | Dashboard shell + cohort filter + summary cards | Completion %, pass rates, distributions by cohort | P5.2a | Design → Code | Not started |
+| P5.2c | Per-user drill-down | A learner's progress / scores / lab status from the staff view | P5.2b | Design → Code | Not started |
+| P5.2d | Realtime | Supabase realtime subscription (ship P5.2b/c on polling first; this is the live upgrade) | P5.2b | Code | Not started |
+| **P5.3** | **Learner dashboard** | | P5.1, P1.4 | | |
+| P5.3a | Own progress / scores / lab status | Self-view — reuses existing owner RLS, no new policy, so it's shippable early & independent | P1.4 | Design → Code | Not started |
+| P5.3b | Calibration number + portfolio | Surface the PairedCalibration number + the 2.8/2.9/2.11 portfolio artifacts | P5.3a | Design → Code | Not started |
+| **P5.4** | **CMS** (largest — touches `modules` + `content_versions`; change reaches learners w/o redeploy) | | P3.2, P5.1 | | |
+| P5.4a | `content_versions` writer | Snapshot-on-edit + version-history rows (absorbs X.2) — the table exists but has no writer | P5.1c | Code | Not started |
+| P5.4b | Status/metadata editor | draft→in_review→published transitions (`modules.status` is real per W3-2 #70) via an admin write path — `modules` currently has no write policy | P5.1c | Design → Code | Not started |
+| P5.4c | Markdown body editor + live preview | Reuse the learner `react-markdown` render so preview ≡ the live lesson | P5.4b | Design → Code | Not started |
+| P5.4d | Quiz / lab / sorter config editors | Edit `quiz_json` / `lab_config_json` / `sorter_config_json` with write-time schema validation — the home for the D-16 validation W2-7 deferred "to the P5.4 CMS" | P5.4b | Design → Code | Not started |
+| P5.4e | Versioned rollback UI | Restore a `content_versions` snapshot | P5.4a | Design → Code | Not started |
+| **P5.5** | **Cohorts + review queue** | | P5.1 | | |
+| P5.5a | Cohort/enrollment management UI | CRUD over the P5.1b substrate + champion assignment | P5.1d | Design → Code | Not started |
+| P5.5b | Review queue | List `lab_submissions WHERE status='reviewable'` for the champion's cohort; open a submission (transcript + rubric_scores) — closes the audit gap "graded rows queue unreadably behind owner-only RLS" | P5.1c | Design → Code | Not started |
+| P5.5c | Champion grade action | Approve/override the LLM verdict + status transition (reviewable→reviewed/returned) — P4.2's deferred champion-review UI; launch item W4-5 | P5.5b | Design → Code | Not started |
+| **P5.6** | **Evidence exports** | | P5.2 | | |
+| P5.6a | Export query | Per-cohort evidence rows mapped to the DOL / EU AI Act Art. 4 / M-25-21 cross-walk | P5.2a | Code | Not started |
+| P5.6b | CSV export | Download cohort reports as CSV | P5.6a | Code | Not started |
+| P5.6c | PDF export | Same data as formatted PDF (heavier — separate slice) | P5.6a | Code | Not started |
 
 ## Phase 6 — Hardening (before deploy)
 
@@ -223,7 +256,7 @@ Phase 0 ▣▣▣▣ · Phase 1 ▣▣▣▣▣ · Phase 2 ▣▣▣▣ ✓ · *
 - **Admin portal: CMS + live dashboard** → P3.1, P3.2 (prereq), P5.2, P5.4, P5.5, P5.6.
 - **Deploy (pushed to the end)** → Phase 7.
 
-**Totals:** 4 + 5 + 4 + 11 + 11 + 6 + 6 + 5 + 3 = **55 tasks** across 9 tracks. All 28 universal cells get lesson + quiz content (P3.3/P3.4/P4.11); cell **2.12** (tool/model/mode switching) is taught via content + the Claude model/mode picker + triage items in P4.11.
+**Totals:** 4 + 5 + 4 + 11 + 11 + 21 + 6 + 5 + 3 = **70 tasks** across 9 tracks *(Phase 5 sliced from 6 → 21 shippable sub-tasks per D11; see the Phase 5 table).* All 28 universal cells get lesson + quiz content (P3.3/P3.4/P4.11); cell **2.12** (tool/model/mode switching) is taught via content + the Claude model/mode picker + triage items in P4.11.
 
 ---
 
