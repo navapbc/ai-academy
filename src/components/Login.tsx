@@ -127,10 +127,16 @@ export default function Login() {
               </button>
             </form>
 
-            <p className="text-center text-xs text-gray-500">
-              Local demo: <span className="font-mono">demo@navapbc.com</span> /{' '}
-              <span className="font-mono">demo-password</span>
-            </p>
+            <div className="text-center text-xs text-gray-500 space-y-1">
+              <p>
+                Learner: <span className="font-mono">demo@navapbc.com</span> /{' '}
+                <span className="font-mono">demo-password</span>
+              </p>
+              <p>
+                Admin: <span className="font-mono">admin@navapbc.com</span> /{' '}
+                <span className="font-mono">admin-password</span>
+              </p>
+            </div>
           </div>
         )}
       </div>

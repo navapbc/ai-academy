@@ -69,6 +69,53 @@ values (
   '{"q1":"a","q2":"c","q3":"b"}'
 );
 
+-- ---------------------------------------------------------------------------
+-- Demo ADMIN user, so the role-gated Staff area (P5.1d) can be previewed
+-- without mutating the learner's row. The handle_new_user() trigger creates
+-- this profile as 'learner'; we then promote it to 'admin'. That UPDATE is fine
+-- here because the seed runs as `postgres` — the prevent_self_role_change
+-- (W2-2) trigger only blocks role changes from the authenticated session role,
+-- not postgres/service_role. ON CONFLICT keeps it safe to re-run live.
+-- Demo credentials: admin@navapbc.com / admin-password
+-- ---------------------------------------------------------------------------
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, created_at, updated_at,
+  raw_app_meta_data, raw_user_meta_data,
+  confirmation_token, recovery_token, email_change_token_new, email_change
+)
+values (
+  '00000000-0000-0000-0000-000000000000',
+  '00000000-0000-0000-0000-000000000002',
+  'authenticated',
+  'authenticated',
+  'admin@navapbc.com',
+  extensions.crypt('admin-password', extensions.gen_salt('bf')),
+  now(), now(), now(),
+  '{"provider":"email","providers":["email"]}',
+  '{}',
+  '', '', '', ''
+)
+on conflict (id) do nothing;
+
+insert into auth.identities (
+  provider_id, user_id, identity_data, provider, last_sign_in_at,
+  created_at, updated_at
+)
+values (
+  '00000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000002',
+  '{"sub":"00000000-0000-0000-0000-000000000002","email":"admin@navapbc.com","email_verified":true}',
+  'email',
+  now(), now(), now()
+)
+on conflict (provider_id, provider) do nothing;
+
+-- Promote to admin (the trigger created the row as 'learner') + name it.
+update public.profiles
+   set role = 'admin', full_name = 'Demo Admin'
+ where id = '00000000-0000-0000-0000-000000000002';
+
 -- Demo cohort + enroll the demo learner, so Studio and the (future) staff
 -- dashboard have something to show. Lives here (not a migration) because it
 -- references the seed-only demo auth user. Fixed UUIDs + ON CONFLICT make it
