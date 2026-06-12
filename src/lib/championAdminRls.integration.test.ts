@@ -123,35 +123,58 @@ describe.skipIf(!RUN)('champion/admin read policies (P5.1c)', () => {
     const pr = await champ.client.from('profiles').select('id, role').eq('id', learner.uid);
     expect(pr.error).toBeNull();
     expect(pr.data?.length).toBe(1);
+
+    // The new policies are SELECT-only: a champion can READ but not WRITE an
+    // in-cohort learner's row. The owner-only UPDATE policy matches no row for a
+    // non-owner, so PostgREST reports zero rows affected (not an RLS error).
+    const upd = await champ.client
+      .from('module_progress')
+      .update({ status: 'in_progress' })
+      .eq('user_id', learner.uid)
+      .select('user_id');
+    expect(upd.error).toBeNull();
+    expect(upd.data?.length).toBe(0); // no row updated — write boundary intact
   });
 
-  test('a champion of cohort A CANNOT read a learner in cohort B (scoping)', async () => {
+  test('a champion of cohort A reads its own learner but NOT a cohort-B learner (scoping)', async () => {
     const svc = serviceClient();
     const learnerA = await newUser('p5c-A-learner');
     const champA = await newUser('p5c-A-champ');
     const learnerB = await newUser('p5c-B-learner');
     const champB = await newUser('p5c-B-champ');
+    // Seed BOTH learners so the positive and negative live in one fixture: a
+    // deny-all is_champion_of would fail the positive, so this single test
+    // proves the helper DISCRIMINATES rather than merely denies.
+    await seedActivity(svc, learnerA.uid, learnerA.uid);
     await seedActivity(svc, learnerB.uid, learnerB.uid);
     await makeCohortWith(svc, 'Cohort A', learnerA.uid, champA.uid);
     await makeCohortWith(svc, 'Cohort B', learnerB.uid, champB.uid);
     expect((await svc.from('profiles').update({ role: 'champion' }).eq('id', champA.uid)).error).toBeNull();
 
-    // champA is scoped to cohort A only — learnerB's rows must be invisible.
-    const mp = await champA.client.from('module_progress').select('user_id').eq('user_id', learnerB.uid);
-    expect(mp.error).toBeNull();
-    expect(mp.data?.length).toBe(0);
+    // Positive: champA is assigned to cohort A → sees learnerA across all tables.
+    const mpA = await champA.client.from('module_progress').select('module_id').eq('user_id', learnerA.uid);
+    expect(mpA.error).toBeNull();
+    expect(mpA.data?.some((r) => r.module_id === `mp-${learnerA.uid}`)).toBe(true);
+    const qaA = await champA.client.from('quiz_attempts').select('module_id').eq('user_id', learnerA.uid);
+    expect(qaA.data?.some((r) => r.module_id === `q-${learnerA.uid}`)).toBe(true);
+    const lsA = await champA.client.from('lab_submissions').select('lab_id').eq('user_id', learnerA.uid);
+    expect(lsA.data?.some((r) => r.lab_id === `lab-${learnerA.uid}`)).toBe(true);
+    const prA = await champA.client.from('profiles').select('id').eq('id', learnerA.uid);
+    expect(prA.data?.length).toBe(1);
 
-    const qa = await champA.client.from('quiz_attempts').select('user_id').eq('user_id', learnerB.uid);
-    expect(qa.error).toBeNull();
-    expect(qa.data?.length).toBe(0);
-
-    const ls = await champA.client.from('lab_submissions').select('user_id').eq('user_id', learnerB.uid);
-    expect(ls.error).toBeNull();
-    expect(ls.data?.length).toBe(0);
-
-    const pr = await champA.client.from('profiles').select('id').eq('id', learnerB.uid);
-    expect(pr.error).toBeNull();
-    expect(pr.data?.length).toBe(0);
+    // Negative: champA is NOT assigned to cohort B → learnerB is invisible everywhere.
+    const mpB = await champA.client.from('module_progress').select('user_id').eq('user_id', learnerB.uid);
+    expect(mpB.error).toBeNull();
+    expect(mpB.data?.length).toBe(0);
+    const qaB = await champA.client.from('quiz_attempts').select('user_id').eq('user_id', learnerB.uid);
+    expect(qaB.error).toBeNull();
+    expect(qaB.data?.length).toBe(0);
+    const lsB = await champA.client.from('lab_submissions').select('user_id').eq('user_id', learnerB.uid);
+    expect(lsB.error).toBeNull();
+    expect(lsB.data?.length).toBe(0);
+    const prB = await champA.client.from('profiles').select('id').eq('id', learnerB.uid);
+    expect(prB.error).toBeNull();
+    expect(prB.data?.length).toBe(0);
   });
 
   test('a champion with no cohort assignment reads nothing beyond their own rows', async () => {
@@ -165,6 +188,14 @@ describe.skipIf(!RUN)('champion/admin read policies (P5.1c)', () => {
     const mp = await champ.client.from('module_progress').select('user_id').eq('user_id', learner.uid);
     expect(mp.error).toBeNull();
     expect(mp.data?.length).toBe(0);
+
+    const qa = await champ.client.from('quiz_attempts').select('user_id').eq('user_id', learner.uid);
+    expect(qa.error).toBeNull();
+    expect(qa.data?.length).toBe(0);
+
+    const ls = await champ.client.from('lab_submissions').select('user_id').eq('user_id', learner.uid);
+    expect(ls.error).toBeNull();
+    expect(ls.data?.length).toBe(0);
 
     const pr = await champ.client.from('profiles').select('id').eq('id', learner.uid);
     expect(pr.error).toBeNull();
@@ -190,6 +221,22 @@ describe.skipIf(!RUN)('champion/admin read policies (P5.1c)', () => {
     expect(mp.error).toBeNull();
     expect(mp.data?.some((r) => r.module_id === `mp-${learnerA.uid}`)).toBe(true);
     expect(mp.data?.some((r) => r.module_id === `mp-${learnerB.uid}`)).toBe(true);
+
+    const qa = await admin.client
+      .from('quiz_attempts')
+      .select('user_id, module_id')
+      .in('user_id', [learnerA.uid, learnerB.uid]);
+    expect(qa.error).toBeNull();
+    expect(qa.data?.some((r) => r.module_id === `q-${learnerA.uid}`)).toBe(true);
+    expect(qa.data?.some((r) => r.module_id === `q-${learnerB.uid}`)).toBe(true);
+
+    const ls = await admin.client
+      .from('lab_submissions')
+      .select('user_id, lab_id')
+      .in('user_id', [learnerA.uid, learnerB.uid]);
+    expect(ls.error).toBeNull();
+    expect(ls.data?.some((r) => r.lab_id === `lab-${learnerA.uid}`)).toBe(true);
+    expect(ls.data?.some((r) => r.lab_id === `lab-${learnerB.uid}`)).toBe(true);
 
     const pr = await admin.client.from('profiles').select('id').in('id', [learnerA.uid, learnerB.uid]);
     expect(pr.error).toBeNull();
