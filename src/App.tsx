@@ -1,15 +1,18 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import { AIPersona, Phase } from './types';
+import { AIPersona, Phase, View } from './types';
 import { BRANDING } from './branding';
 import { useAuth } from './lib/auth';
 import { useProgress } from './lib/useProgress';
+import { useRole } from './lib/useRole';
 import { useCurriculum } from './lib/useCurriculum';
 import { stage1aProgress, isModuleLocked, firstIncompleteStage1aId } from './lib/gating';
 import Login from './components/Login';
 import ModuleRenderer from './components/ModuleRenderer';
 import LockedNotice from './components/LockedNotice';
 import Playground from './components/Playground';
+import RoleGuard from './components/RoleGuard';
+import StaffArea from './components/StaffArea';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import SupportModal from './components/SupportModal';
@@ -109,7 +112,12 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
     isLocked,
   );
 
-  const [view, setView] = useState<'learning' | 'playground'>('learning');
+  // Role drives which views are reachable (P5.1d). Resolved here, inside the
+  // `key={session.user.id}` subtree, so it resets cleanly on a user switch and
+  // never leaks an elevated role across sign-out/sign-in (the D-01 class).
+  const { role, loading: roleLoading, isStaff } = useRole();
+
+  const [view, setView] = useState<View>('learning');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<AIPersona>('default');
@@ -175,7 +183,7 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
     completeModule(moduleId);
   };
 
-  const handleViewChange = (next: 'learning' | 'playground') => {
+  const handleViewChange = (next: View) => {
     if (next !== view) navIntentRef.current = true;
     setView(next);
   };
@@ -194,6 +202,7 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
         onOpenSupport={() => setIsSupportOpen(true)}
         activeView={view}
         onViewChange={handleViewChange}
+        isStaff={isStaff}
         stage1aDone={stage1a.done}
         stage1aCompleted={stage1a.completed}
         stage1aTotal={stage1a.total}
@@ -229,9 +238,11 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
           aria-label={
             view === 'playground'
               ? 'Prompting playground'
-              : currentModuleLocked
-                ? 'Section locked'
-                : currentModule.title
+              : view === 'staff'
+                ? 'Staff tools'
+                : currentModuleLocked
+                  ? 'Section locked'
+                  : currentModule.title
           }
           className="flex-1 overflow-y-auto w-full focus:outline-none"
         >
@@ -240,7 +251,12 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
               selectedPersona={selectedPersona}
             />
           </div>
-          <div className={view !== 'playground' ? 'max-w-5xl mx-auto p-8 lg:p-12 xl:p-16' : 'hidden'}>
+          <div className={view === 'staff' ? 'max-w-5xl mx-auto p-8 lg:p-12 xl:p-16' : 'hidden'}>
+            <RoleGuard role={role} loading={roleLoading} allow={['admin', 'champion']}>
+              {role && <StaffArea role={role} />}
+            </RoleGuard>
+          </div>
+          <div className={view === 'learning' ? 'max-w-5xl mx-auto p-8 lg:p-12 xl:p-16' : 'hidden'}>
             {currentModuleLocked ? (
               <LockedNotice
                 completed={stage1a.completed}
