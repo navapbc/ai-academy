@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BarChart3, X, CheckCircle2, LifeBuoy, Terminal, Lock } from 'lucide-react';
-import { Phase, UserProgress } from '../../types';
+import { BarChart3, X, CheckCircle2, LifeBuoy, Terminal, Lock, ShieldCheck } from 'lucide-react';
+import { Phase, UserProgress, View } from '../../types';
 import { isModuleLive } from '../../lib/modules';
 import { isModuleLocked } from '../../lib/gating';
 import { BRANDING } from '../../branding';
@@ -14,15 +14,17 @@ interface SidebarProps {
   onModuleSelect: (id: string) => void;
   overallProgress: number;
   onOpenSupport: () => void;
-  activeView: 'learning' | 'playground';
-  onViewChange: (view: 'learning' | 'playground') => void;
+  activeView: View;
+  onViewChange: (view: View) => void;
+  /** Whether the signed-in user is a champion/admin — gates the Staff entry (P5.1d). */
+  isStaff: boolean;
   /** Stage gating (P3.11): whether all of Stage 1a is complete (unlocks Stage 2). */
   stage1aDone: boolean;
   stage1aCompleted: number;
   stage1aTotal: number;
 }
 
-export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSelect, overallProgress, onOpenSupport, activeView, onViewChange, stage1aDone, stage1aCompleted, stage1aTotal }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSelect, overallProgress, onOpenSupport, activeView, onViewChange, isStaff, stage1aDone, stage1aCompleted, stage1aTotal }: SidebarProps) {
   const completed = new Set(progress.completedModuleIds);
   const totalModules = phases.reduce((n, p) => n + p.modules.length, 0);
   // Count only completed ids that are still in the curriculum, so the headline
@@ -93,6 +95,25 @@ export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSel
                 <span className="text-xs font-medium">Learning</span>
               </button>
             </div>
+
+            {/* Staff area (P5.1d): only champions/admins ever see this entry, so
+                a learner has no path to the gated view. The RoleGuard on the
+                view is the backstop if the state is reached some other way. */}
+            {isStaff && (
+              <div className="px-3 pb-2">
+                <button
+                  onClick={() => onViewChange('staff')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all
+                    ${activeView === 'staff'
+                      ? 'bg-nava-mint text-nava-green border-l-4 border-nava-green shadow-sm font-bold'
+                      : 'hover:bg-gray-50 text-gray-600'
+                    }`}
+                >
+                  <ShieldCheck className="w-4 h-4 shrink-0" />
+                  <span className="text-xs font-medium">Staff</span>
+                </button>
+              </div>
+            )}
 
             <div className="border-t border-gray-100 my-2 mx-3" />
 

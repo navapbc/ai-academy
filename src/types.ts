@@ -27,6 +27,17 @@ export type Stage = '1a' | '1b' | '2';
 /** Editorial state of a module's content (mirrors modules.status). */
 export type ModuleStatus = 'draft' | 'in_review' | 'published';
 
+/**
+ * A user's access role (mirrors the `profiles.role` CHECK constraint).
+ * `learner` is the default; `champion` reviews their assigned cohort; `admin`
+ * sees everything. The data boundary is enforced by RLS (P5.1c); the client
+ * `Role` only decides which views are reachable (P5.1d).
+ */
+export type Role = 'learner' | 'champion' | 'admin';
+
+/** Top-level views the app can show. `staff` is role-gated (P5.1d). */
+export type View = 'learning' | 'playground' | 'staff';
+
 export interface Module {
   id: string;
   title: string;
