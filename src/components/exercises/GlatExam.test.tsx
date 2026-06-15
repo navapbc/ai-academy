@@ -64,10 +64,16 @@ describe('GlatExam', () => {
     ]);
     await userEvent.click(screen.getByRole('button', { name: /submit/i }));
 
+    // The pass/fail banner shows first; the attempt is recorded on submit, but
+    // completion only fires when the learner clicks "Finish" (so the result is
+    // seen, not auto-advanced past).
     expect(await screen.findByText(/passed/i)).toBeInTheDocument();
     expect(recordQuizAttempt).toHaveBeenCalledTimes(1);
     const [, payload] = recordQuizAttempt.mock.calls[0];
     expect(payload).toMatchObject({ moduleId: '2.14', score: 4, maxScore: 5, passed: true });
+    expect(onComplete).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: /finish/i }));
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 

@@ -50,8 +50,11 @@ export default function GlatExam({
       }).catch(() => {
         // Best-effort persistence; the local result still shows.
       });
-      if (r.passed) onComplete();
     }
+    // Completion is NOT auto-fired here: the learner must see their pass/fail
+    // result first. On a pass, the results view shows a "Finish" button that
+    // calls onComplete (the Quiz "Continue to Next Sprint" pattern) — otherwise
+    // the cursor auto-advances off the result before it can be read.
   };
 
   const reset = () => {
@@ -125,16 +128,23 @@ export default function GlatExam({
           })}
         </ol>
 
-        {!result.passed && (
-          <div className="flex justify-center">
+        <div className="flex justify-center">
+          {result.passed ? (
+            <button
+              onClick={onComplete}
+              className="px-10 py-3 bg-nava-green text-white rounded-xl font-bold hover:bg-nava-plum transition-all shadow-lg"
+            >
+              Finish — continue
+            </button>
+          ) : (
             <button
               onClick={reset}
               className="px-10 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition-all"
             >
               Retake the gate
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   }
