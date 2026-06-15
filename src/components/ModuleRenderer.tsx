@@ -32,6 +32,7 @@ import PairedCalibration from './exercises/PairedCalibration';
 import DashboardCritique from './exercises/DashboardCritique';
 import UseCasePortfolio from './exercises/UseCasePortfolio';
 import FailureLog from './exercises/FailureLog';
+import GlatExam from './exercises/GlatExam';
 
 interface Props {
   module: Module;
@@ -175,6 +176,10 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         // (not LLM-graded) above the quiz, which remains the completion gate; no
         // onComplete (see FailureLogConfig).
         return <FailureLog config={module.labConfig} labId={module.cellId} />;
+      case 'glat':
+        // GLAT objective gate (P4.10) — this lab GATES cell 2.14: ≥80% records a
+        // passing quiz_attempts row and calls onComplete. 2.14 has no inline quiz.
+        return <GlatExam config={module.labConfig} labId={module.cellId} onComplete={onComplete} />;
       default:
         return null;
     }
@@ -191,9 +196,10 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
   // (the lab's onComplete still gates). Every other cell keeps the quiz as the
   // gate. The lab is the only exercise kind that takes onComplete, so keying on
   // it is exact and contained.
-  const labGatesCompletion = module.labConfig?.kind === 'prompt-construction';
+  const labGatesCompletion =
+    module.labConfig?.kind === 'prompt-construction' || module.labConfig?.kind === 'glat';
   const hasCompletionButton =
-    (module.type === 'content' || module.type === 'glossary') && !hasInlineQuiz;
+    (module.type === 'content' || module.type === 'glossary') && !hasInlineQuiz && !labGatesCompletion;
   const showNoActivityFallback =
     !interactive && !exercise && !hasInlineQuiz && !hasCompletionButton;
 
@@ -309,7 +315,7 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         </div>
       )}
 
-      {(module.type === 'content' || module.type === 'glossary') && !hasInlineQuiz && (
+      {hasCompletionButton && (
         <div className="flex justify-center pt-8 border-t border-gray-100">
           <button
             onClick={onComplete}

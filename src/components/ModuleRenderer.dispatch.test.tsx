@@ -37,6 +37,7 @@ vi.mock('./exercises/Calibration', () => ({ default: () => <div>STUB:Calibration
 vi.mock('./exercises/VoiceEdit', () => ({ default: () => <div>STUB:VoiceEdit</div> }));
 vi.mock('./exercises/PromptEval', () => ({ default: () => <div>STUB:PromptEval</div> }));
 vi.mock('./exercises/IterationLab', () => ({ default: () => <div>STUB:IterationLab</div> }));
+vi.mock('./exercises/GlatExam', () => ({ default: () => <div>STUB:GlatExam objective gate</div> }));
 
 const base: Module = {
   id: '1.x',
@@ -93,10 +94,26 @@ describe('renderExercise — dispatch by labConfig.kind', () => {
     ['voice-edit', 'STUB:VoiceEdit'],
     ['prompt-eval', 'STUB:PromptEval'],
     ['iteration', 'STUB:IterationLab'],
+    ['glat', 'STUB:GlatExam objective gate'],
   ];
   test.each(kinds)('kind %s renders %s', (kind, marker) => {
     renderModule({ type: 'lab', labConfig: { kind } as LabConfig });
     expect(screen.getByText(marker)).toBeInTheDocument();
+  });
+
+  test('dispatches glat → GlatExam', () => {
+    renderModule({
+      type: 'lab',
+      labConfig: {
+        kind: 'glat',
+        passThreshold: 0.8,
+        sectionA: [],
+        sectionBC: [
+          { id: 'B1', question: 'Q1?', options: ['a', 'b'], correctIndex: 0, rationale: 'r' },
+        ],
+      },
+    });
+    expect(screen.getByText(/objective gate/i)).toBeInTheDocument();
   });
 });
 
