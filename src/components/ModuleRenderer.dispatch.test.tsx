@@ -137,6 +137,20 @@ describe('completion affordance', () => {
     expect(screen.getByTestId('stub-quiz')).toHaveAttribute('data-gates', 'false');
   });
 
+  // P4.10 — cell 2.14: the GLAT lab gates and the placeholder quiz was removed, so a
+  // content module with a glat labConfig and no inline quiz must NOT also show the
+  // manual "completed this section" button (the GLAT's Finish→onComplete is the only
+  // completion path — no second, unguarded one).
+  test('a content module with a glat labConfig and no quiz suppresses the manual complete button', () => {
+    renderModule({
+      type: 'content',
+      content: '# Lesson',
+      labConfig: { kind: 'glat' } as LabConfig,
+    });
+    expect(screen.getByText('STUB:GlatExam objective gate')).toBeInTheDocument();
+    expect(screen.queryByText(/completed this section/i)).not.toBeInTheDocument();
+  });
+
   // FE-06 — a type:'lab' module whose labConfig is missing (or whose kind is
   // unhandled) used to render no exercise, no quiz, and no completion control: a
   // silent dead-end. It now shows a visible fallback notice.

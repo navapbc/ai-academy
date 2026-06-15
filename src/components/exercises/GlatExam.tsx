@@ -132,6 +132,7 @@ export default function GlatExam({
           {result.passed ? (
             <button
               onClick={onComplete}
+              aria-label="Finish and continue"
               className="px-10 py-3 bg-nava-green text-white rounded-xl font-bold hover:bg-nava-plum transition-all shadow-lg"
             >
               Finish — continue

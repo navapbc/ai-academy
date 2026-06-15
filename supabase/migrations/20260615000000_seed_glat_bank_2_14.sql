@@ -463,4 +463,7 @@ $json$::jsonb,
     status = 'in_review',
     version = version + 1,
     updated_at = now()
+-- Idempotent: re-runs (incl. every `supabase db reset`) match zero rows once the
+-- config is set. To intentionally RE-APPLY a corrected bank to an already-seeded DB,
+-- first clear it: `update public.modules set lab_config_json = null where cell_id = '2.14';`
 where cell_id = '2.14' and lab_config_json is null;
