@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CohortDashboard from './CohortDashboard';
 import type { CohortSummary, ScoreDistribution } from '../../lib/dashboard';

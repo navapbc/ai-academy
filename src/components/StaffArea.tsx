@@ -1,20 +1,14 @@
-import { LayoutDashboard, ClipboardList, Users } from 'lucide-react';
+import { ClipboardList, Users } from 'lucide-react';
 import type { Role } from '../types';
+import CohortDashboard from './staff/CohortDashboard';
 
-// Placeholder staff landing reached via the role-gated `staff` view (P5.1d).
-// It only proves the view is *reachable and gated* — the real dashboards and
-// review queue land later: staff dashboard (P5.2), learner self-view (P5.3),
-// cohort management + review queue (P5.5). Champions and admins see the same
-// shell here; the per-feature admin-only vs champion split happens in those
-// slices via the RoleGuard `allow` seam.
+// Staff landing reached via the role-gated `staff` view (P5.1d). The cohort
+// dashboard (P5.2b) is now live at the top; the review queue and cohort
+// management land in P5.5 and show as "soon" tiles below. Champions and admins
+// see the same shell; the per-feature admin-only vs champion split happens in
+// those slices via the RoleGuard `allow` seam.
 
-const COMING_SOON: { icon: typeof LayoutDashboard; title: string; detail: string; slice: string }[] = [
-  {
-    icon: LayoutDashboard,
-    title: 'Cohort dashboard',
-    detail: 'Completion %, score distributions, and GLAT pass rates by cohort.',
-    slice: 'P5.2',
-  },
+const COMING_SOON: { icon: typeof ClipboardList; title: string; detail: string; slice: string }[] = [
   {
     icon: ClipboardList,
     title: 'Review queue',
@@ -31,22 +25,22 @@ const COMING_SOON: { icon: typeof LayoutDashboard; title: string; detail: string
 
 export default function StaffArea({ role }: { role: Role }) {
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-10">
       <header className="space-y-2">
         <span className="text-[11px] font-bold uppercase tracking-widest text-nava-green">
           {role === 'admin' ? 'Admin' : 'Champion'} area
         </span>
         <h1 className="text-2xl font-bold text-gray-900" tabIndex={-1}>
-          Staff tools
+          Cohort dashboard
         </h1>
         <p className="text-sm text-gray-600">
-          You can reach this area because your role is{' '}
-          <span className="font-semibold">{role}</span>. The dashboards and review
-          tools below are being built — this page confirms staff access works.
+          Completion, quiz scores, and review load for the cohorts you can see.
         </p>
       </header>
 
-      <ul className="space-y-3">
+      <CohortDashboard />
+
+      <ul className="space-y-3 border-t border-gray-200 pt-8">
         {COMING_SOON.map(({ icon: Icon, title, detail, slice }) => (
           <li
             key={title}
