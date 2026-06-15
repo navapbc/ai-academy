@@ -20,11 +20,22 @@ const BANDS: { key: keyof ScoreDistribution; label: string }[] = [
   { key: '80to100', label: '80–100' },
 ];
 
+const BAND_COLORS: Record<keyof ScoreDistribution, string> = {
+  lt60: 'bg-red-400',
+  '60to79': 'bg-amber-400',
+  '80to100': 'bg-nava-green/80',
+};
+
 function SummaryCard({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
       <div className="text-[11px] font-bold uppercase tracking-widest text-gray-500">{label}</div>
-      <div className="mt-1 text-2xl font-bold text-gray-900">{value}</div>
+      <div
+        className="mt-1 text-2xl font-bold text-gray-900"
+        aria-label={value === '—' ? 'No data' : undefined}
+      >
+        {value}
+      </div>
       {note && <div className="mt-1 text-[11px] text-gray-400">{note}</div>}
     </div>
   );
@@ -41,7 +52,7 @@ function DistributionBar({ dist }: { dist: ScoreDistribution }) {
         {BANDS.map(({ key }) => {
           const pct = (dist[key] / total) * 100;
           if (pct === 0) return null;
-          return <div key={key} className="bg-nava-green/70" style={{ width: `${pct}%` }} />;
+          return <div key={key} className={BAND_COLORS[key]} style={{ width: `${pct}%` }} />;
         })}
       </div>
       <ul className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-600">
@@ -76,7 +87,7 @@ function CohortBlock({
         <SummaryCard
           label="GLAT pass rate"
           value={formatPct(summary.glatPassRate)}
-          note="0% until the GLAT ships (P4.10)"
+          note="0% until the GLAT feature ships"
         />
         <SummaryCard label="Avg quiz score" value={formatPct(summary.avgQuizPct)} />
         <SummaryCard label="Labs awaiting review" value={String(summary.reviewableTotal)} />
@@ -92,10 +103,11 @@ export default function CohortDashboard() {
   const { summaries, distribution, loading, error, reload } = useDashboard();
   const [selected, setSelected] = useState<string>('all');
 
-  const visible = useMemo(
-    () => (selected === 'all' ? summaries : summaries.filter((s) => s.cohortId === selected)),
-    [summaries, selected],
-  );
+  const visible = useMemo(() => {
+    if (selected === 'all') return summaries;
+    const found = summaries.filter((s) => s.cohortId === selected);
+    return found.length > 0 ? found : summaries;
+  }, [summaries, selected]);
 
   if (loading) {
     return (

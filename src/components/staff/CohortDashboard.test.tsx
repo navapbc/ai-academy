@@ -64,6 +64,7 @@ describe('CohortDashboard', () => {
 
     await userEvent.selectOptions(screen.getByLabelText(/cohort/i), 'c-b');
 
+    expect(screen.getByRole('combobox')).toHaveValue('c-b');
     expect(screen.getByText('Beta cohort')).toBeInTheDocument();
     expect(screen.queryByText('Alpha cohort')).not.toBeInTheDocument();
   });
