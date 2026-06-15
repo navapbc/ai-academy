@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { useDashboard } from '../../lib/useDashboard';
 import type { CohortSummary, ScoreDistribution } from '../../lib/dashboard';
@@ -103,10 +103,19 @@ export default function CohortDashboard() {
   const { summaries, distribution, loading, error, reload } = useDashboard();
   const [selected, setSelected] = useState<string>('all');
 
+  // If a reload drops the selected cohort (e.g. its last learner left), reset the
+  // filter to "all" so the <select> control and the rendered set stay in sync —
+  // otherwise the dropdown shows a ghost value while `visible` falls back to all.
+  useEffect(() => {
+    if (selected !== 'all' && !summaries.some((s) => s.cohortId === selected)) {
+      setSelected('all');
+    }
+  }, [summaries, selected]);
+
   const visible = useMemo(() => {
     if (selected === 'all') return summaries;
-    const found = summaries.filter((s) => s.cohortId === selected);
-    return found.length > 0 ? found : summaries;
+    const found = summaries.find((s) => s.cohortId === selected);
+    return found ? [found] : summaries;
   }, [summaries, selected]);
 
   if (loading) {
