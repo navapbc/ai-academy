@@ -33,10 +33,19 @@ beforeEach(() => {
   useAuthMock.mockReturnValue({ user: { id: 'u-1' } });
 });
 
+// Maps B-item id to the question text prefix used in aria-labelledby.
+const QUESTION_TEXT: Record<string, RegExp> = {
+  B1: /Q1\?/,
+  B2: /Q2\?/,
+  B3: /Q3\?/,
+  B4: /Q4\?/,
+  B5: /Q5\?/,
+};
+
 // Pick the correct option for B1..Bn (helper keeps the test readable).
 async function answer(ids: { id: string; optionText: string }[]) {
   for (const { id, optionText } of ids) {
-    const group = screen.getByRole('group', { name: new RegExp(id) });
+    const group = screen.getByRole('radiogroup', { name: QUESTION_TEXT[id] });
     await userEvent.click(within(group).getByRole('radio', { name: optionText }));
   }
 }
@@ -75,7 +84,7 @@ describe('GlatExam', () => {
     ]);
     await userEvent.click(screen.getByRole('button', { name: /submit/i }));
 
-    expect(await screen.findByText(/didn't pass|did not pass|not yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/not yet/i)).toBeInTheDocument();
     const [, payload] = recordQuizAttempt.mock.calls[0];
     expect(payload).toMatchObject({ passed: false, score: 2, maxScore: 5 });
     expect(onComplete).not.toHaveBeenCalled();
@@ -85,7 +94,7 @@ describe('GlatExam', () => {
   test('Section A response rides in answers but does not change pass/fail', async () => {
     render(<GlatExam config={CONFIG} labId="2.14" onComplete={vi.fn()} />);
     // answer Section A scale (pick 2 of 5)
-    const aGroup = screen.getByRole('group', { name: /A1/ });
+    const aGroup = screen.getByRole('radiogroup', { name: /How confident are you\?/ });
     await userEvent.click(within(aGroup).getByRole('radio', { name: '2' }));
     await answer([
       { id: 'B1', optionText: 'B1-right' },

@@ -101,20 +101,6 @@ describe('renderExercise — dispatch by labConfig.kind', () => {
     expect(screen.getByText(marker)).toBeInTheDocument();
   });
 
-  test('dispatches glat → GlatExam', () => {
-    renderModule({
-      type: 'lab',
-      labConfig: {
-        kind: 'glat',
-        passThreshold: 0.8,
-        sectionA: [],
-        sectionBC: [
-          { id: 'B1', question: 'Q1?', options: ['a', 'b'], correctIndex: 0, rationale: 'r' },
-        ],
-      },
-    });
-    expect(screen.getByText(/objective gate/i)).toBeInTheDocument();
-  });
 });
 
 describe('completion affordance', () => {

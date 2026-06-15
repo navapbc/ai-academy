@@ -9,7 +9,8 @@ import { scoreGlat, type GlatResponses } from '../../lib/grading/scoreGlat';
 // Sections B+C (35 scored). ≥passThreshold records a PASSING quiz_attempts row on
 // 2.14 and completes the cell via onComplete (the cell-2.1/D8 "lab gates"
 // pattern). On a miss it records the failed attempt and offers a retake. The
-// recordedRef guard makes the write idempotent across StrictMode/re-renders.
+// recordedRef guard makes the write idempotent — prevents a second Submit click
+// before results render from writing two attempt rows.
 
 const SCALE = [1, 2, 3, 4, 5];
 
@@ -49,8 +50,8 @@ export default function GlatExam({
       }).catch(() => {
         // Best-effort persistence; the local result still shows.
       });
+      if (r.passed) onComplete();
     }
-    if (r.passed) onComplete();
   };
 
   const reset = () => {
@@ -108,6 +109,11 @@ export default function GlatExam({
                   <div className="min-w-0">
                     <p className="font-medium text-gray-900">{q.question}</p>
                     <p className="sr-only">{item.isCorrect ? 'Correct' : 'Incorrect'}</p>
+                    {!item.isCorrect && item.selected !== null && (
+                      <p className="mt-1 text-sm text-red-700">
+                        Your answer: <span className="font-medium">{q.options[item.selected]}</span>
+                      </p>
+                    )}
                     <p className="mt-1 text-sm text-gray-600">
                       Correct answer: <span className="font-medium">{q.options[q.correctIndex]}</span>
                     </p>
@@ -150,29 +156,36 @@ export default function GlatExam({
             Self-check (not scored)
           </h4>
           {config.sectionA.map((item) => (
-            <fieldset key={item.id} className="space-y-2" aria-label={item.id}>
-              <legend className="text-sm font-medium text-gray-800">{item.prompt}</legend>
-              <div className="flex items-center gap-2" role="radiogroup" aria-label={item.id}>
+            <div key={item.id} role="radiogroup" aria-labelledby={`glat-${item.id}-label`} className="space-y-2">
+              <p id={`glat-${item.id}-label`} className="text-sm font-medium text-gray-800">{item.prompt}</p>
+              <div className="flex items-center gap-2">
                 {item.scaleLabels && <span className="text-xs text-gray-400">{item.scaleLabels[0]}</span>}
-                {SCALE.map((n) => (
-                  <button
-                    key={n}
-                    role="radio"
-                    aria-checked={sectionA[item.id] === n}
-                    aria-label={String(n)}
-                    onClick={() => setSectionA((p) => ({ ...p, [item.id]: n }))}
-                    className={`w-9 h-9 rounded-full border-2 text-sm font-bold transition-all ${
-                      sectionA[item.id] === n
-                        ? 'border-nava-green bg-nava-mint text-nava-green'
-                        : 'border-gray-200 text-gray-500 hover:border-nava-green/40'
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
+                {SCALE.map((n) => {
+                  // Fix 8: give the endpoint values their anchor text so SR users get context.
+                  const anchor =
+                    item.scaleLabels && n === 1 ? ` — ${item.scaleLabels[0]}`
+                    : item.scaleLabels && n === 5 ? ` — ${item.scaleLabels[1]}`
+                    : '';
+                  return (
+                    <button
+                      key={n}
+                      role="radio"
+                      aria-checked={sectionA[item.id] === n}
+                      aria-label={`${n}${anchor}`}
+                      onClick={() => setSectionA((p) => ({ ...p, [item.id]: n }))}
+                      className={`w-9 h-9 rounded-full border-2 text-sm font-bold transition-all ${
+                        sectionA[item.id] === n
+                          ? 'border-nava-green bg-nava-mint text-nava-green'
+                          : 'border-gray-200 text-gray-500 hover:border-nava-green/40'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  );
+                })}
                 {item.scaleLabels && <span className="text-xs text-gray-400">{item.scaleLabels[1]}</span>}
               </div>
-            </fieldset>
+            </div>
           ))}
         </section>
       )}
@@ -180,11 +193,11 @@ export default function GlatExam({
       <section className="space-y-6">
         <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500">Scored questions</h4>
         {config.sectionBC.map((q, qi) => (
-          <fieldset key={q.id} className="space-y-3" aria-label={`${q.id} ${q.question}`}>
-            <legend className="text-base font-medium text-gray-900">
+          <div key={q.id} role="radiogroup" aria-labelledby={`glat-${q.id}-label`} className="space-y-3">
+            <p id={`glat-${q.id}-label`} className="text-base font-medium text-gray-900">
               {qi + 1}. {q.question}
-            </legend>
-            <div className="space-y-2" role="radiogroup" aria-label={`${q.id} ${q.question}`}>
+            </p>
+            <div className="space-y-2">
               {q.options.map((opt, oi) => (
                 <button
                   key={oi}
@@ -202,7 +215,7 @@ export default function GlatExam({
                 </button>
               ))}
             </div>
-          </fieldset>
+          </div>
         ))}
       </section>
 
