@@ -32,6 +32,8 @@ export function useDashboard(): DashboardState {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    // No isSupabaseConfigured guard: this hook only renders inside a RoleGuard
+    // subtree that already requires a resolved staff role (hence a configured stack).
     Promise.all([fetchCohortSummaries(), fetchScoreDistribution()])
       .then(([s, d]) => {
         if (cancelled) return;
@@ -39,8 +41,9 @@ export function useDashboard(): DashboardState {
         setDistribution(d);
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (cancelled) return;
+        console.error('[useDashboard] dashboard fetch failed', err);
         setError('Could not load the cohort dashboard.');
         setLoading(false);
       });

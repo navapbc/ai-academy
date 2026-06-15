@@ -46,7 +46,7 @@ export interface DistributionRow {
 }
 
 function toNum(v: number | string | null): number | null {
-  if (v === null) return null;
+  if (v === null || v === '') return null;
   const n = typeof v === 'string' ? Number(v) : v;
   return Number.isNaN(n) ? null : n;
 }
