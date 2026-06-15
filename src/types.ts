@@ -524,6 +524,33 @@ export interface FailureLogConfig {
   tellPlaceholder: string;
 }
 
+/**
+ * GLAT objective gate (cell 2.14, P4.10). An auto-graded exit-credential exam:
+ * Section A is 5 diagnostic self-report scales (captured, NOT scored); Sections
+ * B+C are 35 objective questions (scored). ≥`passThreshold` of the scored set
+ * sets the program completion marker (a passing quiz_attempts row on 2.14). This
+ * lab GATES the cell (its onComplete completes 2.14, the cell-2.1/D8 pattern).
+ */
+export interface GlatScaleItem {
+  id: string;                      // 'A1'..'A5'
+  prompt: string;
+  /** Optional low/high anchors for the 1–5 scale. */
+  scaleLabels?: [string, string];
+}
+export interface GlatScoredItem {
+  id: string;                      // 'B1'..'B20', 'C1'..'C15'
+  question: string;
+  options: string[];               // 2..4 options (True/False allowed)
+  correctIndex: number;            // 0-based
+  rationale: string;
+}
+export interface GlatConfig {
+  kind: 'glat';
+  passThreshold: number;           // 0.8
+  sectionA: GlatScaleItem[];
+  sectionBC: GlatScoredItem[];
+}
+
 export type LabConfig =
   | PromptConstructionConfig
   | DataClassifierConfig
@@ -543,7 +570,8 @@ export type LabConfig =
   | PairedCalibrationConfig
   | DashboardCritiqueConfig
   | UseCasePortfolioConfig
-  | FailureLogConfig;
+  | FailureLogConfig
+  | GlatConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];
