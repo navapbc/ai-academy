@@ -135,3 +135,15 @@ values (
   '00000000-0000-0000-0000-000000000001'
 )
 on conflict (user_id) do nothing;
+
+-- Mark the demo ADMIN's Stage 1a complete so the admin can preview the gated
+-- Stage 2 content (incl. the GLAT objective gate, cell 2.14) without grinding
+-- through Stage 1a first. Companion to the admin-preview intent above. NOT EXISTS
+-- keeps it idempotent across `supabase db reset` regardless of constraint shape.
+insert into public.module_progress (user_id, module_id, status, completed_at, updated_at)
+select '00000000-0000-0000-0000-000000000002', m, 'completed', now(), now()
+from unnest(array['1.3', '1.4', '1.5', '1.6', '1.9', '1.10', '1.13']) as m
+where not exists (
+  select 1 from public.module_progress mp
+  where mp.user_id = '00000000-0000-0000-0000-000000000002' and mp.module_id = m
+);

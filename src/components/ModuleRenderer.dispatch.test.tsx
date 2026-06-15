@@ -37,6 +37,7 @@ vi.mock('./exercises/Calibration', () => ({ default: () => <div>STUB:Calibration
 vi.mock('./exercises/VoiceEdit', () => ({ default: () => <div>STUB:VoiceEdit</div> }));
 vi.mock('./exercises/PromptEval', () => ({ default: () => <div>STUB:PromptEval</div> }));
 vi.mock('./exercises/IterationLab', () => ({ default: () => <div>STUB:IterationLab</div> }));
+vi.mock('./exercises/GlatExam', () => ({ default: () => <div>STUB:GlatExam objective gate</div> }));
 
 const base: Module = {
   id: '1.x',
@@ -93,11 +94,13 @@ describe('renderExercise — dispatch by labConfig.kind', () => {
     ['voice-edit', 'STUB:VoiceEdit'],
     ['prompt-eval', 'STUB:PromptEval'],
     ['iteration', 'STUB:IterationLab'],
+    ['glat', 'STUB:GlatExam objective gate'],
   ];
   test.each(kinds)('kind %s renders %s', (kind, marker) => {
     renderModule({ type: 'lab', labConfig: { kind } as LabConfig });
     expect(screen.getByText(marker)).toBeInTheDocument();
   });
+
 });
 
 describe('completion affordance', () => {
@@ -132,6 +135,20 @@ describe('completion affordance', () => {
     expect(screen.getByText('STUB:Quiz')).toBeInTheDocument();
     // …but the quiz is non-gating; the lab's own onComplete is the gate.
     expect(screen.getByTestId('stub-quiz')).toHaveAttribute('data-gates', 'false');
+  });
+
+  // P4.10 — cell 2.14: the GLAT lab gates and the placeholder quiz was removed, so a
+  // content module with a glat labConfig and no inline quiz must NOT also show the
+  // manual "completed this section" button (the GLAT's Finish→onComplete is the only
+  // completion path — no second, unguarded one).
+  test('a content module with a glat labConfig and no quiz suppresses the manual complete button', () => {
+    renderModule({
+      type: 'content',
+      content: '# Lesson',
+      labConfig: { kind: 'glat' } as LabConfig,
+    });
+    expect(screen.getByText('STUB:GlatExam objective gate')).toBeInTheDocument();
+    expect(screen.queryByText(/completed this section/i)).not.toBeInTheDocument();
   });
 
   // FE-06 — a type:'lab' module whose labConfig is missing (or whose kind is
