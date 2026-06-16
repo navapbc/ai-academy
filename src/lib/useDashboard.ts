@@ -6,6 +6,7 @@ import {
   type ScoreDistribution,
 } from './dashboard';
 import { fetchCohortLearners, type LearnerRosterEntry } from './learnerDetail';
+import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient';
 
 // Staff cohort-dashboard state (P5.2b/P5.2c). Fetches the scoped rollups plus
 // the per-learner roster (the P5.2c drill-down spine) once on mount; the cohort
@@ -33,28 +34,64 @@ export function useDashboard(): DashboardState {
 
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
+  // Realtime subscription for P5.2d
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    // No isSupabaseConfigured guard: this hook only renders inside a RoleGuard
-    // subtree that already requires a resolved staff role (hence a configured stack).
-    Promise.all([fetchCohortSummaries(), fetchScoreDistribution(), fetchCohortLearners()])
-      .then(([s, d, l]) => {
-        if (cancelled) return;
-        setSummaries(s);
-        setDistribution(d);
-        setLearners(l);
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        console.error('[useDashboard] dashboard fetch failed', err);
-        setError('Could not load the cohort dashboard.');
-        setLoading(false);
-      });
+    let subscription: any = null;
+
+    const fetchData = () => {
+      Promise.all([fetchCohortSummaries(), fetchScoreDistribution(), fetchCohortLearners()])
+        .then(([s, d, l]) => {
+          if (cancelled) return;
+          setSummaries(s);
+          setDistribution(d);
+          setLearners(l);
+          setLoading(false);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          console.error('[useDashboard] dashboard fetch failed', err);
+          setError('Could not load the cohort dashboard.');
+          setLoading(false);
+        });
+    };
+
+    // Initial fetch
+    fetchData();
+
+    // Setup realtime subscription if Supabase is configured
+    if (isSupabaseConfigured) {
+      const supabase = getSupabaseClient();
+      
+      // Subscribe to changes in views that affect the dashboard
+      // We need to subscribe to the underlying tables that drive the dashboard data
+      subscription = supabase
+        .from('cohort_progress_summary')
+        .on('*', (payload) => {
+          // Re-fetch when data changes
+          if (!cancelled) {
+            fetchData();
+          }
+        })
+        .subscribe();
+
+      // Also listen for changes to learner progress data that could affect summaries
+      subscription = supabase
+        .from('learner_progress_summary')
+        .on('*', (payload) => {
+          // Re-fetch when data changes
+          if (!cancelled) {
+            fetchData();
+          }
+        })
+        .subscribe();
+    }
+
     return () => {
       cancelled = true;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
     };
   }, [nonce]);
 
