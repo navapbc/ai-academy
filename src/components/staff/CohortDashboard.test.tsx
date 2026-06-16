@@ -4,16 +4,31 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CohortDashboard from './CohortDashboard';
 import type { CohortSummary, ScoreDistribution } from '../../lib/dashboard';
+import type { LearnerRosterEntry } from '../../lib/learnerDetail';
 
-const { fetchCohortSummaries, fetchScoreDistribution } = vi.hoisted(() => ({
+const { fetchCohortSummaries, fetchScoreDistribution, fetchCohortLearners } = vi.hoisted(() => ({
   fetchCohortSummaries: vi.fn(),
   fetchScoreDistribution: vi.fn(),
+  fetchCohortLearners: vi.fn(),
 }));
 
 vi.mock('../../lib/dashboard', () => ({
   fetchCohortSummaries,
   fetchScoreDistribution,
 }));
+vi.mock('../../lib/learnerDetail', () => ({ fetchCohortLearners }));
+
+const LEARNER_A: LearnerRosterEntry = {
+  userId: 'u-1',
+  cohortId: 'c-a',
+  name: 'Ada Lovelace',
+  email: 'ada@navapbc.com',
+  completionPct: 0.5,
+  avgQuizPct: 0.7,
+  glatPassed: false,
+  reviewableLabs: 1,
+};
+const noop = () => {};
 
 const ALPHA: CohortSummary = {
   cohortId: 'c-a',
@@ -41,6 +56,8 @@ const DIST = new Map<string, ScoreDistribution>([
 beforeEach(() => {
   fetchCohortSummaries.mockReset();
   fetchScoreDistribution.mockReset();
+  fetchCohortLearners.mockReset();
+  fetchCohortLearners.mockResolvedValue([]);
 });
 
 describe('CohortDashboard', () => {
@@ -48,7 +65,7 @@ describe('CohortDashboard', () => {
     fetchCohortSummaries.mockResolvedValue([ALPHA, BETA]);
     fetchScoreDistribution.mockResolvedValue(DIST);
 
-    render(<CohortDashboard />);
+    render(<CohortDashboard onSelectLearner={noop} />);
 
     expect(await screen.findByText('Alpha cohort')).toBeInTheDocument();
     expect(screen.getByText('Beta cohort')).toBeInTheDocument();
@@ -59,7 +76,7 @@ describe('CohortDashboard', () => {
   test('the filter narrows the display to a single cohort', async () => {
     fetchCohortSummaries.mockResolvedValue([ALPHA, BETA]);
     fetchScoreDistribution.mockResolvedValue(DIST);
-    render(<CohortDashboard />);
+    render(<CohortDashboard onSelectLearner={noop} />);
     await screen.findByText('Alpha cohort');
 
     await userEvent.selectOptions(screen.getByLabelText(/cohort/i), 'c-b');
@@ -72,7 +89,7 @@ describe('CohortDashboard', () => {
   test('shows "no quiz data yet" for a cohort with an empty distribution', async () => {
     fetchCohortSummaries.mockResolvedValue([BETA]);
     fetchScoreDistribution.mockResolvedValue(DIST);
-    render(<CohortDashboard />);
+    render(<CohortDashboard onSelectLearner={noop} />);
 
     expect(await screen.findByText(/no quiz data yet/i)).toBeInTheDocument();
   });
@@ -80,7 +97,7 @@ describe('CohortDashboard', () => {
   test('renders the empty state when no cohorts are visible', async () => {
     fetchCohortSummaries.mockResolvedValue([]);
     fetchScoreDistribution.mockResolvedValue(new Map());
-    render(<CohortDashboard />);
+    render(<CohortDashboard onSelectLearner={noop} />);
 
     expect(await screen.findByText(/no cohorts assigned to you yet/i)).toBeInTheDocument();
   });
@@ -88,7 +105,7 @@ describe('CohortDashboard', () => {
   test('renders an error + retry that re-fetches', async () => {
     fetchCohortSummaries.mockRejectedValueOnce(new Error('boom'));
     fetchScoreDistribution.mockRejectedValueOnce(new Error('boom'));
-    render(<CohortDashboard />);
+    render(<CohortDashboard onSelectLearner={noop} />);
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/could not load/i);
@@ -98,5 +115,17 @@ describe('CohortDashboard', () => {
     await userEvent.click(within(alert).getByRole('button', { name: /retry/i }));
 
     expect(await screen.findByText('Alpha cohort')).toBeInTheDocument();
+  });
+
+  test('clicking a learner in the roster fires onSelectLearner with that learner', async () => {
+    fetchCohortSummaries.mockResolvedValue([ALPHA]);
+    fetchScoreDistribution.mockResolvedValue(DIST);
+    fetchCohortLearners.mockResolvedValue([LEARNER_A]);
+    const onSelectLearner = vi.fn();
+    render(<CohortDashboard onSelectLearner={onSelectLearner} />);
+
+    await userEvent.click(await screen.findByRole('button', { name: /Ada Lovelace/ }));
+
+    expect(onSelectLearner).toHaveBeenCalledWith(LEARNER_A);
   });
 });

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, ChevronRight } from 'lucide-react';
 import { useDashboard } from '../../lib/useDashboard';
 import type { CohortSummary, ScoreDistribution } from '../../lib/dashboard';
+import type { LearnerRosterEntry } from '../../lib/learnerDetail';
 
 // Staff cohort dashboard (P5.2b): the first UI on the P5.2a aggregation views.
 // Reachability is gated by RoleGuard (P5.1d); data is scoped by RLS (P5.1c/P5.2a).
@@ -67,12 +68,52 @@ function DistributionBar({ dist }: { dist: ScoreDistribution }) {
   );
 }
 
+/** Clickable learner roster — the entry point to the P5.2c per-learner drill-down. */
+function LearnerRoster({
+  learners,
+  onSelectLearner,
+}: {
+  learners: LearnerRosterEntry[];
+  onSelectLearner: (learner: LearnerRosterEntry) => void;
+}) {
+  if (learners.length === 0) {
+    return <p className="text-sm text-gray-500">No learners enrolled yet.</p>;
+  }
+  return (
+    <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+      {learners.map((l) => (
+        <li key={l.userId}>
+          <button
+            onClick={() => onSelectLearner(l)}
+            className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition-colors"
+          >
+            <span className="min-w-0 truncate font-medium text-gray-900">{l.name}</span>
+            <span className="flex shrink-0 items-center gap-3 text-sm text-gray-500">
+              <span>{formatPct(l.completionPct)} complete</span>
+              {l.reviewableLabs > 0 && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                  {l.reviewableLabs} to review
+                </span>
+              )}
+              <ChevronRight className="w-4 h-4 text-gray-400" aria-hidden="true" />
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function CohortBlock({
   summary,
   dist,
+  learners,
+  onSelectLearner,
 }: {
   summary: CohortSummary;
   dist: ScoreDistribution;
+  learners: LearnerRosterEntry[];
+  onSelectLearner: (learner: LearnerRosterEntry) => void;
 }) {
   return (
     <section className="space-y-4">
@@ -84,24 +125,37 @@ function CohortBlock({
       </header>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <SummaryCard label="Avg completion" value={formatPct(summary.avgCompletionPct)} />
-        <SummaryCard
-          label="GLAT pass rate"
-          value={formatPct(summary.glatPassRate)}
-          note="0% until the GLAT feature ships"
-        />
+        <SummaryCard label="GLAT pass rate" value={formatPct(summary.glatPassRate)} />
         <SummaryCard label="Avg quiz score" value={formatPct(summary.avgQuizPct)} />
         <SummaryCard label="Labs awaiting review" value={String(summary.reviewableTotal)} />
       </div>
       <DistributionBar dist={dist} />
+      <LearnerRoster learners={learners} onSelectLearner={onSelectLearner} />
     </section>
   );
 }
 
 const EMPTY_DIST: ScoreDistribution = { lt60: 0, '60to79': 0, '80to100': 0 };
 
-export default function CohortDashboard() {
-  const { summaries, distribution, loading, error, reload } = useDashboard();
+export default function CohortDashboard({
+  onSelectLearner,
+}: {
+  onSelectLearner: (learner: LearnerRosterEntry) => void;
+}) {
+  const { summaries, distribution, learners, loading, error, reload } = useDashboard();
   const [selected, setSelected] = useState<string>('all');
+
+  // Group the flat roster by cohort once so each block gets only its learners.
+  const learnersByCohort = useMemo(() => {
+    const out = new Map<string, LearnerRosterEntry[]>();
+    for (const l of learners) {
+      if (l.cohortId === null) continue;
+      const list = out.get(l.cohortId) ?? [];
+      list.push(l);
+      out.set(l.cohortId, list);
+    }
+    return out;
+  }, [learners]);
 
   // If a reload drops the selected cohort (e.g. its last learner left), reset the
   // filter to "all" so the <select> control and the rendered set stay in sync —
@@ -173,7 +227,13 @@ export default function CohortDashboard() {
       </div>
 
       {visible.map((s) => (
-        <CohortBlock key={s.cohortId} summary={s} dist={distribution.get(s.cohortId) ?? EMPTY_DIST} />
+        <CohortBlock
+          key={s.cohortId}
+          summary={s}
+          dist={distribution.get(s.cohortId) ?? EMPTY_DIST}
+          learners={learnersByCohort.get(s.cohortId) ?? []}
+          onSelectLearner={onSelectLearner}
+        />
       ))}
     </div>
   );
