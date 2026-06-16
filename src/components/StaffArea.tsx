@@ -1,12 +1,17 @@
+import { useState } from 'react';
 import { ClipboardList, Users } from 'lucide-react';
 import type { Role } from '../types';
+import type { LearnerRosterEntry } from '../lib/learnerDetail';
 import CohortDashboard from './staff/CohortDashboard';
+import LearnerDetail from './staff/LearnerDetail';
 
 // Staff landing reached via the role-gated `staff` view (P5.1d). The cohort
-// dashboard (P5.2b) is now live at the top; the review queue and cohort
-// management land in P5.5 and show as "soon" tiles below. Champions and admins
-// see the same shell; the per-feature admin-only vs champion split happens in
-// those slices via the RoleGuard `allow` seam.
+// dashboard (P5.2b) is live at the top; selecting a learner from a cohort
+// roster drills into their per-learner detail (P5.2c) — in-page state, no new
+// top-level view. The review queue and cohort management land in P5.5 and show
+// as "soon" tiles below. Champions and admins see the same shell; the
+// per-feature admin-only vs champion split happens in those slices via the
+// RoleGuard `allow` seam.
 
 const COMING_SOON: { icon: typeof ClipboardList; title: string; detail: string; slice: string }[] = [
   {
@@ -24,6 +29,16 @@ const COMING_SOON: { icon: typeof ClipboardList; title: string; detail: string; 
 ];
 
 export default function StaffArea({ role }: { role: Role }) {
+  const [selected, setSelected] = useState<LearnerRosterEntry | null>(null);
+
+  if (selected) {
+    return (
+      <div className="max-w-5xl mx-auto">
+        <LearnerDetail learner={selected} onBack={() => setSelected(null)} />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto space-y-10">
       <header className="space-y-2">
@@ -38,7 +53,7 @@ export default function StaffArea({ role }: { role: Role }) {
         </p>
       </header>
 
-      <CohortDashboard />
+      <CohortDashboard onSelectLearner={setSelected} />
 
       <ul className="space-y-3 border-t border-gray-200 pt-8">
         {COMING_SOON.map(({ icon: Icon, title, detail, slice }) => (
