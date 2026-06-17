@@ -3,6 +3,21 @@ import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useProgress } from './useProgress';
 
+// In-memory Storage stand-in (node environment, no jsdom) — same pattern as
+// progressCache.test.ts.
+class MemoryStorage {
+  private store = new Map<string, string>();
+  getItem(key: string) {
+    return this.store.has(key) ? this.store.get(key)! : null;
+  }
+  setItem(key: string, value: string) {
+    this.store.set(key, value);
+  }
+  removeItem(key: string) {
+    this.store.delete(key);
+  }
+}
+
 // Hook-level tests for progress ownership. The data layer is mocked so the
 // optimistic local updates and the Supabase-sync calls can be observed without
 // a network. resolveCurrentModuleId (the pure picker) is covered separately in
@@ -16,7 +31,7 @@ vi.mock('./progress', () => ({ fetchModuleProgress, setModuleStatus }));
 const ALL = ['m0', 'm1', 'm2'];
 
 beforeEach(() => {
-  localStorage.clear();
+  (globalThis as { localStorage?: unknown }).localStorage = new MemoryStorage();
   fetchModuleProgress.mockReset();
   setModuleStatus.mockReset();
   setModuleStatus.mockResolvedValue(undefined);
