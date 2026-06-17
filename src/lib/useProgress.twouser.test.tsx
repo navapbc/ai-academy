@@ -6,21 +6,6 @@ import { addPendingCompletion, readPendingCompletions } from './pendingWrites';
 import { writeProgressCache } from './progressCache';
 import { fetchModuleProgress, setModuleStatus } from './progress';
 
-// In-memory Storage stand-in (node environment, no jsdom) — same pattern as
-// progressCache.test.ts.
-class MemoryStorage {
-  private store = new Map<string, string>();
-  getItem(key: string) {
-    return this.store.has(key) ? this.store.get(key)! : null;
-  }
-  setItem(key: string, value: string) {
-    this.store.set(key, value);
-  }
-  removeItem(key: string) {
-    this.store.delete(key);
-  }
-}
-
 // D-01 regression (audit 2026-06-09): the progress cache and pending-writes
 // outbox are keyed per user. On a SHARED BROWSER, user B signing in after
 // user A must (a) hydrate a clean slate, not A's cache, and (b) never have
@@ -49,7 +34,7 @@ const emptySnapshot = {
 };
 
 beforeEach(() => {
-  (globalThis as { localStorage?: unknown }).localStorage = new MemoryStorage();
+  localStorage.clear();
   vi.mocked(fetchModuleProgress).mockResolvedValue(emptySnapshot);
   vi.mocked(setModuleStatus).mockResolvedValue(undefined);
   vi.mocked(setModuleStatus).mockClear();
