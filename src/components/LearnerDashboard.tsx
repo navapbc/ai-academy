@@ -7,6 +7,7 @@ import {
   ModuleProgressTable,
   LabSubmissionsList,
 } from './progress/ProgressPanels';
+import LearnerPortfolio from './progress/LearnerPortfolio';
 
 // Learner self-view dashboard (P5.3a): a learner's own progress, quiz scores, and
 // lab submission statuses in one place. Reuses the P5.2c per-learner data-access
@@ -81,6 +82,10 @@ export default function LearnerDashboard({ userId }: { userId: string }) {
           </section>
         </>
       )}
+
+      {/* Portfolio & calibration artifacts (P5.3b). Independent fetch + states, so
+          it renders even if the summary/module fetch above failed. */}
+      <LearnerPortfolio userId={userId} />
     </div>
   );
 }

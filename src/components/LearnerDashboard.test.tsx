@@ -8,6 +8,11 @@ import type { LearnerDetailData } from '../lib/learnerDetail';
 const { fetchLearnerDetail } = vi.hoisted(() => ({ fetchLearnerDetail: vi.fn() }));
 vi.mock('../lib/learnerDetail', () => ({ fetchLearnerDetail }));
 
+// The embedded portfolio section (P5.3b) fetches independently; stub it so these
+// tests stay hermetic and focused on the detail panels (portfolio has its own test).
+const { fetchLearnerPortfolio } = vi.hoisted(() => ({ fetchLearnerPortfolio: vi.fn() }));
+vi.mock('../lib/learnerPortfolio', () => ({ fetchLearnerPortfolio }));
+
 const DETAIL: LearnerDetailData = {
   modules: [
     { cellId: '1.1', title: 'Intro', stage: '1a', completed: true, bestQuizPct: 1, quizPassed: true },
@@ -19,6 +24,13 @@ const DETAIL: LearnerDetailData = {
 
 beforeEach(() => {
   fetchLearnerDetail.mockReset();
+  fetchLearnerPortfolio.mockReset();
+  fetchLearnerPortfolio.mockResolvedValue({
+    pairedCalibration: null,
+    confidenceCalibration: null,
+    failureLog: null,
+    useCasePortfolio: null,
+  });
 });
 
 describe('LearnerDashboard (self-view)', () => {
