@@ -17,4 +17,9 @@ test('a learner opens "My progress" and sees their own dashboard', async ({ page
   // Summary cards.
   await expect(page.getByText('Completion', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Your lab submissions' })).toBeVisible();
+
+  // Portfolio & calibration section (P5.3b).
+  await expect(page.getByRole('heading', { name: /Your portfolio & calibration/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Time calibration/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Use-case portfolio/i })).toBeVisible();
 });
