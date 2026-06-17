@@ -5,6 +5,7 @@ import type { LearnerRosterEntry } from '../lib/learnerDetail';
 import CohortDashboard from './staff/CohortDashboard';
 import LearnerDetail from './staff/LearnerDetail';
 import CohortManagement from './staff/CohortManagement';
+import ReviewQueue from './staff/ReviewQueue';
 
 // Staff landing reached via the role-gated `staff` view (P5.1d). The cohort
 // dashboard (P5.2b) is live at the top; selecting a learner drills into their
@@ -16,12 +17,21 @@ import CohortManagement from './staff/CohortManagement';
 export default function StaffArea({ role }: { role: Role }) {
   const [selected, setSelected] = useState<LearnerRosterEntry | null>(null);
   const [showCohorts, setShowCohorts] = useState(false);
+  const [showReviewQueue, setShowReviewQueue] = useState(false);
   const isAdmin = role === 'admin';
 
   if (selected) {
     return (
       <div className="max-w-5xl mx-auto">
         <LearnerDetail learner={selected} onBack={() => setSelected(null)} />
+      </div>
+    );
+  }
+
+  if (showReviewQueue) {
+    return (
+      <div className="max-w-5xl mx-auto">
+        <ReviewQueue onBack={() => setShowReviewQueue(false)} />
       </div>
     );
   }
@@ -75,12 +85,20 @@ export default function StaffArea({ role }: { role: Role }) {
           />
         )}
 
-        <ComingSoon
-          icon={ClipboardList}
-          title="Review queue"
-          detail="Open learner lab submissions awaiting champion review."
-          slice="P5.5"
-        />
+        {/* Review queue (P5.5b): champions + admins; RLS scopes the content. */}
+        <button
+          onClick={() => setShowReviewQueue(true)}
+          className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
+        >
+          <ClipboardList className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold text-gray-900">Review queue</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Open learner lab submissions awaiting review.
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" aria-hidden="true" />
+        </button>
       </div>
     </div>
   );
