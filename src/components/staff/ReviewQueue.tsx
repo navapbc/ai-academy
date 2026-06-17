@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { ArrowLeft, Loader2, AlertTriangle, ClipboardCheck, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, ClipboardCheck, ChevronRight, Check, Undo2 } from 'lucide-react';
 import { useReviewQueue } from '../../lib/useReviewQueue';
 import { summarizeSubmission, type ReviewQueueItem } from '../../lib/reviewQueue';
+import { approveSubmission, returnSubmission } from '../../lib/reviewGrade';
 import GradeResultCard from '../GradeResultCard';
 
 // Champion/admin review queue (P5.5b). Lists reviewable submissions (RLS-scoped by
@@ -13,8 +14,33 @@ function score(item: ReviewQueueItem): string | null {
   return item.rubricScores ? `${item.rubricScores.overall}/${item.rubricScores.maxOverall}` : null;
 }
 
-function ReviewDetail({ item, onBack }: { item: ReviewQueueItem; onBack: () => void }) {
+function ReviewDetail({
+  item,
+  onBack,
+  onResolved,
+}: {
+  item: ReviewQueueItem;
+  onBack: () => void;
+  /** Called after a successful approve/return so the parent reloads + leaves detail. */
+  onResolved: () => void;
+}) {
   const fields = summarizeSubmission(item.transcript);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const run = (fn: () => Promise<void>) => {
+    setBusy(true);
+    setActionError(null);
+    fn()
+      .then(() => onResolved())
+      .catch((err: unknown) => {
+        console.error('[ReviewQueue] decision failed', err);
+        setActionError(err instanceof Error ? err.message : 'The decision could not be recorded.');
+        setBusy(false);
+      });
+  };
+
   return (
     <div className="space-y-6">
       <button
@@ -57,6 +83,49 @@ function ReviewDetail({ item, onBack }: { item: ReviewQueueItem; onBack: () => v
           <GradeResultCard result={item.rubricScores} />
         </section>
       )}
+
+      {/* Decision (P5.5c): approve, or return with feedback. Score is not edited. */}
+      <section className="space-y-3 border-t border-gray-200 pt-5">
+        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-500">Your decision</h3>
+        <label className="sr-only" htmlFor="review-note">
+          Feedback note
+        </label>
+        <textarea
+          id="review-note"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={3}
+          placeholder="Feedback for the learner (required to return; optional to approve)"
+          className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
+        />
+        {actionError && (
+          <div className="flex items-center gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3" role="alert">
+            <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0" aria-hidden="true" />
+            <span className="text-sm text-gray-700">{actionError}</span>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => run(() => approveSubmission(item.submissionId, note.trim() || undefined))}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-nava-green px-5 py-2 text-sm font-bold text-white hover:bg-nava-plum disabled:opacity-40"
+          >
+            <Check className="w-4 h-4" aria-hidden="true" />
+            Approve
+          </button>
+          <button
+            type="button"
+            disabled={busy || note.trim() === ''}
+            title={note.trim() === '' ? 'Add a feedback note to return' : undefined}
+            onClick={() => run(() => returnSubmission(item.submissionId, note.trim()))}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-300 px-5 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+          >
+            <Undo2 className="w-4 h-4" aria-hidden="true" />
+            Return for revision
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
@@ -66,7 +135,17 @@ export default function ReviewQueue({ onBack }: { onBack: () => void }) {
   const [selected, setSelected] = useState<ReviewQueueItem | null>(null);
 
   if (selected) {
-    return <ReviewDetail item={selected} onBack={() => setSelected(null)} />;
+    return (
+      <ReviewDetail
+        item={selected}
+        onBack={() => setSelected(null)}
+        onResolved={() => {
+          // The submission is no longer 'reviewable' — leave detail and refresh.
+          setSelected(null);
+          reload();
+        }}
+      />
+    );
   }
 
   return (

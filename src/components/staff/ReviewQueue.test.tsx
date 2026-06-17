@@ -12,6 +12,12 @@ vi.mock('../../lib/reviewQueue', async (importActual) => {
   return { ...actual, fetchReviewQueue };
 });
 
+const { approveSubmission, returnSubmission } = vi.hoisted(() => ({
+  approveSubmission: vi.fn(),
+  returnSubmission: vi.fn(),
+}));
+vi.mock('../../lib/reviewGrade', () => ({ approveSubmission, returnSubmission }));
+
 const ITEM: ReviewQueueItem = {
   submissionId: 's1',
   learnerUserId: 'u1',
@@ -30,6 +36,8 @@ const ITEM: ReviewQueueItem = {
 
 beforeEach(() => {
   fetchReviewQueue.mockReset();
+  approveSubmission.mockReset().mockResolvedValue(undefined);
+  returnSubmission.mockReset().mockResolvedValue(undefined);
 });
 
 describe('ReviewQueue (P5.5b)', () => {
@@ -59,5 +67,42 @@ describe('ReviewQueue (P5.5b)', () => {
     render(<ReviewQueue onBack={() => {}} />);
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/could not load the review queue/i);
+  });
+
+  test('Approve calls approveSubmission and reloads the queue', async () => {
+    fetchReviewQueue.mockResolvedValue([ITEM]);
+    render(<ReviewQueue onBack={() => {}} />);
+    await userEvent.click(await screen.findByRole('button', { name: /Ada Lovelace/ }));
+
+    await userEvent.click(screen.getByRole('button', { name: /^Approve$/ }));
+
+    expect(approveSubmission).toHaveBeenCalledWith('s1', undefined);
+    expect(fetchReviewQueue).toHaveBeenCalledTimes(2); // initial + reload after resolve
+  });
+
+  test('Return is disabled until a note is entered, then calls returnSubmission with the note', async () => {
+    fetchReviewQueue.mockResolvedValue([ITEM]);
+    render(<ReviewQueue onBack={() => {}} />);
+    await userEvent.click(await screen.findByRole('button', { name: /Ada Lovelace/ }));
+
+    const returnBtn = screen.getByRole('button', { name: /Return for revision/ });
+    expect(returnBtn).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText(/feedback note/i), 'Please cite the regulation.');
+    expect(returnBtn).toBeEnabled();
+    await userEvent.click(returnBtn);
+
+    expect(returnSubmission).toHaveBeenCalledWith('s1', 'Please cite the regulation.');
+  });
+
+  test('surfaces an error when a decision fails', async () => {
+    fetchReviewQueue.mockResolvedValue([ITEM]);
+    approveSubmission.mockRejectedValueOnce(new Error('You are not a reviewer for this submission.'));
+    render(<ReviewQueue onBack={() => {}} />);
+    await userEvent.click(await screen.findByRole('button', { name: /Ada Lovelace/ }));
+
+    await userEvent.click(screen.getByRole('button', { name: /^Approve$/ }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/not a reviewer/i);
   });
 });
