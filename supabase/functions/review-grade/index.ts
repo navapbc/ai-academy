@@ -83,7 +83,7 @@ Deno.serve(async (req: Request) => {
   // --- Resolve the submission (need its learner for the champion-of check) ---
   const { data: submission, error: subErr } = await admin
     .from('lab_submissions')
-    .select('id, user_id, status')
+    .select('id, user_id')
     .eq('id', submissionId)
     .maybeSingle();
   if (subErr) {
@@ -91,13 +91,9 @@ Deno.serve(async (req: Request) => {
     return jsonError('Failed to look up the submission.', 500);
   }
   if (!submission) return jsonError('Submission not found.', 404);
-  // Only act on a submission that is actually awaiting review (the queue surfaces
-  // only these). Guards against a double-action / a second reviewer racing.
-  if (submission.status !== 'reviewable') {
-    return jsonError('This submission is no longer awaiting review.', 409);
-  }
 
-  // --- Authz: admin, OR champion-of the submission's learner ---
+  // --- Authz: admin, OR champion-of the submission's learner --- (BEFORE the
+  // status guard, so a non-reviewer can't probe a submission's review state).
   // Replicates public.is_champion_of(user_id): a champion the caller leads a cohort
   // the learner is enrolled in. service_role can't use auth.uid(), so we query it
   // for the caller explicitly.
@@ -140,8 +136,10 @@ Deno.serve(async (req: Request) => {
   }
   if (!allowed) return jsonError('You are not a reviewer for this submission.', 403);
 
-  // --- Apply the decision (status + note + reviewer + timestamp) ---
-  const { error: updErr } = await admin
+  // --- Apply the decision as an atomic compare-and-swap: only transition a row
+  // that is still 'reviewable'. If zero rows come back, another reviewer already
+  // acted (or it was never reviewable) → 409. Closes the read-then-write race. ---
+  const { data: updated, error: updErr } = await admin
     .from('lab_submissions')
     .update({
       status: decision,
@@ -149,10 +147,15 @@ Deno.serve(async (req: Request) => {
       reviewed_by: caller.id,
       reviewed_at: new Date().toISOString(),
     })
-    .eq('id', submissionId);
+    .eq('id', submissionId)
+    .eq('status', 'reviewable')
+    .select('id');
   if (updErr) {
     console.error('Review update failed:', updErr.message);
     return jsonError('Failed to record the review decision.', 500);
+  }
+  if ((updated ?? []).length === 0) {
+    return jsonError('This submission is no longer awaiting review.', 409);
   }
 
   return new Response(JSON.stringify({ ok: true, decision }), {
