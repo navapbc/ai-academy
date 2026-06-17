@@ -13,6 +13,7 @@ import LockedNotice from './components/LockedNotice';
 import Playground from './components/Playground';
 import RoleGuard from './components/RoleGuard';
 import StaffArea from './components/StaffArea';
+import LearnerDashboard from './components/LearnerDashboard';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import SupportModal from './components/SupportModal';
@@ -240,9 +241,11 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
               ? 'Prompting playground'
               : view === 'staff'
                 ? 'Staff tools'
-                : currentModuleLocked
-                  ? 'Section locked'
-                  : currentModule.title
+                : view === 'progress'
+                  ? 'Your progress'
+                  : currentModuleLocked
+                    ? 'Section locked'
+                    : currentModule.title
           }
           className="flex-1 overflow-y-auto w-full focus:outline-none"
         >
@@ -256,6 +259,13 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
               {role && <StaffArea role={role} />}
             </RoleGuard>
           </div>
+          {/* Learner self-view (P5.3a). Conditionally mounted (not hidden) so it
+              fetches fresh on each open and reflects a just-completed module. */}
+          {view === 'progress' && (
+            <div className="max-w-5xl mx-auto p-8 lg:p-12 xl:p-16">
+              <LearnerDashboard userId={userId} />
+            </div>
+          )}
           <div className={view === 'learning' ? 'max-w-5xl mx-auto p-8 lg:p-12 xl:p-16' : 'hidden'}>
             {currentModuleLocked ? (
               <LockedNotice
