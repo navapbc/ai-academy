@@ -122,6 +122,25 @@ describe('parseUseCasePortfolio', () => {
     expect(a?.statement).toEqual({});
   });
 
+  test('drops incomplete/blank entries (e.g. a trailing empty row)', () => {
+    const a = parseUseCasePortfolio(
+      {
+        kind: 'use-case-portfolio',
+        entries: [
+          { verdict: 'helps', task: 'real', approach: 'a', watch: 'w' },
+          { verdict: 'helps', task: '', approach: '', watch: '' }, // trailing blank
+          { verdict: 'doesnt', task: 'partial', approach: '', watch: '' }, // incomplete
+        ],
+        statement: {},
+      },
+      TS,
+    );
+    expect(a?.entries).toHaveLength(1);
+    expect(a?.entries[0].task).toBe('real');
+    expect(a?.helpsCount).toBe(1); // derived over complete entries only
+    expect(a?.doesntCount).toBe(0);
+  });
+
   test('null on wrong kind or non-array entries', () => {
     expect(parseUseCasePortfolio({ kind: 'nope' }, TS)).toBeNull();
     expect(parseUseCasePortfolio({ kind: 'use-case-portfolio', entries: {} }, TS)).toBeNull();

@@ -160,12 +160,19 @@ export function parseUseCasePortfolio(
 ): UseCasePortfolioArtifact | null {
   if (!isObj(transcript) || transcript.kind !== 'use-case-portfolio') return null;
   if (!Array.isArray(transcript.entries)) return null;
-  const entries: UseCaseEntry[] = transcript.entries.filter(isObj).map((e) => ({
-    verdict: e.verdict === 'doesnt' ? 'doesnt' : 'helps',
-    task: asStr(e.task),
-    approach: asStr(e.approach),
-    watch: asStr(e.watch),
-  }));
+  const entries: UseCaseEntry[] = transcript.entries
+    .filter(isObj)
+    .map((e) => ({
+      verdict: e.verdict === 'doesnt' ? ('doesnt' as const) : ('helps' as const),
+      task: asStr(e.task),
+      approach: asStr(e.approach),
+      watch: asStr(e.watch),
+    }))
+    // The 2.11 lab persists its entries unfiltered (incl. a trailing blank row),
+    // so keep only complete entries — the portfolio then shows real use cases only
+    // and the rendered cards line up with helps/doesn't counts (which the lab
+    // computes over complete entries).
+    .filter((e) => e.task.trim() !== '' && e.approach.trim() !== '' && e.watch.trim() !== '');
   const statement: Record<string, string> = {};
   if (isObj(transcript.statement)) {
     for (const [k, v] of Object.entries(transcript.statement)) statement[k] = asStr(v);
