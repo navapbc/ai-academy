@@ -17,6 +17,11 @@ vi.mock('../../lib/dashboard', () => ({
   fetchScoreDistribution,
 }));
 vi.mock('../../lib/learnerDetail', () => ({ fetchCohortLearners }));
+// useDashboard subscribes to realtime on mount; stub it to a no-op so the test
+// never opens a websocket (`.env` makes the real client configured under vitest).
+vi.mock('../../lib/dashboardRealtime', () => ({
+  subscribeToDashboardChanges: () => () => {},
+}));
 
 const LEARNER_A: LearnerRosterEntry = {
   userId: 'u-1',

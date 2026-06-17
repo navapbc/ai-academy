@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   fetchCohortSummaries,
   fetchScoreDistribution,
@@ -6,13 +6,19 @@ import {
   type ScoreDistribution,
 } from './dashboard';
 import { fetchCohortLearners, type LearnerRosterEntry } from './learnerDetail';
-import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient';
+import { subscribeToDashboardChanges } from './dashboardRealtime';
 
-// Staff cohort-dashboard state (P5.2b/P5.2c). Fetches the scoped rollups plus
-// the per-learner roster (the P5.2c drill-down spine) once on mount; the cohort
-// filter is client-side (the scoped views already returned every cohort the
-// caller can see), so no refetch per selection. Realtime is P5.2d. No cache —
-// a fresh staff read per visit is correct and cheap.
+// Staff cohort-dashboard state (P5.2b/P5.2c + P5.2d realtime). Fetches the scoped
+// rollups plus the per-learner roster (the P5.2c drill-down spine) on mount; the
+// cohort filter is client-side (the scoped views already returned every cohort the
+// caller can see), so no refetch per selection. No cache — a fresh staff read per
+// visit is correct and cheap.
+//
+// P5.2d: a Supabase realtime subscription on the base tables behind the views
+// triggers a *background* refresh — one that never enters the loading state and
+// never clears good data on a transient failure, so a live update can't flash the
+// staff viewer's whole screen to a spinner or the error screen mid-session.
+// `reload` stays the foreground path (mount + manual Retry).
 
 export interface DashboardState {
   summaries: CohortSummary[];
@@ -30,70 +36,60 @@ export function useDashboard(): DashboardState {
   const [learners, setLearners] = useState<LearnerRosterEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [nonce, setNonce] = useState(0);
 
-  const reload = useCallback(() => setNonce((n) => n + 1), []);
-
-  // Realtime subscription for P5.2d
+  const mounted = useRef(true);
   useEffect(() => {
-    let cancelled = false;
-    let subscription: any = null;
-
-    const fetchData = () => {
-      Promise.all([fetchCohortSummaries(), fetchScoreDistribution(), fetchCohortLearners()])
-        .then(([s, d, l]) => {
-          if (cancelled) return;
-          setSummaries(s);
-          setDistribution(d);
-          setLearners(l);
-          setLoading(false);
-        })
-        .catch((err: unknown) => {
-          if (cancelled) return;
-          console.error('[useDashboard] dashboard fetch failed', err);
-          setError('Could not load the cohort dashboard.');
-          setLoading(false);
-        });
-    };
-
-    // Initial fetch
-    fetchData();
-
-    // Setup realtime subscription if Supabase is configured
-    if (isSupabaseConfigured) {
-      const supabase = getSupabaseClient();
-      
-      // Subscribe to changes in views that affect the dashboard
-      // We need to subscribe to the underlying tables that drive the dashboard data
-      subscription = supabase
-        .from('cohort_progress_summary')
-        .on('*', (payload) => {
-          // Re-fetch when data changes
-          if (!cancelled) {
-            fetchData();
-          }
-        })
-        .subscribe();
-
-      // Also listen for changes to learner progress data that could affect summaries
-      subscription = supabase
-        .from('learner_progress_summary')
-        .on('*', (payload) => {
-          // Re-fetch when data changes
-          if (!cancelled) {
-            fetchData();
-          }
-        })
-        .subscribe();
-    }
-
+    mounted.current = true;
     return () => {
-      cancelled = true;
-      if (subscription) {
-        subscription.unsubscribe();
-      }
+      mounted.current = false;
     };
-  }, [nonce]);
+  }, []);
+
+  // The single fetch path. `background` distinguishes a realtime-triggered refresh
+  // (silent — keep showing the current data) from a foreground load (mount/Retry,
+  // which owns the spinner + error screen). No isSupabaseConfigured guard: this
+  // hook only renders inside a RoleGuard subtree that already requires a resolved
+  // staff role (hence a configured stack).
+  const load = useCallback(async ({ background }: { background: boolean } = { background: false }) => {
+    if (!background) {
+      setLoading(true);
+      setError(null);
+    }
+    try {
+      const [s, d, l] = await Promise.all([
+        fetchCohortSummaries(),
+        fetchScoreDistribution(),
+        fetchCohortLearners(),
+      ]);
+      if (!mounted.current) return;
+      setSummaries(s);
+      setDistribution(d);
+      setLearners(l);
+      setError(null); // a healthy refresh clears any stale error
+      if (!background) setLoading(false);
+    } catch (err: unknown) {
+      if (!mounted.current) return;
+      console.error('[useDashboard] dashboard fetch failed', err);
+      // A background refresh keeps the current data on the screen — only a
+      // foreground load surfaces the error (and stops the spinner).
+      if (!background) {
+        setError('Could not load the cohort dashboard.');
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  const reload = useCallback(() => {
+    void load({ background: false });
+  }, [load]);
+
+  useEffect(() => {
+    void load({ background: false });
+  }, [load]);
+
+  // P5.2d: live updates → debounced background refresh. Inert when Supabase is
+  // unconfigured (subscribeToDashboardChanges returns a no-op disposer).
+  useEffect(() => subscribeToDashboardChanges(() => void load({ background: true })), [load]);
 
   return { summaries, distribution, learners, loading, error, reload };
 }
