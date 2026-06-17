@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchLearnerDetail, type LearnerDetailData } from './learnerDetail';
 
-// Staff per-learner detail state (P5.2c). Fetches one learner's drill-down on
-// demand (keyed on userId); no cache — a fresh staff read per open is correct
-// and cheap. Only ever rendered inside the RoleGuard staff subtree, so the
-// stack is configured. Mirrors useDashboard's shape.
+// Per-learner detail state (P5.2c). Fetches one learner's drill-down on demand
+// (keyed on userId); no cache — a fresh read per open is correct and cheap.
+// Two callers, same hook: the staff drill-down (LearnerDetail, champion/admin RLS,
+// inside the RoleGuard staff subtree) and the learner self-view (LearnerDashboard,
+// P5.3a, owner RLS with userId = the signed-in user). Mirrors useDashboard's shape.
 
 export interface LearnerDetailState {
   detail: LearnerDetailData | null;

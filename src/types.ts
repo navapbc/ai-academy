@@ -35,8 +35,9 @@ export type ModuleStatus = 'draft' | 'in_review' | 'published';
  */
 export type Role = 'learner' | 'champion' | 'admin';
 
-/** Top-level views the app can show. `staff` is role-gated (P5.1d). */
-export type View = 'learning' | 'playground' | 'staff';
+/** Top-level views the app can show. `staff` is role-gated (P5.1d); `progress`
+ *  is the learner self-view dashboard (P5.3a), available to everyone. */
+export type View = 'learning' | 'playground' | 'staff' | 'progress';
 
 export interface Module {
   id: string;
