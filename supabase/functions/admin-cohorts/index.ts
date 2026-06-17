@@ -108,6 +108,11 @@ async function applyAction(
       if (error) return { error: error.message };
       // Demote back to learner only if this was their LAST cohort and they are a
       // champion (never demote an admin; keep the role if they lead other cohorts).
+      // delete-then-count is correct for a single request. Best-effort under
+      // concurrency: two simultaneous unassigns of a champion's final two cohorts
+      // could each still see a remaining row and skip the demote, leaving a stale
+      // (harmless, never-admin) champion role that self-heals on the next unassign.
+      // Acceptable on this admin-only, low-concurrency surface.
       const { count, error: cErr } = await admin
         .from('cohort_champions')
         .select('id', { count: 'exact', head: true })
