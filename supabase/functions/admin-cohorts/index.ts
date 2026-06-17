@@ -13,6 +13,8 @@ import {
   fixedWindowAllow,
   isAllowlistedAdmin,
   parseCohortAction,
+  roleAfterAssign,
+  roleAfterUnassign,
   type CohortAction,
   type RateLimitState,
 } from './admin-cohorts-core.ts';
@@ -30,25 +32,34 @@ const RATE_LIMIT = 30; // requests
 const RATE_WINDOW_MS = 60_000; // per minute (per-isolate, best-effort — mirrors admin-set-role)
 const rateStore = new Map<string, RateLimitState>();
 
-/** Applies one validated action via the service_role client; returns an error message or null. */
+// A role change applied as a side effect of (un)assigning a champion, so the
+// caller can audit it to role_changes.
+interface RoleChange {
+  targetId: string;
+  oldRole: string | null;
+  newRole: string;
+}
+type ApplyResult = { error: string } | { error: null; roleChange?: RoleChange };
+
+/** Applies one validated action via the service_role client. */
 async function applyAction(
   admin: SupabaseClient,
   callerId: string,
   action: CohortAction,
-): Promise<string | null> {
+): Promise<ApplyResult> {
   switch (action.action) {
     case 'create_cohort': {
       const { error } = await admin.from('cohorts').insert({ name: action.name, created_by: callerId });
-      return error?.message ?? null;
+      return error ? { error: error.message } : { error: null };
     }
     case 'rename_cohort': {
       const { error } = await admin.from('cohorts').update({ name: action.name }).eq('id', action.cohortId);
-      return error?.message ?? null;
+      return error ? { error: error.message } : { error: null };
     }
     case 'delete_cohort': {
       // enrollments + cohort_champions cascade on cohort delete (FK on delete cascade).
       const { error } = await admin.from('cohorts').delete().eq('id', action.cohortId);
-      return error?.message ?? null;
+      return error ? { error: error.message } : { error: null };
     }
     case 'enroll_learner': {
       // One cohort per learner (enrollments.unique(user_id)) — upsert reassigns.
@@ -58,11 +69,11 @@ async function applyAction(
           { user_id: action.userId, cohort_id: action.cohortId, enrolled_by: callerId },
           { onConflict: 'user_id' },
         );
-      return error?.message ?? null;
+      return error ? { error: error.message } : { error: null };
     }
     case 'unenroll_learner': {
       const { error } = await admin.from('enrollments').delete().eq('user_id', action.userId);
-      return error?.message ?? null;
+      return error ? { error: error.message } : { error: null };
     }
     case 'assign_champion': {
       const { error } = await admin
@@ -71,7 +82,22 @@ async function applyAction(
           { cohort_id: action.cohortId, user_id: action.userId, assigned_by: callerId },
           { onConflict: 'cohort_id,user_id' },
         );
-      return error?.message ?? null;
+      if (error) return { error: error.message };
+      // Auto-grant the champion role to a plain learner so the assignment takes
+      // effect (they can reach the staff area). Champion/admin are left as-is.
+      const { data: prof } = await admin
+        .from('profiles')
+        .select('role')
+        .eq('id', action.userId)
+        .maybeSingle();
+      const oldRole = (prof?.role as string) ?? null;
+      const newRole = roleAfterAssign(oldRole);
+      if (newRole) {
+        const { error: rErr } = await admin.from('profiles').update({ role: newRole }).eq('id', action.userId);
+        if (rErr) return { error: rErr.message };
+        return { error: null, roleChange: { targetId: action.userId, oldRole, newRole } };
+      }
+      return { error: null };
     }
     case 'unassign_champion': {
       const { error } = await admin
@@ -79,7 +105,27 @@ async function applyAction(
         .delete()
         .eq('cohort_id', action.cohortId)
         .eq('user_id', action.userId);
-      return error?.message ?? null;
+      if (error) return { error: error.message };
+      // Demote back to learner only if this was their LAST cohort and they are a
+      // champion (never demote an admin; keep the role if they lead other cohorts).
+      const { count, error: cErr } = await admin
+        .from('cohort_champions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', action.userId);
+      if (cErr) return { error: cErr.message };
+      const { data: prof } = await admin
+        .from('profiles')
+        .select('role')
+        .eq('id', action.userId)
+        .maybeSingle();
+      const oldRole = (prof?.role as string) ?? null;
+      const newRole = roleAfterUnassign(oldRole, count ?? 0);
+      if (newRole) {
+        const { error: rErr } = await admin.from('profiles').update({ role: newRole }).eq('id', action.userId);
+        if (rErr) return { error: rErr.message };
+        return { error: null, roleChange: { targetId: action.userId, oldRole, newRole } };
+      }
+      return { error: null };
     }
   }
 }
@@ -163,9 +209,9 @@ Deno.serve(async (req: Request) => {
   }
 
   // --- Apply the mutation as service_role ---
-  const applyErr = await applyAction(admin, caller.id, action);
-  if (applyErr) {
-    console.error(`Cohort action '${action.action}' failed:`, applyErr);
+  const result = await applyAction(admin, caller.id, action);
+  if (result.error) {
+    console.error(`Cohort action '${action.action}' failed:`, result.error);
     return jsonError('Failed to apply the cohort change.', 500);
   }
 
@@ -182,6 +228,20 @@ Deno.serve(async (req: Request) => {
     detail,
   });
   if (auditErr) console.error('Audit insert failed:', auditErr.message);
+
+  // A champion (un)assignment can flip profiles.role as a side effect — record it
+  // in the role_changes audit (the canonical role-change log, P5.1a), best-effort.
+  if (result.roleChange) {
+    const { error: roleAuditErr } = await admin.from('role_changes').insert({
+      actor_id: caller.id,
+      actor_email: caller.email?.toLowerCase() ?? null,
+      target_id: result.roleChange.targetId,
+      target_email: null,
+      old_role: result.roleChange.oldRole,
+      new_role: result.roleChange.newRole,
+    });
+    if (roleAuditErr) console.error('Role audit insert failed:', roleAuditErr.message);
+  }
 
   return new Response(JSON.stringify({ ok: true, action: action.action }), {
     headers: { ...cors, 'content-type': 'application/json' },

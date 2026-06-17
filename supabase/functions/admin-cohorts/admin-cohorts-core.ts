@@ -100,6 +100,30 @@ export function parseCohortAction(body: unknown): ParseResult {
   }
 }
 
+// --- Role transitions tied to champion (un)assignment ------------------------
+// Champion has two facets: profiles.role (gates staff access, P5.1d) and
+// cohort_champions rows (which cohorts they lead, P5.1c). Assigning a champion in
+// the management UI should make that person an actual champion; unassigning their
+// LAST cohort should hand the role back. These pure deciders keep that policy
+// node-testable; index.ts performs the reads/writes.
+
+/** On assign: a plain learner becomes a champion; champion/admin are left as-is. */
+export function roleAfterAssign(currentRole: string | null): 'champion' | null {
+  return currentRole === 'learner' ? 'champion' : null;
+}
+
+/**
+ * On unassign: demote back to learner ONLY when the user is a champion AND this was
+ * their last cohort (no remaining cohort_champions rows). A champion of other
+ * cohorts keeps the role; an admin is never demoted.
+ */
+export function roleAfterUnassign(
+  currentRole: string | null,
+  remainingCohortCount: number,
+): 'learner' | null {
+  return currentRole === 'champion' && remainingCohortCount === 0 ? 'learner' : null;
+}
+
 // --- Allowlist / domain (mirrors admin-set-role/admin-core) ------------------
 
 export function isAllowlistedAdmin(

@@ -6,6 +6,8 @@ import {
   emailDomainAllowed,
   buildCorsHeaders,
   fixedWindowAllow,
+  roleAfterAssign,
+  roleAfterUnassign,
   type RateLimitState,
 } from './admin-cohorts-core.ts';
 
@@ -74,6 +76,22 @@ describe('parseCohortAction', () => {
     expect(parseCohortAction({ action: 'nuke_everything' }).ok).toBe(false);
     expect(parseCohortAction(null).ok).toBe(false);
     expect(parseCohortAction('x').ok).toBe(false);
+  });
+});
+
+describe('role transitions on champion (un)assignment', () => {
+  test('assign promotes a learner to champion; leaves champion/admin alone', () => {
+    expect(roleAfterAssign('learner')).toBe('champion');
+    expect(roleAfterAssign('champion')).toBeNull();
+    expect(roleAfterAssign('admin')).toBeNull();
+    expect(roleAfterAssign(null)).toBeNull();
+  });
+
+  test('unassign demotes a champion only on their LAST cohort; never an admin', () => {
+    expect(roleAfterUnassign('champion', 0)).toBe('learner'); // last cohort → demote
+    expect(roleAfterUnassign('champion', 2)).toBeNull(); // still leads others → keep
+    expect(roleAfterUnassign('admin', 0)).toBeNull(); // never demote an admin
+    expect(roleAfterUnassign('learner', 0)).toBeNull(); // not a champion → no-op
   });
 });
 
