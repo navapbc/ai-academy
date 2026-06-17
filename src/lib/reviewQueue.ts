@@ -65,7 +65,11 @@ export function buildReviewQueue(
         createdAt: r.created_at,
       };
     })
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    // Newest-first; submissionId as a stable tiebreaker for equal timestamps.
+    .sort(
+      (a, b) =>
+        b.createdAt.localeCompare(a.createdAt) || a.submissionId.localeCompare(b.submissionId),
+    );
 }
 
 // ---------------------------------------------------------------------------
