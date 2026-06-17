@@ -146,6 +146,22 @@ Deno.serve(async (req: Request) => {
   }
   if (!callerIsAdmin) return jsonError('Only an admin may manage cohorts.', 403);
 
+  // --- Target validation: granting actions (enroll/assign) must target a real
+  // profile, so a stray-but-syntactically-valid uuid can't be granted membership/
+  // champion rights (and the caller gets a clear 404 instead of a swallowed FK 500).
+  if (action.action === 'enroll_learner' || action.action === 'assign_champion') {
+    const { data: targetProfile, error: lookupErr } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('id', action.userId)
+      .maybeSingle();
+    if (lookupErr) {
+      console.error('Target profile lookup failed:', lookupErr.message);
+      return jsonError('Failed to look up the target user.', 500);
+    }
+    if (!targetProfile) return jsonError('No profile found for that user.', 404);
+  }
+
   // --- Apply the mutation as service_role ---
   const applyErr = await applyAction(admin, caller.id, action);
   if (applyErr) {
