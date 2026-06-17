@@ -1,35 +1,22 @@
 import { useState } from 'react';
-import { ClipboardList, Users } from 'lucide-react';
+import { ClipboardList, Users, ChevronRight } from 'lucide-react';
 import type { Role } from '../types';
 import type { LearnerRosterEntry } from '../lib/learnerDetail';
 import CohortDashboard from './staff/CohortDashboard';
 import LearnerDetail from './staff/LearnerDetail';
+import CohortManagement from './staff/CohortManagement';
 
 // Staff landing reached via the role-gated `staff` view (P5.1d). The cohort
-// dashboard (P5.2b) is live at the top; selecting a learner from a cohort
-// roster drills into their per-learner detail (P5.2c) — in-page state, no new
-// top-level view. The review queue and cohort management land in P5.5 and show
-// as "soon" tiles below. Champions and admins see the same shell; the
-// per-feature admin-only vs champion split happens in those slices via the
-// RoleGuard `allow` seam.
-
-const COMING_SOON: { icon: typeof ClipboardList; title: string; detail: string; slice: string }[] = [
-  {
-    icon: ClipboardList,
-    title: 'Review queue',
-    detail: 'Open learner lab submissions awaiting champion review.',
-    slice: 'P5.5',
-  },
-  {
-    icon: Users,
-    title: 'Cohort management',
-    detail: 'Create cohorts, enroll learners, and assign champions.',
-    slice: 'P5.5',
-  },
-];
+// dashboard (P5.2b) is live at the top; selecting a learner drills into their
+// per-learner detail (P5.2c). Admins also get cohort management (P5.5a) — an
+// in-page view (no new top-level View), gated to admins (champions don't manage
+// cohorts; the admin-cohorts Edge Function enforces the same). The review queue
+// (P5.5b) remains a "soon" tile.
 
 export default function StaffArea({ role }: { role: Role }) {
   const [selected, setSelected] = useState<LearnerRosterEntry | null>(null);
+  const [showCohorts, setShowCohorts] = useState(false);
+  const isAdmin = role === 'admin';
 
   if (selected) {
     return (
@@ -39,11 +26,19 @@ export default function StaffArea({ role }: { role: Role }) {
     );
   }
 
+  if (showCohorts && isAdmin) {
+    return (
+      <div className="max-w-5xl mx-auto">
+        <CohortManagement onBack={() => setShowCohorts(false)} />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto space-y-10">
       <header className="space-y-2">
         <span className="text-[11px] font-bold uppercase tracking-widest text-nava-green">
-          {role === 'admin' ? 'Admin' : 'Champion'} area
+          {isAdmin ? 'Admin' : 'Champion'} area
         </span>
         <h1 className="text-2xl font-bold text-gray-900" tabIndex={-1}>
           Cohort dashboard
@@ -55,25 +50,65 @@ export default function StaffArea({ role }: { role: Role }) {
 
       <CohortDashboard onSelectLearner={setSelected} />
 
-      <ul className="space-y-3 border-t border-gray-200 pt-8">
-        {COMING_SOON.map(({ icon: Icon, title, detail, slice }) => (
-          <li
-            key={title}
-            className="flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-4"
+      <div className="space-y-3 border-t border-gray-200 pt-8">
+        {/* Cohort management — admins get a live entry; champions see it as upcoming. */}
+        {isAdmin ? (
+          <button
+            onClick={() => setShowCohorts(true)}
+            className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
           >
-            <Icon className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="font-semibold text-gray-900">{title}</h2>
-                <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
-                  Soon · {slice}
-                </span>
-              </div>
-              <p className="mt-1 text-sm text-gray-600">{detail}</p>
+            <Users className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <h2 className="font-semibold text-gray-900">Cohort management</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Create cohorts, enroll learners, and assign champions.
+              </p>
             </div>
-          </li>
-        ))}
-      </ul>
+            <ChevronRight className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" aria-hidden="true" />
+          </button>
+        ) : (
+          <ComingSoon
+            icon={Users}
+            title="Cohort management"
+            detail="Create cohorts, enroll learners, and assign champions."
+            slice="P5.5 · admin"
+          />
+        )}
+
+        <ComingSoon
+          icon={ClipboardList}
+          title="Review queue"
+          detail="Open learner lab submissions awaiting champion review."
+          slice="P5.5"
+        />
+      </div>
+    </div>
+  );
+}
+
+function ComingSoon({
+  icon: Icon,
+  title,
+  detail,
+  slice,
+}: {
+  icon: typeof ClipboardList;
+  title: string;
+  detail: string;
+  slice: string;
+}) {
+  return (
+    <div className="flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-4">
+      <Icon className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <h2 className="font-semibold text-gray-900">{title}</h2>
+          <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
+            Soon · {slice}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-gray-600">{detail}</p>
+      </div>
     </div>
   );
 }
