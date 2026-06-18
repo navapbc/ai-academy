@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { ClipboardList, Users, ChevronRight } from 'lucide-react';
+import { ClipboardList, Users, ChevronRight, FileText } from 'lucide-react';
 import type { Role } from '../types';
 import type { LearnerRosterEntry } from '../lib/learnerDetail';
 import CohortDashboard from './staff/CohortDashboard';
 import LearnerDetail from './staff/LearnerDetail';
 import CohortManagement from './staff/CohortManagement';
 import ReviewQueue from './staff/ReviewQueue';
+import CmsHome from './cms/CmsHome';
 
 // Staff landing reached via the role-gated `staff` view (P5.1d). The cohort
 // dashboard (P5.2b) is live at the top; selecting a learner drills into their
@@ -18,6 +19,7 @@ export default function StaffArea({ role }: { role: Role }) {
   const [selected, setSelected] = useState<LearnerRosterEntry | null>(null);
   const [showCohorts, setShowCohorts] = useState(false);
   const [showReviewQueue, setShowReviewQueue] = useState(false);
+  const [showCms, setShowCms] = useState(false);
   const isAdmin = role === 'admin';
 
   if (selected) {
@@ -40,6 +42,14 @@ export default function StaffArea({ role }: { role: Role }) {
     return (
       <div className="max-w-5xl mx-auto">
         <CohortManagement onBack={() => setShowCohorts(false)} />
+      </div>
+    );
+  }
+
+  if (showCms && isAdmin) {
+    return (
+      <div className="max-w-5xl mx-auto">
+        <CmsHome onBack={() => setShowCms(false)} />
       </div>
     );
   }
@@ -82,6 +92,30 @@ export default function StaffArea({ role }: { role: Role }) {
             title="Cohort management"
             detail="Create cohorts, enroll learners, and assign champions."
             slice="P5.5 · admin"
+          />
+        )}
+
+        {/* Content management (P5.4): admins get a live entry; champions see it as upcoming. */}
+        {isAdmin ? (
+          <button
+            onClick={() => setShowCms(true)}
+            className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
+          >
+            <FileText className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <h2 className="font-semibold text-gray-900">Content management</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Browse every lesson and its editorial status.
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" aria-hidden="true" />
+          </button>
+        ) : (
+          <ComingSoon
+            icon={FileText}
+            title="Content management"
+            detail="Browse and edit lessons across the matrix."
+            slice="P5.4 · admin"
           />
         )}
 
