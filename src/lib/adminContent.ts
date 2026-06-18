@@ -27,6 +27,24 @@ export interface DraftFields {
   sorter_config_json?: unknown;
 }
 
+/**
+ * Client-side mirror of the server's video-URL check (admin-content-core
+ * `isValidVideoUrl`) for inline editor feedback. An empty/absent value is allowed
+ * (video is optional); a present value must be an http(s) URL. The Edge Function
+ * re-validates on write and is authoritative (W2-7/D-16) — this is UX only. The
+ * tsconfig excludes `supabase/`, so the Deno core can't be imported here; a tiny
+ * duplicate is the house pattern (cf. DraftFields above).
+ */
+export function isValidVideoUrl(v: string | null | undefined): boolean {
+  if (v === null || v === undefined || v === '') return true;
+  try {
+    const u = new URL(v);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export type ContentAction =
   | { action: 'save-draft'; cellId: string; draft: DraftFields }
   | { action: 'publish'; cellId: string }

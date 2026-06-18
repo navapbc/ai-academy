@@ -79,6 +79,28 @@ describe('invokeAdminContent — happy path', () => {
   });
 });
 
+describe('isValidVideoUrl (client-side inline check; server is authoritative)', () => {
+  test('accepts empty / absent (video is optional)', async () => {
+    const { isValidVideoUrl } = await loadModule();
+    expect(isValidVideoUrl('')).toBe(true);
+    expect(isValidVideoUrl(null)).toBe(true);
+    expect(isValidVideoUrl(undefined)).toBe(true);
+  });
+
+  test('accepts http(s) URLs', async () => {
+    const { isValidVideoUrl } = await loadModule();
+    expect(isValidVideoUrl('https://example.com/video.mp4')).toBe(true);
+    expect(isValidVideoUrl('http://localhost:3000/v')).toBe(true);
+  });
+
+  test('rejects non-http(s) and malformed URLs', async () => {
+    const { isValidVideoUrl } = await loadModule();
+    expect(isValidVideoUrl('ftp://example.com/v')).toBe(false);
+    expect(isValidVideoUrl('javascript:alert(1)')).toBe(false);
+    expect(isValidVideoUrl('not a url')).toBe(false);
+  });
+});
+
 describe('invokeAdminContent — error paths', () => {
   test('throws the server error message on a non-ok response', async () => {
     const { publishLesson } = await loadModule();

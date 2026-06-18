@@ -1,10 +1,11 @@
-import { ArrowLeft, FileText, Video, Sparkles } from 'lucide-react';
+import { ArrowLeft, FileText, Video, Sparkles, Pencil } from 'lucide-react';
 import type { CmsLessonDetailData } from '../../lib/cmsContent';
 import { StatusBadge } from './StatusBadge';
 
 // Read-only lesson detail for the admin CMS (P5.4-2). Shows the current LIVE
 // content a learner reads, plus a note when an unpublished draft is staged on the
-// row. No editable inputs in this chunk — the editor arrives in P5.4-3/-4/-5.
+// row. An "Edit" affordance opens the text/video/tutor-ref editor (P5.4-3); quiz
+// and lab editing arrive in P5.4-4 / P5.4-5.
 
 function Field({
   icon: Icon,
@@ -29,9 +30,11 @@ function Field({
 export default function CmsLessonDetail({
   lesson,
   onBack,
+  onEdit,
 }: {
   lesson: CmsLessonDetailData;
   onBack: () => void;
+  onEdit: () => void;
 }) {
   const draftFieldKeys = lesson.draft ? Object.keys(lesson.draft) : [];
 
@@ -46,16 +49,25 @@ export default function CmsLessonDetail({
       </button>
 
       <header className="space-y-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] font-bold uppercase tracking-widest text-nava-green">
-            {lesson.cellId}
-          </span>
-          <StatusBadge status={lesson.status} archived={lesson.archived} />
-          {lesson.origin === 'custom' && (
-            <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
-              Custom
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-nava-green">
+              {lesson.cellId}
             </span>
-          )}
+            <StatusBadge status={lesson.status} archived={lesson.archived} />
+            {lesson.origin === 'custom' && (
+              <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
+                Custom
+              </span>
+            )}
+          </div>
+          <button
+            onClick={onEdit}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-plum transition-all"
+          >
+            <Pencil className="w-4 h-4" aria-hidden="true" />
+            Edit
+          </button>
         </div>
         <h1 className="text-2xl font-bold text-gray-900" tabIndex={-1}>
           {lesson.title}
@@ -71,8 +83,8 @@ export default function CmsLessonDetail({
           <p className="text-sm font-semibold text-amber-900">Unpublished draft staged</p>
           <p className="mt-1 text-sm text-amber-800">
             Edits to {draftFieldKeys.length > 0 ? draftFieldKeys.join(', ') : 'this lesson'} are
-            saved but not yet published. Learners still see the live content below. Editing arrives
-            in a later release.
+            saved but not yet published. Learners still see the live content below. Open the editor
+            to continue or publish.
           </p>
         </div>
       )}

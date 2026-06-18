@@ -86,6 +86,16 @@ describe('CmsHome (P5.4-2)', () => {
     expect(document.querySelector('input, textarea')).toBeNull();
   });
 
+  test('Edit from the detail opens the lesson editor (P5.4-3)', async () => {
+    render(<CmsHome onBack={() => {}} />);
+    await userEvent.click(await screen.findByText('Rules of the road'));
+    await userEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+
+    // The editor exposes the body textarea (the read-only detail never does).
+    expect(screen.getByLabelText(/lesson body/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /publish/i })).toBeInTheDocument();
+  });
+
   test('renders an error state with retry when the fetch fails', async () => {
     h.fetchCmsLessons.mockRejectedValueOnce(new Error('boom'));
     render(<CmsHome onBack={() => {}} />);
