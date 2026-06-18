@@ -426,7 +426,17 @@ autonomously** after reviews + CI.
 
 ---
 
-- [ ] **Chunk 4 (P5.4-4): Quiz editor**
+- [x] **Chunk 4 (P5.4-4): Quiz editor** — **Done (#94)** ✓ — `QuizEditor.tsx` (per-question fieldset:
+  text · 4 options w/ a correct-answer radio · explanation; add/remove/reorder; inline validation);
+  Save merges the assembled `quiz_json` over any existing draft so a pending body/lab edit isn't
+  wiped (R3), Publish promotes draft → live (R4). Finalized the `quiz_json` validator (R8 / closes
+  W2-7/D-16 for quizzes): server `validateQuizJson` tightened from ≥2 to **exactly 4** options
+  (verified safe — all 88 seed + 174 migration/GLAT questions are 4-option), still authoritative; a
+  client mirror `validateQuizQuestions` (house pattern, like `isValidVideoUrl`) drives inline
+  feedback. Reached via a new "Edit quiz" affordance on the read-only detail; `CmsHome` tracks which
+  editor (lesson | quiz) is open in-page. lint+build+490 unit tests green (core exactly-4/range/
+  single-question + QuizEditor add/remove/**reorder-preserves-correctIndex**/invalid-blocks/merge/
+  failed-save + CmsHome quiz-path); CI build+db-tests green; squash-merged to main.
 
 **Goal:** Structured CRUD over `quiz_json`: per question — text, exactly 4 options, `correctIndex`,
 explanation; ≥1 question; validation. Draft → publish.
