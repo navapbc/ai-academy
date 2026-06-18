@@ -1,4 +1,4 @@
-import { ArrowLeft, FileText, Video, Sparkles, Pencil } from 'lucide-react';
+import { ArrowLeft, FileText, Video, Sparkles, Pencil, ListChecks } from 'lucide-react';
 import type { CmsLessonDetailData } from '../../lib/cmsContent';
 import { StatusBadge } from './StatusBadge';
 
@@ -31,10 +31,12 @@ export default function CmsLessonDetail({
   lesson,
   onBack,
   onEdit,
+  onEditQuiz,
 }: {
   lesson: CmsLessonDetailData;
   onBack: () => void;
   onEdit: () => void;
+  onEditQuiz: () => void;
 }) {
   const draftFieldKeys = lesson.draft ? Object.keys(lesson.draft) : [];
 
@@ -61,13 +63,22 @@ export default function CmsLessonDetail({
               </span>
             )}
           </div>
-          <button
-            onClick={onEdit}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-plum transition-all"
-          >
-            <Pencil className="w-4 h-4" aria-hidden="true" />
-            Edit
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onEditQuiz}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-nava-green px-4 py-2 text-sm font-bold text-nava-green hover:bg-nava-green/5 transition-all"
+            >
+              <ListChecks className="w-4 h-4" aria-hidden="true" />
+              Edit quiz
+            </button>
+            <button
+              onClick={onEdit}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-plum transition-all"
+            >
+              <Pencil className="w-4 h-4" aria-hidden="true" />
+              Edit
+            </button>
+          </div>
         </div>
         <h1 className="text-2xl font-bold text-gray-900" tabIndex={-1}>
           {lesson.title}

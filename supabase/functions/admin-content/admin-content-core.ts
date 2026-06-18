@@ -83,10 +83,16 @@ export function isValidVideoUrl(v: unknown): boolean {
   }
 }
 
+/** A multiple-choice quiz question carries exactly this many options. */
+export const QUIZ_OPTION_COUNT = 4;
+
 /**
- * quiz_json: a non-empty array of multiple-choice questions. Chunk 4 tightens
- * the option count to exactly 4; here we require a well-formed, gradeable shape
- * (≥2 options, an in-range correctIndex) so a malformed quiz is rejected at write.
+ * quiz_json: a non-empty array of multiple-choice questions. Each question must
+ * have exactly 4 options (matrix + GLAT content is uniformly 4-option; the quiz
+ * UI renders a fixed 4-option block), a non-empty question + every option, an
+ * in-range correctIndex, and a string explanation — so a malformed quiz is
+ * rejected at write (R8 / closes W2-7/D-16 for quiz_json). The QuizEditor imports
+ * the client mirror of this rule for inline feedback; this is authoritative.
  */
 export function validateQuizJson(v: unknown): Result<unknown> {
   if (!Array.isArray(v)) return err('`quiz_json` must be an array of questions.');
@@ -97,8 +103,8 @@ export function validateQuizJson(v: unknown): Result<unknown> {
     if (typeof q.question !== 'string' || q.question.trim() === '') {
       return err(`quiz_json[${i}].question must be a non-empty string.`);
     }
-    if (!Array.isArray(q.options) || q.options.length < 2) {
-      return err(`quiz_json[${i}].options must be an array of at least 2 options.`);
+    if (!Array.isArray(q.options) || q.options.length !== QUIZ_OPTION_COUNT) {
+      return err(`quiz_json[${i}].options must be an array of exactly ${QUIZ_OPTION_COUNT} options.`);
     }
     if (!q.options.every((o) => typeof o === 'string' && o.trim() !== '')) {
       return err(`quiz_json[${i}].options must all be non-empty strings.`);
