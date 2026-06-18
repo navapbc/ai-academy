@@ -96,6 +96,16 @@ describe('CmsHome (P5.4-2)', () => {
     expect(screen.getByRole('button', { name: /publish/i })).toBeInTheDocument();
   });
 
+  test('Edit quiz from the detail opens the quiz editor (P5.4-4)', async () => {
+    render(<CmsHome onBack={() => {}} />);
+    await userEvent.click(await screen.findByText('Rules of the road'));
+    await userEvent.click(screen.getByRole('button', { name: /edit quiz/i }));
+
+    // The quiz editor exposes the add-question control + a question text field.
+    expect(screen.getByRole('button', { name: /add question/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/question text/i)).toBeInTheDocument();
+  });
+
   test('renders an error state with retry when the fetch fails', async () => {
     h.fetchCmsLessons.mockRejectedValueOnce(new Error('boom'));
     render(<CmsHome onBack={() => {}} />);

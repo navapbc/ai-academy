@@ -45,6 +45,47 @@ export function isValidVideoUrl(v: string | null | undefined): boolean {
   }
 }
 
+/** A multiple-choice quiz question carries exactly this many options. */
+export const QUIZ_OPTION_COUNT = 4;
+
+/** One question as the QuizEditor assembles it (mirrors QuizQuestion in types.ts). */
+export interface QuizQuestionDraft {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
+
+/**
+ * Client-side mirror of the server's `validateQuizJson` (admin-content-core) for
+ * inline editor feedback: a non-empty array of questions, each with exactly 4
+ * non-empty options, an in-range correctIndex, a non-empty question, and a string
+ * explanation. The Edge Function re-validates on write and is authoritative
+ * (R8 / W2-7/D-16) — this is UX only. The tsconfig excludes `supabase/`, so the
+ * Deno core can't be imported here; the tiny duplicate is the house pattern
+ * (cf. isValidVideoUrl above).
+ */
+export function validateQuizQuestions(
+  questions: QuizQuestionDraft[],
+): { ok: true } | { ok: false; error: string } {
+  if (questions.length < 1) return { ok: false, error: 'Add at least one question.' };
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+    const n = i + 1;
+    if (q.question.trim() === '') return { ok: false, error: `Question ${n}: enter the question text.` };
+    if (q.options.length !== QUIZ_OPTION_COUNT) {
+      return { ok: false, error: `Question ${n}: needs exactly ${QUIZ_OPTION_COUNT} options.` };
+    }
+    if (!q.options.every((o) => o.trim() !== '')) {
+      return { ok: false, error: `Question ${n}: every option must be filled in.` };
+    }
+    if (!Number.isInteger(q.correctIndex) || q.correctIndex < 0 || q.correctIndex >= q.options.length) {
+      return { ok: false, error: `Question ${n}: choose which option is correct.` };
+    }
+  }
+  return { ok: true };
+}
+
 export type ContentAction =
   | { action: 'save-draft'; cellId: string; draft: DraftFields }
   | { action: 'publish'; cellId: string }

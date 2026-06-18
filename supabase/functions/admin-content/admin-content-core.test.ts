@@ -53,16 +53,35 @@ describe('validateQuizJson', () => {
   test('accepts a well-formed quiz', () => {
     expect(validateQuizJson(goodQuiz).ok).toBe(true);
   });
-  test('rejects empty array, bad correctIndex, too few options, non-string fields', () => {
+  test('a single-question quiz is valid', () => {
+    expect(validateQuizJson([goodQuiz[0]]).ok).toBe(true);
+  });
+  test('rejects empty array and non-array', () => {
     expect(validateQuizJson([]).ok).toBe(false);
     expect(validateQuizJson('nope').ok).toBe(false);
-    expect(validateQuizJson([{ question: 'q', options: ['a', 'b'], correctIndex: 5, explanation: '' }]).ok).toBe(false);
-    expect(validateQuizJson([{ question: 'q', options: ['only-one'], correctIndex: 0, explanation: '' }]).ok).toBe(false);
-    expect(validateQuizJson([{ question: '', options: ['a', 'b'], correctIndex: 0, explanation: '' }]).ok).toBe(false);
-    expect(validateQuizJson([{ question: 'q', options: ['a', 'b'], correctIndex: 0 }]).ok).toBe(false); // missing explanation
+  });
+  test('requires exactly 4 options (rejects fewer or more)', () => {
+    const opts = (n: number) =>
+      validateQuizJson([
+        { question: 'q', options: Array.from({ length: n }, (_, i) => `o${i}`), correctIndex: 0, explanation: 'x' },
+      ]);
+    expect(opts(2).ok).toBe(false);
+    expect(opts(3).ok).toBe(false);
+    expect(opts(4).ok).toBe(true);
+    expect(opts(5).ok).toBe(false);
+    const r = opts(3);
+    if (!r.ok) expect(r.error).toContain('exactly 4 options');
+  });
+  test('rejects out-of-range correctIndex, empty question, blank option, non-string explanation', () => {
+    const base = { question: 'q', options: ['a', 'b', 'c', 'd'], correctIndex: 0, explanation: 'x' };
+    expect(validateQuizJson([{ ...base, correctIndex: 4 }]).ok).toBe(false); // 0..3 only
+    expect(validateQuizJson([{ ...base, correctIndex: -1 }]).ok).toBe(false);
+    expect(validateQuizJson([{ ...base, question: '' }]).ok).toBe(false);
+    expect(validateQuizJson([{ ...base, options: ['a', '', 'c', 'd'] }]).ok).toBe(false);
+    expect(validateQuizJson([{ question: 'q', options: ['a', 'b', 'c', 'd'], correctIndex: 0 }]).ok).toBe(false); // missing explanation
   });
   test('failure carries a named, indexed error', () => {
-    const r = validateQuizJson([{ question: 'q', options: ['a', 'b'], correctIndex: 9, explanation: 'x' }]);
+    const r = validateQuizJson([{ question: 'q', options: ['a', 'b', 'c', 'd'], correctIndex: 9, explanation: 'x' }]);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toContain('quiz_json[0].correctIndex');
   });
