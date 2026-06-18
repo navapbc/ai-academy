@@ -106,6 +106,16 @@ describe('CmsHome (P5.4-2)', () => {
     expect(screen.getByLabelText(/question text/i)).toBeInTheDocument();
   });
 
+  test('Edit lab from the detail opens the lab editor (P5.4-5)', async () => {
+    render(<CmsHome onBack={() => {}} />);
+    await userEvent.click(await screen.findByText('Rules of the road'));
+    await userEvent.click(screen.getByRole('button', { name: /edit lab/i }));
+
+    // The lab editor exposes the kind picker.
+    expect(screen.getByLabelText(/lab kind/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /publish/i })).toBeInTheDocument();
+  });
+
   test('renders an error state with retry when the fetch fails', async () => {
     h.fetchCmsLessons.mockRejectedValueOnce(new Error('boom'));
     render(<CmsHome onBack={() => {}} />);
