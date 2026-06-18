@@ -10,6 +10,7 @@ const row = (over: Record<string, unknown> = {}) => ({
   cell_id: '1.4',
   stage: '1a' as Stage,
   status: 'published',
+  origin: 'matrix',
   title: 'Data classification',
   type: 'content',
   dimension: ['Diligence'],

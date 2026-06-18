@@ -16,15 +16,27 @@ interface Props {
 }
 
 /**
- * Builds the grounding corpus from the loaded curriculum: for every module a
- * header line ("[Stage …] Cell {id} — {title}") followed by its authored
- * `content`, concatenated into one string handed to Claude as the cached system
- * context. The corpus only changes when the curriculum changes.
+ * Builds the grounding corpus from the loaded curriculum: for every PUBLISHED
+ * module a header line ("[Stage …] Cell {id} — {title}") followed by its authored
+ * `content` and, when present, its `tutorReference` (R7) — concatenated into one
+ * string handed to Claude as the cached system context. The corpus only changes
+ * when the curriculum changes.
+ *
+ * Grounding is filtered to status='published' so the tutor never quotes an
+ * in-progress draft or an `in_review` cell (P5.4-1; this also closes the prior
+ * latent leak where the tutor grounded on non-published `body_md`).
  */
-function buildGroundingContext(phases: Phase[]): string {
+export function buildGroundingContext(phases: Phase[]): string {
   return phases
     .flatMap((phase) =>
-      phase.modules.map((m) => `[Stage ${phase.title}] Cell ${m.id} — ${m.title}\n${m.content}`),
+      phase.modules
+        .filter((m) => m.status === 'published')
+        .map((m) => {
+          const reference = m.tutorReference
+            ? `\n\n[Tutor reference for Cell ${m.id}]\n${m.tutorReference}`
+            : '';
+          return `[Stage ${phase.title}] Cell ${m.id} — ${m.title}\n${m.content}${reference}`;
+        }),
     )
     .join('\n\n');
 }

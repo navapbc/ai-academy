@@ -28,6 +28,13 @@ export type Stage = '1a' | '1b' | '2';
 export type ModuleStatus = 'draft' | 'in_review' | 'published';
 
 /**
+ * Where a lesson comes from (mirrors modules.origin, P5.4-1). `matrix` is one of
+ * the 28 fixed cells (gated, has a stage); `custom` is a free-form lesson created
+ * in the admin CMS (ungated, stage = null, shown in the "Additional lessons" group).
+ */
+export type ModuleOrigin = 'matrix' | 'custom';
+
+/**
  * A user's access role (mirrors the `profiles.role` CHECK constraint).
  * `learner` is the default; `champion` reviews their assigned cohort; `admin`
  * sees everything. The data boundary is enforced by RLS (P5.1c); the client
@@ -45,11 +52,14 @@ export interface Module {
   type: ModuleType;
   content: string;
   phaseId: string;
-  videoUrl?: string; // Placeholder for future video walkthroughs
+  videoUrl?: string; // optional lesson video link (URL only), from modules.video_url (P5.4-1)
+  tutorReference?: string; // extra tutor grounding for this cell, from modules.tutor_reference_md (P5.4-1)
   resources?: { title: string; url: string }[];
   // --- Matrix metadata (P3.1) ---
-  cellId: string; // matrix cell id (== id for matrix cells, e.g. '1.4')
-  stage: Stage;
+  cellId: string; // matrix cell id (== id for matrix cells, e.g. '1.4'); 'custom-<slug>' for custom lessons
+  origin: ModuleOrigin; // 'matrix' (one of the 28 cells) | 'custom' (free-form lesson) — P5.4-1
+  // Matrix cells have a stage; custom lessons are ungated and carry stage = null.
+  stage: Stage | null;
   // Editorial state from modules.status (W3-2 / D10). Until SME accuracy review
   // flips a row to 'published', learners see it with a "draft — under review"
   // badge — content stays testable but is clearly marked (closes audit D-08).

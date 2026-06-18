@@ -3,6 +3,7 @@ import type {
   EvidenceType,
   LabConfig,
   Module,
+  ModuleOrigin,
   ModuleStatus,
   ModuleType,
   Phase,
@@ -45,17 +46,35 @@ const STAGE_META: Record<Stage, Pick<Phase, 'id' | 'week' | 'title' | 'descripti
 /** Stages in nav order. sort_order keeps cells ordered within each stage. */
 const STAGE_ORDER: Stage[] = ['1a', '1b', '2'];
 
+/**
+ * Meta for the ungated "Additional lessons" group — the home for custom
+ * (origin='custom') free-form lessons (P5.4-1). It is appended AFTER the three
+ * matrix stages, and only when at least one custom lesson exists, so the matrix's
+ * "always exactly 3 phases" shape is preserved for the default curriculum.
+ */
+const CUSTOM_PHASE_META: Pick<Phase, 'id' | 'week' | 'title' | 'description'> = {
+  id: 'additional-lessons',
+  week: 'Additional',
+  title: 'Additional lessons',
+  description: 'Standalone lessons outside the matrix — available to everyone, not gated.',
+};
+
 /** A row from the `modules` table (only the columns the runtime curriculum needs). */
 interface ModuleRow {
   cell_id: string;
-  stage: Stage;
+  // Custom lessons are ungated and carry stage = null (P5.4-1).
+  stage: Stage | null;
   status: ModuleStatus;
+  origin: ModuleOrigin;
   title: string;
   type: ModuleType;
   dimension: Dimension[];
   evidence_type: EvidenceType;
   self_report_validity: SelfReportValidity;
   body_md: string | null;
+  video_url: string | null;
+  tutor_reference_md: string | null;
+  archived_at: string | null;
   mastery_anchor: string | null;
   emergent_anchor: string | null;
   quiz_json: QuizQuestion[] | null;
@@ -63,8 +82,12 @@ interface ModuleRow {
   sorter_config_json: SorterConfig | null;
 }
 
+// The LIVE columns the learner curriculum reads. The `draft` working copy is
+// intentionally NOT fetched here — learners always read the last-published LIVE
+// content, never an in-progress draft (R3, W2-2). The CMS read path (Chunk 2)
+// selects `draft` separately for admins.
 const MODULE_COLUMNS =
-  'cell_id, stage, status, title, type, dimension, evidence_type, self_report_validity, body_md, mastery_anchor, emergent_anchor, quiz_json, lab_config_json, sorter_config_json';
+  'cell_id, stage, status, origin, title, type, dimension, evidence_type, self_report_validity, body_md, video_url, tutor_reference_md, archived_at, mastery_anchor, emergent_anchor, quiz_json, lab_config_json, sorter_config_json';
 
 /**
  * Runtime guard for a `modules` row (TYPE-03). The Supabase client returns
@@ -84,14 +107,24 @@ export function assertModuleRow(row: unknown): asserts row is ModuleRow {
     }
   };
   requireString('cell_id');
-  requireString('stage');
   requireString('status');
   requireString('title');
   requireString('type');
+  requireString('origin');
   if (!['draft', 'in_review', 'published'].includes(r.status as string)) {
     throw new Error(`modules row has unknown status "${String(r.status)}" — schema drift?`);
   }
-  if (!((r.stage as string) in STAGE_META)) {
+  if (!['matrix', 'custom'].includes(r.origin as string)) {
+    throw new Error(`modules row has unknown origin "${String(r.origin)}" — schema drift?`);
+  }
+  // Matrix cells carry a valid stage; custom lessons are ungated (stage = null).
+  // The draft working copy is admin-only and re-validated on write, so the read
+  // side only needs to guard the live stage discriminator here (P5.4-1).
+  if (r.origin === 'custom') {
+    if (r.stage !== null && r.stage !== undefined) {
+      throw new Error(`custom module has a non-null stage "${String(r.stage)}" — schema drift?`);
+    }
+  } else if (!((r.stage as string) in STAGE_META)) {
     throw new Error(`modules row has unknown stage "${String(r.stage)}" — schema drift?`);
   }
   if (!Array.isArray(r.dimension)) {
@@ -101,13 +134,20 @@ export function assertModuleRow(row: unknown): asserts row is ModuleRow {
 
 /** Maps a DB row to the existing Module shape (cell_id -> id+cellId, body_md -> content). */
 export function mapRowToModule(row: ModuleRow): Module {
+  const origin: ModuleOrigin = row.origin ?? 'matrix';
+  // Custom lessons (stage = null) live in the "Additional lessons" group; matrix
+  // cells map to their stage's phase.
+  const phaseId = row.stage ? STAGE_META[row.stage].id : CUSTOM_PHASE_META.id;
   return {
     id: row.cell_id,
     cellId: row.cell_id,
     title: row.title,
     type: row.type,
     content: row.body_md ?? '',
-    phaseId: STAGE_META[row.stage].id,
+    videoUrl: row.video_url ?? undefined,
+    tutorReference: row.tutor_reference_md ?? undefined,
+    phaseId,
+    origin,
     stage: row.stage,
     status: row.status,
     dimension: row.dimension,
@@ -121,12 +161,20 @@ export function mapRowToModule(row: ModuleRow): Module {
   };
 }
 
-/** Groups modules (already ordered by sort_order) into Phase[] by stage. */
+/**
+ * Groups modules (already ordered by sort_order) into Phase[]: the three matrix
+ * stages, then an ungated "Additional lessons" group for any custom lessons. The
+ * custom group is only appended when at least one custom lesson exists, so the
+ * default matrix curriculum keeps its "exactly 3 phases" shape (P5.4-1).
+ */
 export function groupIntoPhases(modules: Module[]): Phase[] {
-  return STAGE_ORDER.map((stage) => ({
+  const matrixPhases = STAGE_ORDER.map((stage) => ({
     ...STAGE_META[stage],
-    modules: modules.filter((m) => m.stage === stage),
+    modules: modules.filter((m) => m.origin !== 'custom' && m.stage === stage),
   }));
+  const customModules = modules.filter((m) => m.origin === 'custom');
+  if (customModules.length === 0) return matrixPhases;
+  return [...matrixPhases, { ...CUSTOM_PHASE_META, modules: customModules }];
 }
 
 /**
@@ -148,15 +196,22 @@ export async function fetchCurriculum(): Promise<Phase[]> {
   const { data, error } = await getSupabaseClient()
     .from('modules')
     .select(MODULE_COLUMNS)
+    // Soft-deleted lessons are hidden from learners (R6); restore brings them back.
+    .is('archived_at', null)
     .order('sort_order', { ascending: true });
 
   if (error) throw error;
 
   // Validate each row's shape before mapping so schema drift fails loudly.
   const rows = data ?? [];
-  const modules = rows.map((row) => {
-    assertModuleRow(row);
-    return mapRowToModule(row);
-  });
+  const modules = rows
+    .map((row) => {
+      assertModuleRow(row);
+      return mapRowToModule(row);
+    })
+    // A custom lesson is invisible to learners until it has been published; matrix
+    // cells are always shown (their D10 "draft — under review" badge is driven by
+    // status, not visibility). Learners always read the LIVE columns (R3).
+    .filter((m) => m.origin !== 'custom' || m.status === 'published');
   return groupIntoPhases(modules);
 }

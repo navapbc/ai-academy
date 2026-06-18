@@ -50,3 +50,23 @@ describe('firstIncompleteStage1aId', () => {
     expect(firstIncompleteStage1aId(phases, ['1.3', '1.4', '1.13'])).toBeUndefined();
   });
 });
+
+describe('custom lessons are invisible to gating (P5.4-1)', () => {
+  // A custom lesson carries stage=null and lives in the "Additional lessons" group.
+  const custom = mod('custom-foo', null);
+  const withCustom: Phase[] = [
+    ...phases,
+    { id: 'additional-lessons', title: '', description: '', week: '', modules: [custom] },
+  ];
+
+  test('does not change the Stage-1a denominator or unlock Stage 2', () => {
+    // Same 3/3 Stage-1a total as without the custom lesson; completing it doesn't help.
+    expect(stage1aProgress(withCustom, ['1.3', '1.4', '1.13']).total).toBe(3);
+    expect(stage1aProgress(withCustom, ['custom-foo']).done).toBe(false);
+  });
+
+  test('a custom lesson is never locked', () => {
+    expect(isModuleLocked(custom, false)).toBe(false);
+    expect(isModuleLocked(custom, true)).toBe(false);
+  });
+});
