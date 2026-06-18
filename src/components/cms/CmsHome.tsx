@@ -12,6 +12,7 @@ import { StatusBadge } from './StatusBadge';
 import CmsLessonDetail from './CmsLessonDetail';
 import LessonEditor from './LessonEditor';
 import QuizEditor from './QuizEditor';
+import LabEditor from './LabEditor';
 
 // Admin CMS home (P5.4-2 / -3): an admin-only list of every lesson (matrix +
 // custom) with status, a pending-draft indicator, and an archived filter. Clicking
@@ -25,7 +26,7 @@ export default function CmsHome({ onBack }: { onBack: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [includeArchived, setIncludeArchived] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editing, setEditing] = useState<'lesson' | 'quiz' | null>(null);
+  const [editing, setEditing] = useState<'lesson' | 'quiz' | 'lab' | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -58,6 +59,9 @@ export default function CmsHome({ onBack }: { onBack: () => void }) {
     if (editing === 'quiz') {
       return <QuizEditor lesson={detail} onBack={() => setEditing(null)} onSaved={load} />;
     }
+    if (editing === 'lab') {
+      return <LabEditor lesson={detail} onBack={() => setEditing(null)} onSaved={load} />;
+    }
     return (
       <CmsLessonDetail
         lesson={detail}
@@ -67,6 +71,7 @@ export default function CmsHome({ onBack }: { onBack: () => void }) {
         }}
         onEdit={() => setEditing('lesson')}
         onEditQuiz={() => setEditing('quiz')}
+        onEditLab={() => setEditing('lab')}
       />
     );
   }

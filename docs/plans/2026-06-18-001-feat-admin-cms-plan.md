@@ -476,7 +476,19 @@ learner quiz reflects it. **Merge autonomously** after reviews + CI.
 
 ---
 
-- [ ] **Chunk 5 (P5.4-5): Lab editor (kind-aware)**
+- [x] **Chunk 5 (P5.4-5): Lab editor (kind-aware)** — **Done** ✓ — `LabEditor.tsx` (kind picker;
+  structured forms for the 3 scalar-only kinds `reflection`/`failure-log`/`paired-calibration`, and a
+  validated JSON-textarea fallback for the other 19 markdown/rubric/item-list kinds — switching kind
+  clears stale fields; Save merges the assembled `lab_config_json` over any existing draft per R3,
+  Publish promotes draft→live per R4). Finalized the per-kind `lab_config_json` validators in
+  `admin-content-core.ts` (dispatch on `kind`; all 22 kinds' required fields + cross-refs, named
+  errors — closes W2-7/D-16 for labs, server-authoritative); client mirror `src/lib/labValidation.ts`
+  (`validateLabConfig`/`parseAndValidateLabConfig`) drives inline feedback. The agreed
+  simple-vs-fallback cut line = scalar-only kinds get forms. Also covers `sorter_config_json` (cell
+  1.3) — `scenario-sort` is a picker option that writes the separate sorter column via the
+  `validateSorterConfig` mirror. New `admin-content-core.seed.test.ts` extracts every `$json$`
+  migration block and proves all 24 seeded lab configs + 35 quizzes + the sorter validate.
+  lint+build+529 unit tests green.
 
 **Goal:** A `lab_config_json` editor that is aware of the `LabConfig` `kind`: structured forms for
 the **simple** kinds, and a **validated JSON fallback** for the complex/markdown-bearing kinds

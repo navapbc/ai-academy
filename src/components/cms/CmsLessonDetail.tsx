@@ -1,11 +1,12 @@
-import { ArrowLeft, FileText, Video, Sparkles, Pencil, ListChecks } from 'lucide-react';
+import { ArrowLeft, FileText, Video, Sparkles, Pencil, ListChecks, FlaskConical } from 'lucide-react';
 import type { CmsLessonDetailData } from '../../lib/cmsContent';
 import { StatusBadge } from './StatusBadge';
 
 // Read-only lesson detail for the admin CMS (P5.4-2). Shows the current LIVE
 // content a learner reads, plus a note when an unpublished draft is staged on the
-// row. An "Edit" affordance opens the text/video/tutor-ref editor (P5.4-3); quiz
-// and lab editing arrive in P5.4-4 / P5.4-5.
+// row. An "Edit" affordance opens the text/video/tutor-ref editor (P5.4-3); "Edit
+// quiz" opens the quiz editor (P5.4-4); "Edit lab" opens the kind-aware lab editor
+// (P5.4-5).
 
 function Field({
   icon: Icon,
@@ -32,11 +33,13 @@ export default function CmsLessonDetail({
   onBack,
   onEdit,
   onEditQuiz,
+  onEditLab,
 }: {
   lesson: CmsLessonDetailData;
   onBack: () => void;
   onEdit: () => void;
   onEditQuiz: () => void;
+  onEditLab: () => void;
 }) {
   const draftFieldKeys = lesson.draft ? Object.keys(lesson.draft) : [];
 
@@ -64,6 +67,13 @@ export default function CmsLessonDetail({
             )}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={onEditLab}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-nava-green px-4 py-2 text-sm font-bold text-nava-green hover:bg-nava-green/5 transition-all"
+            >
+              <FlaskConical className="w-4 h-4" aria-hidden="true" />
+              Edit lab
+            </button>
             <button
               onClick={onEditQuiz}
               className="inline-flex items-center gap-1.5 rounded-xl border border-nava-green px-4 py-2 text-sm font-bold text-nava-green hover:bg-nava-green/5 transition-all"

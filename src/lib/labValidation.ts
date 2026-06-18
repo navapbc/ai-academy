@@ -1,131 +1,18 @@
-// Pure, runtime-agnostic logic for the `admin-content` Edge Function (no Deno, no
-// network), unit-tested under vitest. The Deno-only glue (auth, service_role
-// client, DB reads/writes, the in-memory limiter) lives in index.ts and calls
-// here. Helpers are self-contained copies so the function bundles independently
-// (same posture as admin-cohorts-core.ts — keep in sync if those change).
-//
-// This is the CMS write contract: it parses + validates every mutation body, and
-// owns the write-time JSON schema validation of quiz_json / lab_config_json /
-// sorter_config_json that closes W2-7 / D-16 (server-authoritative; the client
-// editors import the same validators for inline feedback). The per-kind lab
-// validation is deepened in Chunks 4/5; the structural skeleton lives here.
+import type { LabConfig } from '../types';
 
-// --- Action model -----------------------------------------------------------
-
-export const CONTENT_ACTIONS = ['save-draft', 'publish', 'archive', 'restore'] as const;
-export type ContentActionType = (typeof CONTENT_ACTIONS)[number];
-
-/**
- * The admin working copy of a lesson's editable fields, keyed by LIVE column
- * name so publish is a straight copy. Every field is optional — Save posts the
- * full working copy the editor holds, but a partial body is still a valid draft.
- */
-export interface DraftFields {
-  title?: string;
-  type?: string;
-  body_md?: string | null;
-  video_url?: string | null;
-  tutor_reference_md?: string | null;
-  quiz_json?: unknown;
-  lab_config_json?: unknown;
-  sorter_config_json?: unknown;
-}
-
-/** The editable-field column names, in publish-copy order. */
-export const DRAFT_COLUMN_KEYS = [
-  'title',
-  'type',
-  'body_md',
-  'video_url',
-  'tutor_reference_md',
-  'quiz_json',
-  'lab_config_json',
-  'sorter_config_json',
-] as const;
-
-export type ContentAction =
-  | { action: 'save-draft'; cellId: string; draft: DraftFields }
-  | { action: 'publish'; cellId: string }
-  | { action: 'archive'; cellId: string }
-  | { action: 'restore'; cellId: string };
-
-export type ParseResult =
-  | { ok: true; value: ContentAction }
-  | { ok: false; error: string };
-
-type Ok<T> = { ok: true; value: T };
-type Err = { ok: false; error: string };
-type Result<T> = Ok<T> | Err;
-const ok = <T>(value: T): Ok<T> => ({ ok: true, value });
-const err = (error: string): Err => ({ ok: false, error });
-
-// modules.cell_id is the text PK ('1.4', '2.15', or 'custom-<slug>') — NOT a uuid.
-const CELL_ID_RE = /^[a-z0-9][a-z0-9.\-]*$/i;
-const CELL_ID_MAX = 80;
-const TITLE_MAX = 300;
-const TYPE_MAX = 40;
-
-export function isValidCellId(v: unknown): v is string {
-  return typeof v === 'string' && v.length <= CELL_ID_MAX && CELL_ID_RE.test(v);
-}
-
-// --- Field validators --------------------------------------------------------
-
-/** An optional http(s) URL (empty/absent is allowed — video is optional). */
-export function isValidVideoUrl(v: unknown): boolean {
-  if (v === null || v === undefined || v === '') return true;
-  if (typeof v !== 'string') return false;
-  try {
-    const u = new URL(v);
-    return u.protocol === 'http:' || u.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
-/** A multiple-choice quiz question carries exactly this many options. */
-export const QUIZ_OPTION_COUNT = 4;
-
-/**
- * quiz_json: a non-empty array of multiple-choice questions. Each question must
- * have exactly 4 options (matrix + GLAT content is uniformly 4-option; the quiz
- * UI renders a fixed 4-option block), a non-empty question + every option, an
- * in-range correctIndex, and a string explanation — so a malformed quiz is
- * rejected at write (R8 / closes W2-7/D-16 for quiz_json). The QuizEditor imports
- * the client mirror of this rule for inline feedback; this is authoritative.
- */
-export function validateQuizJson(v: unknown): Result<unknown> {
-  if (!Array.isArray(v)) return err('`quiz_json` must be an array of questions.');
-  if (v.length < 1) return err('`quiz_json` must have at least one question.');
-  for (let i = 0; i < v.length; i++) {
-    const q = v[i] as Record<string, unknown>;
-    if (typeof q !== 'object' || q === null) return err(`quiz_json[${i}] must be an object.`);
-    if (typeof q.question !== 'string' || q.question.trim() === '') {
-      return err(`quiz_json[${i}].question must be a non-empty string.`);
-    }
-    if (!Array.isArray(q.options) || q.options.length !== QUIZ_OPTION_COUNT) {
-      return err(`quiz_json[${i}].options must be an array of exactly ${QUIZ_OPTION_COUNT} options.`);
-    }
-    if (!q.options.every((o) => typeof o === 'string' && o.trim() !== '')) {
-      return err(`quiz_json[${i}].options must all be non-empty strings.`);
-    }
-    if (
-      typeof q.correctIndex !== 'number' ||
-      !Number.isInteger(q.correctIndex) ||
-      q.correctIndex < 0 ||
-      q.correctIndex >= q.options.length
-    ) {
-      return err(`quiz_json[${i}].correctIndex must be an integer within the options range.`);
-    }
-    if (typeof q.explanation !== 'string') {
-      return err(`quiz_json[${i}].explanation must be a string.`);
-    }
-  }
-  return ok(v);
-}
+// Client-side mirror of the server's lab_config_json validators
+// (supabase/functions/admin-content/admin-content-core.ts → validateLabConfigJson)
+// for the LabEditor's inline feedback (P5.4-5). The Edge Function re-validates on
+// write and stays authoritative (R8 / W2-7/D-16) — this is UX only, so the admin
+// sees a named error before saving rather than only on the 400. The tsconfig
+// excludes `supabase/`, so the Deno core can't be imported here; this duplicate
+// mirrors it field-for-field (the same house pattern as adminContent.validateQuizQuestions
+// mirroring validateQuizJson — just larger, hence its own module). Keep the two in
+// sync; admin-content-core.seed.test.ts proves the SERVER copy accepts all seeded
+// content, and labValidation.test.ts pins this copy to representative cases.
 
 /** The lab_config_json `kind` discriminators (mirrors the LabConfig union in types.ts). */
-export const LAB_KINDS = [
+export const LAB_KINDS: LabConfig['kind'][] = [
   'prompt-construction',
   'data-classifier',
   'tool-triage',
@@ -148,19 +35,49 @@ export const LAB_KINDS = [
   'use-case-portfolio',
   'failure-log',
   'glat',
-] as const;
+];
 
-// --- lab_config_json: per-kind validation (P5.4-5, R8 / closes W2-7/D-16) ----
-// Small typed predicates + composable field checks keep each kind validator a
-// short, explicit list (the house style — cf. validateSorterConfigJson above).
-// A check returns an error string on failure, or null when the field is valid.
+/**
+ * The three lab kinds the LabEditor exposes as structured forms (scalar-only, no
+ * markdown body, no object arrays). Every other kind is edited as validated JSON.
+ */
+export const FORM_LAB_KINDS: LabConfig['kind'][] = ['reflection', 'failure-log', 'paired-calibration'];
+
+/** Human labels for the kind picker. */
+export const LAB_KIND_LABELS: Record<LabConfig['kind'], string> = {
+  'prompt-construction': 'Prompt construction',
+  'data-classifier': 'Data classifier',
+  'tool-triage': 'Tool triage',
+  'failure-spotter': 'Failure spotter',
+  'disclosure-builder': 'Disclosure builder',
+  'regulatory-check': 'Regulatory check',
+  'context-diagnostic': 'Context diagnostic',
+  reflection: 'Reflection',
+  'harm-rubric': 'Harm rubric',
+  'signoff-checklist': 'Sign-off checklist',
+  critique: 'Critique',
+  synthesis: 'Synthesis',
+  'output-audit': 'Output audit',
+  calibration: 'Calibration',
+  'voice-edit': 'Voice edit',
+  'prompt-eval': 'Prompt eval',
+  iteration: 'Iteration',
+  'paired-calibration': 'Paired calibration',
+  'dashboard-critique': 'Dashboard critique',
+  'use-case-portfolio': 'Use-case portfolio',
+  'failure-log': 'Failure log',
+  glat: 'GLAT exam',
+};
+
+export type ValidationResult = { ok: true } | { ok: false; error: string };
+
+// --- typed predicates + composable field checks (mirror the Deno core) -------
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 const isNonEmptyStr = (v: unknown): v is string => typeof v === 'string' && v.trim() !== '';
 
-/** A `{ label, bodyMd }` markdown block (artifact/source/sources). bodyMd may be empty. */
 function checkMdBlock(v: unknown, path: string): string | null {
   if (!isObj(v)) return `\`${path}\` must be an object.`;
   if (!isNonEmptyStr(v.label)) return `\`${path}.label\` must be a non-empty string.`;
@@ -168,7 +85,6 @@ function checkMdBlock(v: unknown, path: string): string | null {
   return null;
 }
 
-/** The optional LLM-judge rubric: `{ anchors: {id,label,description}[] }`. */
 function checkRubric(v: unknown, path: string): string | null {
   if (!isObj(v)) return `\`${path}\` must be an object.`;
   if (!Array.isArray(v.anchors) || v.anchors.length < 1) {
@@ -186,7 +102,6 @@ function checkRubric(v: unknown, path: string): string | null {
   return null;
 }
 
-/** A `{ instruction: string, constraints?: string[] }` brief. */
 function checkInstructionBrief(v: unknown, path: string): string | null {
   if (!isObj(v)) return `\`${path}\` must be an object.`;
   if (!isNonEmptyStr(v.instruction)) return `\`${path}.instruction\` must be a non-empty string.`;
@@ -198,7 +113,6 @@ function checkInstructionBrief(v: unknown, path: string): string | null {
   return null;
 }
 
-/** A non-empty array; runs `each` per element and returns the first error. */
 function checkArray(
   v: unknown,
   path: string,
@@ -212,7 +126,6 @@ function checkArray(
   return null;
 }
 
-/** An `{ id, label }` option used by the classifier/triage tools list. */
 function checkIdLabel(v: unknown, path: string): string | null {
   if (!isObj(v)) return `\`${path}\` must be an object.`;
   if (!isNonEmptyStr(v.id)) return `\`${path}.id\` must be a non-empty string.`;
@@ -220,7 +133,6 @@ function checkIdLabel(v: unknown, path: string): string | null {
   return null;
 }
 
-/** A multiple-choice block: non-empty options + an in-range integer correctIndex. */
 function checkMcOptions(
   options: unknown,
   correctIndex: unknown,
@@ -247,20 +159,11 @@ function checkMcOptions(
   return null;
 }
 
-/** Runs each check in order and returns the first error (or null = ok). */
 function firstError(...checks: (string | null)[]): string | null {
   for (const c of checks) if (c) return c;
   return null;
 }
 
-/**
- * Per-kind validators. Each receives the config object (already confirmed to be
- * an object with a known `kind`) and returns the first field error, or null when
- * valid. Only the fields the learner-side exercise components dereference are
- * required — extra/optional fields pass through (admin-authored, re-validated on
- * the next edit). This is the W2-7/D-16 fix: a malformed lab is rejected at write,
- * so the renderer never dereferences a missing field (the white-screen class).
- */
 const LAB_VALIDATORS: Record<string, (c: Obj) => string | null> = {
   'prompt-construction': (c) =>
     firstError(
@@ -320,7 +223,6 @@ const LAB_VALIDATORS: Record<string, (c: Obj) => string | null> = {
       return null;
     }),
 
-  // disclosure-builder / regulatory-check / context-diagnostic share one shape.
   scenario: (c) =>
     firstError(
       checkArray(c.items, 'items', (it, p) =>
@@ -546,222 +448,86 @@ const LAB_VALIDATORS: Record<string, (c: Obj) => string | null> = {
 };
 
 /**
- * lab_config_json: a discriminated config object whose `kind` must be a known
- * LabConfig member, validated per-kind (R8 / closes W2-7/D-16 for labs;
- * server-authoritative — the LabEditor imports the client mirror for inline
- * feedback). The three scenario kinds share one validator. Title/subtitle/intro
- * are optional everywhere and are not separately required here.
+ * Validates a parsed lab_config_json value against its `kind`. Mirrors the Deno
+ * core `validateLabConfigJson`; the function re-validates on write (authoritative).
  */
-export function validateLabConfigJson(v: unknown): Result<unknown> {
-  if (!isObj(v)) {
-    return err('`lab_config_json` must be an object.');
-  }
+export function validateLabConfig(v: unknown): ValidationResult {
+  if (!isObj(v)) return { ok: false, error: '`lab_config_json` must be an object.' };
   const kind = v.kind;
   if (typeof kind !== 'string' || !(LAB_KINDS as readonly string[]).includes(kind)) {
-    return err(`\`lab_config_json.kind\` must be one of the known lab kinds (got ${JSON.stringify(kind)}).`);
+    return {
+      ok: false,
+      error: `\`kind\` must be one of the known lab kinds (got ${JSON.stringify(kind)}).`,
+    };
   }
-  const validatorKey =
+  const key =
     kind === 'disclosure-builder' || kind === 'regulatory-check' || kind === 'context-diagnostic'
       ? 'scenario'
       : kind;
-  const fieldError = LAB_VALIDATORS[validatorKey]?.(v);
-  if (fieldError) return err(fieldError);
-  return ok(v);
+  const fieldError = LAB_VALIDATORS[key]?.(v);
+  return fieldError ? { ok: false, error: fieldError } : { ok: true };
 }
 
-/** A scenario-sorter category (mirrors SorterCategory in types.ts). */
-export const SORTER_CATEGORIES = ['delegate', 'assist', 'human-only', 'refuse'] as const;
+/**
+ * Parses a JSON string then validates it as a lab_config_json of the expected kind.
+ * Used by the LabEditor's JSON-fallback editor: a parse failure, a kind mismatch,
+ * or a schema violation each yields a named error that blocks Save.
+ */
+export function parseAndValidateLabConfig(
+  text: string,
+  expectedKind: LabConfig['kind'],
+): ValidationResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    return { ok: false, error: `Invalid JSON: ${e instanceof Error ? e.message : 'parse error'}.` };
+  }
+  if (isObj(parsed) && parsed.kind !== expectedKind) {
+    return {
+      ok: false,
+      error: `\`kind\` must stay "${expectedKind}" (got ${JSON.stringify(parsed.kind)}).`,
+    };
+  }
+  return validateLabConfig(parsed);
+}
 
-/** sorter_config_json: kind 'scenario-sort' + a non-empty, well-formed scenarios[]. */
-export function validateSorterConfigJson(v: unknown): Result<unknown> {
-  if (typeof v !== 'object' || v === null || Array.isArray(v)) {
-    return err('`sorter_config_json` must be an object.');
+// --- sorter_config_json (the scenario-sorter, a separate modules column) ------
+// The scenario-sorter is the interactive exercise for cell 1.3; it lives in
+// sorter_config_json, not lab_config_json, so the LabEditor edits it as a JSON
+// kind that writes the other column. Mirrors the Deno core validateSorterConfigJson.
+
+export const SORTER_KIND = 'scenario-sort' as const;
+const SORTER_CATEGORIES = ['delegate', 'assist', 'human-only', 'refuse'] as const;
+
+export function validateSorterConfig(v: unknown): ValidationResult {
+  if (!isObj(v)) return { ok: false, error: '`sorter_config_json` must be an object.' };
+  if (v.kind !== SORTER_KIND) {
+    return { ok: false, error: "`sorter_config_json.kind` must be 'scenario-sort'." };
   }
-  const cfg = v as Record<string, unknown>;
-  if (cfg.kind !== 'scenario-sort') {
-    return err("`sorter_config_json.kind` must be 'scenario-sort'.");
+  if (!Array.isArray(v.scenarios) || v.scenarios.length < 1) {
+    return { ok: false, error: '`scenarios` must be a non-empty array.' };
   }
-  if (!Array.isArray(cfg.scenarios) || cfg.scenarios.length < 1) {
-    return err('`sorter_config_json.scenarios` must be a non-empty array.');
-  }
-  for (let i = 0; i < cfg.scenarios.length; i++) {
-    const s = cfg.scenarios[i] as Record<string, unknown>;
-    if (typeof s !== 'object' || s === null) return err(`sorter scenarios[${i}] must be an object.`);
-    if (typeof s.id !== 'string' || s.id.trim() === '') return err(`sorter scenarios[${i}].id must be a non-empty string.`);
-    if (typeof s.text !== 'string' || s.text.trim() === '') return err(`sorter scenarios[${i}].text must be a non-empty string.`);
+  for (let i = 0; i < v.scenarios.length; i++) {
+    const s = v.scenarios[i];
+    if (!isObj(s)) return { ok: false, error: `scenarios[${i}] must be an object.` };
+    if (!isNonEmptyStr(s.id)) return { ok: false, error: `scenarios[${i}].id must be a non-empty string.` };
+    if (!isNonEmptyStr(s.text)) return { ok: false, error: `scenarios[${i}].text must be a non-empty string.` };
     if (!(SORTER_CATEGORIES as readonly string[]).includes(s.correct as string)) {
-      return err(`sorter scenarios[${i}].correct must be one of: ${SORTER_CATEGORIES.join(', ')}.`);
+      return { ok: false, error: `scenarios[${i}].correct must be one of: ${SORTER_CATEGORIES.join(', ')}.` };
     }
-    if (typeof s.rationale !== 'string') return err(`sorter scenarios[${i}].rationale must be a string.`);
+    if (typeof s.rationale !== 'string') return { ok: false, error: `scenarios[${i}].rationale must be a string.` };
   }
-  return ok(v);
+  return { ok: true };
 }
 
-/**
- * Validates + normalizes the draft working copy: every supplied field is checked,
- * absent fields are left out (a partial draft is valid). Returns a clean object
- * keyed by live column name (publish-ready).
- */
-export function validateDraft(raw: unknown): Result<DraftFields> {
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
-    return err('`draft` must be an object.');
+/** Parses + validates a sorter_config_json string for the LabEditor's JSON editor. */
+export function parseAndValidateSorterConfig(text: string): ValidationResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    return { ok: false, error: `Invalid JSON: ${e instanceof Error ? e.message : 'parse error'}.` };
   }
-  const b = raw as Record<string, unknown>;
-  const draft: DraftFields = {};
-
-  if ('title' in b) {
-    if (typeof b.title !== 'string' || b.title.trim() === '') return err('`title` must be a non-empty string.');
-    if (b.title.length > TITLE_MAX) return err(`\`title\` must be at most ${TITLE_MAX} characters.`);
-    draft.title = b.title.trim();
-  }
-  if ('type' in b) {
-    if (typeof b.type !== 'string' || b.type.trim() === '') return err('`type` must be a non-empty string.');
-    if (b.type.length > TYPE_MAX) return err(`\`type\` must be at most ${TYPE_MAX} characters.`);
-    draft.type = b.type.trim();
-  }
-  if ('body_md' in b) {
-    if (b.body_md !== null && typeof b.body_md !== 'string') return err('`body_md` must be a string or null.');
-    draft.body_md = b.body_md as string | null;
-  }
-  if ('video_url' in b) {
-    if (!isValidVideoUrl(b.video_url)) return err('`video_url` must be an http(s) URL.');
-    draft.video_url = (b.video_url === '' ? null : (b.video_url as string | null)) ?? null;
-  }
-  if ('tutor_reference_md' in b) {
-    if (b.tutor_reference_md !== null && typeof b.tutor_reference_md !== 'string') {
-      return err('`tutor_reference_md` must be a string or null.');
-    }
-    draft.tutor_reference_md = b.tutor_reference_md as string | null;
-  }
-  if ('quiz_json' in b && b.quiz_json !== null) {
-    const r = validateQuizJson(b.quiz_json);
-    if (!r.ok) return r;
-    draft.quiz_json = b.quiz_json;
-  } else if ('quiz_json' in b) {
-    draft.quiz_json = null;
-  }
-  if ('lab_config_json' in b && b.lab_config_json !== null) {
-    const r = validateLabConfigJson(b.lab_config_json);
-    if (!r.ok) return r;
-    draft.lab_config_json = b.lab_config_json;
-  } else if ('lab_config_json' in b) {
-    draft.lab_config_json = null;
-  }
-  if ('sorter_config_json' in b && b.sorter_config_json !== null) {
-    const r = validateSorterConfigJson(b.sorter_config_json);
-    if (!r.ok) return r;
-    draft.sorter_config_json = b.sorter_config_json;
-  } else if ('sorter_config_json' in b) {
-    draft.sorter_config_json = null;
-  }
-
-  return ok(draft);
-}
-
-/** Validates + normalizes the action request body. */
-export function parseContentAction(body: unknown): ParseResult {
-  if (typeof body !== 'object' || body === null) {
-    return err('Request body must be a JSON object.');
-  }
-  const b = body as Record<string, unknown>;
-  const action = b.action;
-  if (typeof action !== 'string' || !(CONTENT_ACTIONS as readonly string[]).includes(action)) {
-    return err(`\`action\` must be one of: ${CONTENT_ACTIONS.join(', ')}.`);
-  }
-  if (!isValidCellId(b.cellId)) {
-    return err('`cellId` must be a valid module id.');
-  }
-  const cellId = b.cellId;
-
-  switch (action as ContentActionType) {
-    case 'save-draft': {
-      const d = validateDraft(b.draft);
-      return d.ok ? ok({ action, cellId, draft: d.value }) : d;
-    }
-    case 'publish':
-      return ok({ action, cellId });
-    case 'archive':
-      return ok({ action, cellId });
-    case 'restore':
-      return ok({ action, cellId });
-  }
-}
-
-/**
- * Builds the single atomic UPDATE that promotes a draft to live on publish:
- * copies each present draft field onto its live column, sets status='published',
- * bumps version ABSOLUTELY (currentVersion + 1, never `version = version + 1` —
- * DATA-05), and nulls the draft. Caller guards that a draft exists.
- */
-export function buildPublishUpdate(
-  draft: Record<string, unknown>,
-  currentVersion: number,
-): Record<string, unknown> {
-  const update: Record<string, unknown> = {};
-  for (const key of DRAFT_COLUMN_KEYS) {
-    if (key in draft) update[key] = draft[key];
-  }
-  update.status = 'published';
-  update.version = currentVersion + 1;
-  update.draft = null;
-  return update;
-}
-
-// --- Allowlist / domain (mirrors admin-cohorts-core) -------------------------
-
-export function isAllowlistedAdmin(
-  email: string | null | undefined,
-  csv: string | undefined,
-): boolean {
-  if (!email) return false;
-  const allow = (csv ?? '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter((e) => e.length > 0);
-  return allow.includes(email.toLowerCase());
-}
-
-export function emailDomainAllowed(email: string | undefined | null, domain: string): boolean {
-  if (!email) return false;
-  return email.split('@')[1]?.toLowerCase() === domain.toLowerCase();
-}
-
-// --- CORS allow-list (mirrors admin-cohorts-core) ---------------------------
-const CORS_BASE = {
-  'access-control-allow-methods': 'POST, OPTIONS',
-  'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type',
-  vary: 'Origin',
-};
-
-export function buildCorsHeaders(
-  origin: string | null,
-  allowedOrigins: string[],
-): Record<string, string> {
-  if (origin && allowedOrigins.includes(origin)) {
-    return { ...CORS_BASE, 'access-control-allow-origin': origin };
-  }
-  return { ...CORS_BASE };
-}
-
-// --- Rate limiting (mirrors admin-cohorts-core) -----------------------------
-export interface RateLimitState {
-  count: number;
-  windowStart: number;
-}
-
-export function fixedWindowAllow(
-  store: Map<string, RateLimitState>,
-  key: string,
-  now: number,
-  limit: number,
-  windowMs: number,
-): boolean {
-  const entry = store.get(key);
-  if (!entry || now - entry.windowStart >= windowMs) {
-    store.set(key, { count: 1, windowStart: now });
-    return true;
-  }
-  if (entry.count >= limit) return false;
-  entry.count += 1;
-  return true;
+  return validateSorterConfig(parsed);
 }

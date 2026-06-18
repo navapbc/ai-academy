@@ -87,14 +87,108 @@ describe('validateQuizJson', () => {
   });
 });
 
-describe('validateLabConfigJson', () => {
-  test('accepts a known kind; rejects unknown kind / non-object', () => {
-    expect(validateLabConfigJson({ kind: 'reflection', prompt: 'p' }).ok).toBe(true);
-    expect(validateLabConfigJson({ kind: 'glat' }).ok).toBe(true);
+describe('validateLabConfigJson — structural', () => {
+  test('rejects unknown kind / non-object', () => {
     expect(validateLabConfigJson({ kind: 'nope' }).ok).toBe(false);
     expect(validateLabConfigJson({}).ok).toBe(false);
     expect(validateLabConfigJson([]).ok).toBe(false);
     expect(validateLabConfigJson('x').ok).toBe(false);
+    expect(validateLabConfigJson(null).ok).toBe(false);
+  });
+
+  test('a known kind with no fields is now rejected (per-kind validation)', () => {
+    // Pre-P5.4-5 this passed on kind alone; the per-kind validators now require
+    // the fields the renderer dereferences.
+    expect(validateLabConfigJson({ kind: 'reflection' }).ok).toBe(false);
+    expect(validateLabConfigJson({ kind: 'glat' }).ok).toBe(false);
+  });
+});
+
+describe('validateLabConfigJson — per kind', () => {
+  test('reflection: requires prompt, guidance, non-negative integer minWords', () => {
+    expect(validateLabConfigJson({ kind: 'reflection', prompt: 'p', guidance: 'g', minWords: 50 }).ok).toBe(true);
+    expect(validateLabConfigJson({ kind: 'reflection', prompt: 'p', guidance: 'g', minWords: -1 }).ok).toBe(false);
+    expect(validateLabConfigJson({ kind: 'reflection', prompt: '', guidance: 'g', minWords: 0 }).ok).toBe(false);
+  });
+
+  test('paired-calibration: requires offTask + onTask { label, brief }', () => {
+    const good = { kind: 'paired-calibration', offTask: { label: 'A', brief: 'b' }, onTask: { label: 'B', brief: 'b' } };
+    expect(validateLabConfigJson(good).ok).toBe(true);
+    expect(validateLabConfigJson({ ...good, onTask: { label: 'B' } }).ok).toBe(false);
+  });
+
+  test('failure-log: requires title/helper + integer minEntries/targetEntries ≥ 1', () => {
+    const good = { kind: 'failure-log', title: 't', helper: 'h', minEntries: 3, targetEntries: 6 };
+    expect(validateLabConfigJson(good).ok).toBe(true);
+    expect(validateLabConfigJson({ ...good, minEntries: 0 }).ok).toBe(false);
+    expect(validateLabConfigJson({ ...good, title: '' }).ok).toBe(false);
+  });
+
+  test('scenario family: items need exactly 4 options + in-range correctIndex + takeaway', () => {
+    const item = { prompt: 'p', options: ['a', 'b', 'c', 'd'], correctIndex: 2, why: 'w' };
+    const good = { kind: 'disclosure-builder', items: [item], takeaway: { title: 't', intro: 'i' } };
+    expect(validateLabConfigJson(good).ok).toBe(true);
+    expect(validateLabConfigJson({ ...good, kind: 'regulatory-check' }).ok).toBe(true);
+    expect(validateLabConfigJson({ ...good, kind: 'context-diagnostic' }).ok).toBe(true);
+    // 3 options → rejected (scenario items are exactly 4).
+    expect(
+      validateLabConfigJson({ ...good, items: [{ ...item, options: ['a', 'b', 'c'] }] }).ok,
+    ).toBe(false);
+    // correctIndex out of range.
+    expect(validateLabConfigJson({ ...good, items: [{ ...item, correctIndex: 4 }] }).ok).toBe(false);
+    // missing takeaway.
+    expect(validateLabConfigJson({ kind: 'disclosure-builder', items: [item] }).ok).toBe(false);
+  });
+
+  test('critique: requires brief.instruction, artifact { label, bodyMd }, rubric.anchors', () => {
+    const good = {
+      kind: 'critique',
+      brief: { instruction: 'do it' },
+      artifact: { label: 'Output', bodyMd: '# md' },
+      rubric: { anchors: [{ id: 'a1', label: 'L', description: 'd' }] },
+    };
+    expect(validateLabConfigJson(good).ok).toBe(true);
+    expect(validateLabConfigJson({ ...good, rubric: { anchors: [] } }).ok).toBe(false);
+    expect(validateLabConfigJson({ ...good, artifact: { label: 'Output' } }).ok).toBe(false);
+    expect(validateLabConfigJson({ ...good, brief: {} }).ok).toBe(false);
+  });
+
+  test('harm-rubric: scenario.correct must reference a pattern id', () => {
+    const good = {
+      kind: 'harm-rubric',
+      patterns: [{ id: 'p1', label: 'L', desc: 'd' }],
+      scenarios: [{ id: 's1', text: 't', correct: 'p1', why: 'w' }],
+    };
+    expect(validateLabConfigJson(good).ok).toBe(true);
+    expect(
+      validateLabConfigJson({ ...good, scenarios: [{ id: 's1', text: 't', correct: 'nope', why: 'w' }] }).ok,
+    ).toBe(false);
+  });
+
+  test('calibration: item.target must reference a scale id', () => {
+    const good = {
+      kind: 'calibration',
+      scale: [{ id: 'use-as-is', label: 'Use as-is' }],
+      items: [{ id: 'i1', task: 't', target: 'use-as-is', why: 'w' }],
+    };
+    expect(validateLabConfigJson(good).ok).toBe(true);
+    expect(
+      validateLabConfigJson({ ...good, items: [{ id: 'i1', task: 't', target: 'ghost', why: 'w' }] }).ok,
+    ).toBe(false);
+  });
+
+  test('glat: passThreshold in (0,1] + well-formed sections', () => {
+    const good = {
+      kind: 'glat',
+      passThreshold: 0.8,
+      sectionA: [{ id: 'A1', prompt: 'p' }],
+      sectionBC: [{ id: 'B1', question: 'q', options: ['T', 'F'], correctIndex: 0, rationale: 'r' }],
+    };
+    expect(validateLabConfigJson(good).ok).toBe(true);
+    expect(validateLabConfigJson({ ...good, passThreshold: 1.5 }).ok).toBe(false);
+    expect(
+      validateLabConfigJson({ ...good, sectionBC: [{ id: 'B1', question: 'q', options: ['only'], correctIndex: 0, rationale: 'r' }] }).ok,
+    ).toBe(false);
   });
 });
 
@@ -122,7 +216,7 @@ describe('validateDraft', () => {
       video_url: 'https://x.test/v',
       tutor_reference_md: 'extra',
       quiz_json: goodQuiz,
-      lab_config_json: { kind: 'reflection', prompt: 'p' },
+      lab_config_json: { kind: 'reflection', prompt: 'p', guidance: 'g', minWords: 50 },
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
