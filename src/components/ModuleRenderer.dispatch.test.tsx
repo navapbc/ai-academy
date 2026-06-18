@@ -42,6 +42,7 @@ vi.mock('./exercises/GlatExam', () => ({ default: () => <div>STUB:GlatExam objec
 const base: Module = {
   id: '1.x',
   cellId: '1.x',
+  origin: 'matrix',
   title: 'T',
   type: 'content',
   content: '',

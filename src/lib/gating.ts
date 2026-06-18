@@ -4,6 +4,10 @@ import type { Module, Phase } from '../types';
 // Stage 1b is never gated — it runs alongside Stage 1a. Gating is per-user,
 // derived purely from the loaded curriculum + the learner's completedModuleIds,
 // so it's a thin UI concern with no schema, auth, or data-layer changes.
+//
+// Custom lessons (origin='custom', stage=null — P5.4-1) are invisible to gating:
+// every check below keys off stage ∈ {'1a','2'}, and a null stage matches neither,
+// so a custom lesson is never counted toward the Stage-1a gate and is never locked.
 
 export interface Stage1aProgress {
   completed: number;
