@@ -376,7 +376,7 @@ champion sees no CMS tile. **Merge autonomously** after PM-agent + code review +
 
 ---
 
-- [ ] **Chunk 3 (P5.4-3): Lesson editor (text / video / tutor-ref) + draft → preview → publish**
+- [x] **Chunk 3 (P5.4-3): Lesson editor (text / video / tutor-ref) + draft → preview → publish** — **Done (#92)** ✓ — shared `LessonMarkdown` (extracted from `ModuleRenderer` so preview ≡ live lesson, R9); `LessonEditor` (markdown body + live preview, video-URL field w/ inline http(s) validation, tutor-reference field; Save=`save-draft` leaves live untouched per R3; Publish promotes draft→live per R4; `buildDraft` merges over any existing draft so a text-only save can't wipe a pending quiz/lab draft); Edit affordance wired from the read-only detail; client `isValidVideoUrl` mirror (server stays authoritative, W2-7/D-16). lint+build+476 unit tests green; new e2e admin edit→preview→save→publish (write stubbed; real round-trip covered by the gated `admin-content` integration suite); CI build+db-tests green.
 
 **Goal:** Deliver the headline value end-to-end for existing cells: a markdown editor with **live
 preview** for `body_md`, a **video-URL** field, the **tutor-reference** field; **Save** (=draft),
