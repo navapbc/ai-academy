@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { motion } from 'motion/react';
 import { CheckCircle, ExternalLink, PlayCircle, Library, Award, FileClock } from 'lucide-react';
 import { Module, AIPersona } from '../types';
@@ -8,6 +6,7 @@ import { GLOSSARY_TERMS } from '../constants';
 import { BRANDING, injectBranding } from '../branding';
 import { useAuth } from '../lib/auth';
 import { fetchQuizSummary, type QuizResult } from '../lib/progress';
+import LessonMarkdown from './LessonMarkdown';
 import PrivacySimulator from './PrivacySimulator';
 import Lab from './Lab';
 import Quiz from './Quiz';
@@ -258,11 +257,7 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         </div>
       )}
 
-      {module.content && (
-        <div className="prose prose-slate max-w-none prose-headings:font-bold prose-h1:text-4xl prose-h1:text-nava-plum prose-h1:tracking-tight prose-h2:text-nava-plum prose-h3:text-gray-800 prose-p:text-gray-600 prose-p:leading-relaxed prose-li:text-gray-600 prose-li:leading-relaxed prose-strong:text-gray-800 prose-a:text-nava-plum prose-a:font-medium prose-a:no-underline hover:prose-a:underline prose-code:text-nava-plum prose-code:bg-gray-100 prose-code:rounded prose-code:px-1 prose-code:font-normal prose-blockquote:border-l-nava-plum prose-blockquote:text-gray-500 prose-hr:border-gray-200">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{injectBranding(module.content)}</ReactMarkdown>
-        </div>
-      )}
+      {module.content && <LessonMarkdown content={module.content} />}
 
       {/* Each widget region gets its own scoped boundary (D-16): a malformed
           authored row crashes only its own card, never the page — and a broken

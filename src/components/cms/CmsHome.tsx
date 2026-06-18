@@ -10,11 +10,13 @@ import {
 } from '../../lib/cmsContent';
 import { StatusBadge } from './StatusBadge';
 import CmsLessonDetail from './CmsLessonDetail';
+import LessonEditor from './LessonEditor';
 
-// Admin CMS home (P5.4-2): an admin-only, read-only list of every lesson (matrix +
+// Admin CMS home (P5.4-2 / -3): an admin-only list of every lesson (matrix +
 // custom) with status, a pending-draft indicator, and an archived filter. Clicking
-// a lesson opens a read-only detail. In-page list↔detail (no new top-level View),
-// mirroring CohortManagement / ReviewQueue. Read-only this chunk; the editor is P5.4-3+.
+// a lesson opens a read-only detail; "Edit" opens the text/video/tutor-ref editor
+// (P5.4-3). In-page list↔detail↔editor (no new top-level View), mirroring
+// CohortManagement / ReviewQueue.
 
 export default function CmsHome({ onBack }: { onBack: () => void }) {
   const [rows, setRows] = useState<CmsLessonRow[] | null>(null);
@@ -22,6 +24,7 @@ export default function CmsHome({ onBack }: { onBack: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [includeArchived, setIncludeArchived] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -42,13 +45,29 @@ export default function CmsHome({ onBack }: { onBack: () => void }) {
     load();
   }, [load]);
 
-  // Detail view: shape the selected row on demand (read-only).
+  // Detail / editor: shape the selected row on demand. The editor writes through
+  // the admin-content function; onSaved re-fetches so the list + detail reflect
+  // the new status/draft, then returns to the read-only detail.
   const selectedRow = selectedId ? rows?.find((r) => r.cell_id === selectedId) : undefined;
   if (selectedRow) {
+    const detail = buildCmsLessonDetail(selectedRow);
+    if (editing) {
+      return (
+        <LessonEditor
+          lesson={detail}
+          onBack={() => setEditing(false)}
+          onSaved={load}
+        />
+      );
+    }
     return (
       <CmsLessonDetail
-        lesson={buildCmsLessonDetail(selectedRow)}
-        onBack={() => setSelectedId(null)}
+        lesson={detail}
+        onBack={() => {
+          setSelectedId(null);
+          setEditing(false);
+        }}
+        onEdit={() => setEditing(true)}
       />
     );
   }
