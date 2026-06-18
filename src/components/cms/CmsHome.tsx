@@ -92,8 +92,8 @@ export default function CmsHome({ onBack }: { onBack: () => void }) {
           Content management
         </h1>
         <p className="text-sm text-gray-600">
-          Every lesson in the matrix plus any custom lessons, with editorial status. Read-only for
-          now — editing arrives in a later release.
+          Every lesson in the matrix plus any custom lessons, with editorial status. Open a lesson
+          to edit its text, video, and tutor reference, then publish.
         </p>
       </header>
 
