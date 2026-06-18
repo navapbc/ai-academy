@@ -334,7 +334,7 @@ review.**
 
 ---
 
-- [ ] **Chunk 2 (P5.4-2): CMS shell + lesson list (read-only)**
+- [x] **Chunk 2 (P5.4-2): CMS shell + lesson list (read-only)**
 
 **Goal:** An admin-only CMS entry inside `StaffArea` that lists all lessons (matrix + custom) with
 status, an archived filter, and a read-only detail view. No editing yet.
