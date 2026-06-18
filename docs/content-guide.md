@@ -13,21 +13,29 @@ Each row is one matrix cell. The columns that drive a lesson:
 
 | Column | Purpose |
 | --- | --- |
-| `cell_id` | Primary key, e.g. `1.4`. Matches `module_progress.module_id`. |
-| `stage` | `1a` \| `1b` \| `2` (drives nav grouping + Stage-2 gating). |
+| `cell_id` | Primary key, e.g. `1.4` for matrix cells, `custom-<slug>` for custom lessons. Matches `module_progress.module_id`. |
+| `stage` | `1a` \| `1b` \| `2` — drives nav grouping + Stage-2 gating. **null** for custom (free-form) lessons, which are ungated. |
+| `origin` | `matrix` (one of the 28 fixed cells) \| `custom` (free-form lesson created in the CMS, shown in the ungated "Additional lessons" group). |
 | `title`, `type` | Display title and module type (see below). |
 | `dimension[]`, `evidence_type`, `self_report_validity` | Matrix metadata (the 4D tags, primary evidence, self-report trust). |
 | `body_md` | The lesson markdown. |
+| `video_url` | Optional lesson video link (URL only — no media uploads). |
+| `tutor_reference_md` | Extra grounding for the in-app tutor on this cell (used only when the cell is `published`). |
 | `quiz_json` | Quiz questions (`QuizQuestion[]`), or null. |
 | `lab_config_json` | Interactive-lab config — a `LabConfig` discriminated union keyed by `kind`. |
 | `sorter_config_json` | Scenario-sorter config, or null. |
 | `mastery_anchor`, `emergent_anchor` | Rubric anchor text (authored later). |
-| `status` | `draft` \| `in_review` \| `published`. Non-published rows render with a "draft — under review" badge but stay testable (decision D10). |
+| `status` | `draft` \| `in_review` \| `published`. Non-published **matrix** rows render with a "draft — under review" badge but stay testable (decision D10); custom lessons are hidden from learners until published. |
+| `draft` | The admin CMS working copy (jsonb) of the editable fields. **Learners never read it** — they always read the live columns; Publish copies `draft` → live and clears it. |
+| `archived_at` | Soft-delete timestamp. Non-null rows are hidden from learners and default CMS queries; restore sets it back to null. Nothing is hard-deleted. |
 | `sort_order` | Within-stage nav order. |
 
-`modules` is read-only over RLS for any signed-in user; writes happen via migrations/seed
-(and, later, the admin CMS). `content_versions` is an append-only history table, locked
-down until the Phase-6 CMS.
+`modules` is read-only over RLS for any signed-in user — there is **no client write policy**.
+Writes happen two ways: (1) migrations/seed (below), and (2) the **admin CMS** (P5.4), which
+routes every write through the `admin-content` service_role Edge Function (the service_role
+key never reaches the browser; mirrors `admin-cohorts`). `content_versions` remains an
+append-only history table with **no writer yet** — the version-history/rollback slice is
+deferred.
 
 ## Module types (`ModuleType`)
 
@@ -40,6 +48,21 @@ member of the `LabConfig` union in `types.ts` plus a new case in the renderer sw
 2.1 is the deliberate exception where the lab, not the quiz, gates — decision D8).
 
 ## Editing or adding content
+
+There are **two authoring paths**, and which one is authoritative depends on the cell's history:
+
+- **In-app admin CMS (P5.4)** — an admin edits a lesson in the browser (Staff → CMS), which
+  saves a `draft`, previews it, and **publishes** (draft → live columns, with `version`
+  bumped). Published changes reach learners with **no redeploy**. This is the path for routine
+  content edits and for creating free-form (`origin='custom'`) lessons. **Once a cell has been
+  published through the CMS, the DB row — not the seed JSON — is the source of truth for that
+  cell;** re-running an old seed migration's `UPDATE … by cell_id` would silently overwrite the
+  CMS edit (the DATA-04 drift class), so update via the CMS, or regenerate the seed from the
+  current DB before a reset.
+- **Migrations / seed** — the path below seeds the initial 28 matrix cells and is what a fresh
+  `supabase db reset` reloads. Use it for the baseline curriculum and bulk/programmatic changes.
+
+### Migration / seed path
 
 - **Lesson body + quiz:** the source of truth is `supabase/seed-data/curriculum-content.json`
   (28 cells, each a cited markdown lesson + a 3–4 question quiz). The migration
