@@ -1,14 +1,68 @@
+/* Free fallbacks for the licensed Nava fonts: Inter ≈ GT America (sans),
+   Source Serif 4 ≈ FreightText Pro (serif). These render today; once the
+   licensed font files are dropped into public/fonts/ and the @font-face block
+   below is uncommented, the real Nava fonts take over with no other change.
+   See public/fonts/README.md. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap');
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* --- Nava brand fonts (licensed — not bundled) ----------------------------
+   GT America (sans) + FreightText Pro (serif) are proprietary. Drop the
+   licensed web font files into public/fonts/ and uncomment to activate; until
+   then the stack below falls through to Inter / Source Serif 4. */
+/*
+@font-face { font-family: "GT America"; src: url("/fonts/gt-america/GT-America-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "GT America"; src: url("/fonts/gt-america/GT-America-Medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "GT America"; src: url("/fonts/gt-america/GT-America-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "GT America"; src: url("/fonts/gt-america/GT-America-Black.woff2") format("woff2"); font-weight: 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "FreightText Pro"; src: url("/fonts/freight-text-pro/FreightText-Book.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "FreightText Pro"; src: url("/fonts/freight-text-pro/FreightText-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+*/
+
 @theme {
-  --color-nava-green: #005041;
-  --color-nava-plum: #3d234d;
-  --color-nava-sand: #f5f2e9;
-  --color-nava-gold: #fdcc52;
-  --color-nava-mint: #e8f3ee;
-  
+  /* --- Nava brand palette (Figma library: Sage / Plum / Gold / Navy / Gray) ---
+     Nava's Gray scale is identical to Tailwind's default gray, so the app's
+     existing gray-* utilities already match the library; only the brand hues
+     and the neutral surface change here. */
+  --color-nava-green: #107859; /* Sage 700 — primary (stroke-sage-base) */
+  --color-nava-green-dark: #004c31; /* Sage 900 — deep green for contrast */
+  --color-nava-plum: #5b0462; /* Plum 900 — secondary / button hover */
+  --color-nava-gold: #f8b712; /* Gold 700 — accent */
+  --color-nava-mint: #e0f2ed; /* Sage 050 — light tint surface */
+  --color-nava-grey: #f9fafb; /* Gray 050 — app surface (replaces the tan Sand) */
+  --color-nava-navy: #0a0539; /* Navy 900 — deep neutral */
+
   --color-primary: var(--color-nava-green);
   --color-secondary: var(--color-nava-plum);
   --color-accent: var(--color-nava-gold);
+
+  /* Nava typography: GT America (sans) + FreightText Pro (serif), with the
+     free fallbacks loaded above so the app looks right before the licensed
+     files are added. */
+  --font-sans: "GT America", "Inter", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-serif: "FreightText Pro", "Source Serif 4", Georgia, Cambria,
+    "Times New Roman", serif;
+}
+
+/* Default the whole app to the Nava sans stack (the licensed face when present,
+   Inter otherwise) instead of the browser default. */
+body {
+  font-family: var(--font-sans);
+}
+
+/* --- Nava brand patterns -----------------------------------------------------
+   The "direction" (diagonal line) variant of the Nava brand pattern, as a
+   subtle, tasteful background texture. Used on large empty surfaces (e.g. the
+   sign-in screen). `currentColor` lets callers tint it per surface; opacity is
+   kept low so it reads as texture, not decoration. */
+.nava-pattern-direction {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    currentColor 0,
+    currentColor 1px,
+    transparent 1px,
+    transparent 11px
+  );
 }

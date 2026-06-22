@@ -29,7 +29,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-nava-sand flex items-center justify-center" role="status">
+      <div className="min-h-screen bg-nava-grey flex items-center justify-center" role="status">
         <Loader2 className="w-8 h-8 text-nava-green animate-spin" aria-hidden="true" />
         <span className="sr-only">Loading…</span>
       </div>
@@ -50,7 +50,7 @@ function AcademyApp({ userId, onSignOut }: { userId: string; onSignOut: () => vo
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-nava-sand flex items-center justify-center" role="status">
+      <div className="min-h-screen bg-nava-grey flex items-center justify-center" role="status">
         <Loader2 className="w-8 h-8 text-nava-green animate-spin" aria-hidden="true" />
         <span className="sr-only">Loading…</span>
       </div>
@@ -70,7 +70,7 @@ function AcademyApp({ userId, onSignOut }: { userId: string; onSignOut: () => vo
         ? 'No curriculum content is available yet. Please check back soon.'
         : 'Could not load the curriculum.');
     return (
-      <div className="min-h-screen bg-nava-sand flex items-center justify-center p-6">
+      <div className="min-h-screen bg-nava-grey flex items-center justify-center p-6">
         <div className="max-w-md text-center space-y-4">
           <AlertTriangle className="w-10 h-10 text-orange-500 mx-auto" />
           <p className="text-gray-700 font-medium">{message}</p>
@@ -192,7 +192,7 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
   const overallProgress = Math.round((progress.completedModuleIds.length / allModules.length) * 100);
 
   return (
-    <div className="flex h-screen bg-nava-sand text-[#1A1A1A] font-sans overflow-hidden" id="app-container">
+    <div className="flex h-screen bg-nava-grey text-[#1A1A1A] font-sans overflow-hidden" id="app-container">
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
