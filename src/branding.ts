@@ -6,10 +6,10 @@ export const BRANDING = {
   slug: "local-harness",
   welcomeTitle: "Mission Briefing: AI Training",
   colors: {
-    primary: "#005041",   // Nava Green
-    secondary: "#3d234d", // Nava Plum
-    accent: "#fdcc52",    // Nava Gold
-    surface: "#f5f2e9"    // Nava Sand
+    primary: "#107859",   // Nava Sage (green) — Figma Sage/700
+    secondary: "#5b0462", // Nava Plum — Figma Plum/900
+    accent: "#f8b712",    // Nava Gold — Figma Gold/700
+    surface: "#f9fafb"    // Nava grey surface — Figma Gray/050 (was the tan Sand)
   }
 };
 

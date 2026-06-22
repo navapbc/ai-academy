@@ -45,8 +45,13 @@ export default function Login() {
   const displayedError = authError ?? error;
 
   return (
-    <div className="min-h-screen bg-nava-sand flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white rounded-3xl border-2 border-nava-mint shadow-sm p-8 space-y-8">
+    <div className="min-h-screen bg-nava-grey flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Subtle Nava "direction" brand pattern behind the card (decorative). */}
+      <div
+        className="nava-pattern-direction absolute inset-0 text-nava-green opacity-[0.05] pointer-events-none"
+        aria-hidden="true"
+      />
+      <div className="relative w-full max-w-md bg-white rounded-3xl border-2 border-nava-mint shadow-sm p-8 space-y-8">
         <div className="text-center space-y-2">
           <div className="w-14 h-14 mx-auto bg-nava-mint rounded-2xl flex items-center justify-center text-nava-green">
             <GoogleMark className="w-7 h-7" />
