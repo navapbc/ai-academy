@@ -1,12 +1,27 @@
-import { ArrowLeft, FileText, Video, Sparkles, Pencil, ListChecks, FlaskConical } from 'lucide-react';
+import { useState } from 'react';
+import {
+  ArrowLeft,
+  FileText,
+  Video,
+  Sparkles,
+  Pencil,
+  ListChecks,
+  FlaskConical,
+  Archive,
+  RotateCcw,
+  Loader2,
+  AlertCircle,
+} from 'lucide-react';
 import type { CmsLessonDetailData } from '../../lib/cmsContent';
+import { archiveLesson, restoreLesson } from '../../lib/adminContent';
 import { StatusBadge } from './StatusBadge';
 
 // Read-only lesson detail for the admin CMS (P5.4-2). Shows the current LIVE
 // content a learner reads, plus a note when an unpublished draft is staged on the
 // row. An "Edit" affordance opens the text/video/tutor-ref editor (P5.4-3); "Edit
 // quiz" opens the quiz editor (P5.4-4); "Edit lab" opens the kind-aware lab editor
-// (P5.4-5).
+// (P5.4-5). Archive/Restore (P5.4-6) soft-delete the lesson: archived lessons are
+// hidden from learners (R6) but never hard-deleted, and can be restored.
 
 function Field({
   icon: Icon,
@@ -34,14 +49,37 @@ export default function CmsLessonDetail({
   onEdit,
   onEditQuiz,
   onEditLab,
+  onSaved,
 }: {
   lesson: CmsLessonDetailData;
   onBack: () => void;
   onEdit: () => void;
   onEditQuiz: () => void;
   onEditLab: () => void;
+  /** Called after a successful archive/restore so the list + detail reflect it. */
+  onSaved: () => void;
 }) {
   const draftFieldKeys = lesson.draft ? Object.keys(lesson.draft) : [];
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const runArchiveToggle = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await (lesson.archived ? restoreLesson(lesson.cellId) : archiveLesson(lesson.cellId));
+      setBusy(false);
+      onSaved();
+    } catch (err: unknown) {
+      setBusy(false);
+      setError(
+        err instanceof Error
+          ? err.message
+          : `Could not ${lesson.archived ? 'restore' : 'archive'} the lesson.`,
+      );
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -67,6 +105,20 @@ export default function CmsLessonDetail({
             )}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={runArchiveToggle}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {busy ? (
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+              ) : lesson.archived ? (
+                <RotateCcw className="w-4 h-4" aria-hidden="true" />
+              ) : (
+                <Archive className="w-4 h-4" aria-hidden="true" />
+              )}
+              {lesson.archived ? 'Restore' : 'Archive'}
+            </button>
             <button
               onClick={onEditLab}
               className="inline-flex items-center gap-1.5 rounded-xl border border-nava-green px-4 py-2 text-sm font-bold text-nava-green hover:bg-nava-green/5 transition-all"
@@ -98,6 +150,23 @@ export default function CmsLessonDetail({
           {lesson.version}
         </p>
       </header>
+
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex gap-2" role="alert">
+          <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" aria-hidden="true" />
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
+      {lesson.archived && (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+          <p className="text-sm font-semibold text-gray-800">Archived</p>
+          <p className="mt-1 text-sm text-gray-600">
+            This lesson is soft-deleted and hidden from learners. It is never hard-deleted — restore
+            it to bring it back.
+          </p>
+        </div>
+      )}
 
       {lesson.draft && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">

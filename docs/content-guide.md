@@ -59,6 +59,14 @@ There are **two authoring paths**, and which one is authoritative depends on the
   cell;** re-running an old seed migration's `UPDATE … by cell_id` would silently overwrite the
   CMS edit (the DATA-04 drift class), so update via the CMS, or regenerate the seed from the
   current DB before a reset.
+  - **Free-form (custom) lessons (P5.4-6):** "New lesson" in the CMS creates a standalone lesson
+    — the server generates `custom-<slug>` from the title (collision-guarded, length-capped),
+    `origin='custom'`, `stage=null`, and `status='draft'`, so it is **hidden from learners until
+    published**. Add body/quiz/lab via the same editors as matrix cells, then Publish; it then
+    appears in the ungated **"Additional lessons"** group (never the matrix or its Stage-2 gate).
+    **Archive** soft-deletes any lesson (matrix or custom) — hidden from learners, never
+    hard-deleted — and **Restore** brings it back. Custom lessons are not seeded, so a
+    `supabase db reset` removes them (they live only in the cloud/local DB, not in a migration).
 - **Migrations / seed** — the path below seeds the initial 28 matrix cells and is what a fresh
   `supabase db reset` reloads. Use it for the baseline curriculum and bulk/programmatic changes.
 
