@@ -52,6 +52,20 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Tailwind v4's Preflight resets clickable controls to the default arrow cursor
+   (a change from v3). Restore the pointer cursor on buttons and button-role
+   elements so they feel interactive; disabled controls keep the default cursor.
+   (Links with an href already show the pointer natively.) */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  label[for],
+  summary {
+    cursor: pointer;
+  }
+}
+
 /* --- Nava brand patterns -----------------------------------------------------
    The "direction" (diagonal line) variant of the Nava brand pattern, as a
    subtle, tasteful background texture. Used on large empty surfaces (e.g. the
