@@ -90,12 +90,15 @@ export type ContentAction =
   | { action: 'save-draft'; cellId: string; draft: DraftFields }
   | { action: 'publish'; cellId: string }
   | { action: 'archive'; cellId: string }
-  | { action: 'restore'; cellId: string };
+  | { action: 'restore'; cellId: string }
+  | { action: 'create-custom'; title: string; type: string };
 
 export interface ContentActionResult {
   ok: true;
   action: ContentAction['action'];
   version?: number;
+  /** create-custom returns the server-generated `custom-<slug>` id. */
+  cellId?: string;
 }
 
 /** POSTs one action to the admin-content function; throws Error(body.error) on failure. */
@@ -122,7 +125,7 @@ export async function invokeAdminContent(action: ContentAction): Promise<Content
     throw new Error('Could not reach the server. Check your connection and try again.');
   }
 
-  let body: { ok?: boolean; error?: string; version?: number } = {};
+  let body: { ok?: boolean; error?: string; version?: number; cellId?: string } = {};
   try {
     body = await res.json();
   } catch {
@@ -131,7 +134,7 @@ export async function invokeAdminContent(action: ContentAction): Promise<Content
   if (!res.ok || !body.ok) {
     throw new Error(body.error ?? `Request failed (${res.status}).`);
   }
-  return { ok: true, action: action.action, version: body.version };
+  return { ok: true, action: action.action, version: body.version, cellId: body.cellId };
 }
 
 // Thin typed creators (keep call sites readable).
@@ -140,3 +143,6 @@ export const saveDraft = (cellId: string, draft: DraftFields) =>
 export const publishLesson = (cellId: string) => invokeAdminContent({ action: 'publish', cellId });
 export const archiveLesson = (cellId: string) => invokeAdminContent({ action: 'archive', cellId });
 export const restoreLesson = (cellId: string) => invokeAdminContent({ action: 'restore', cellId });
+/** Creates a free-form custom lesson; resolves with the generated `custom-<slug>` id. */
+export const createCustomLesson = (title: string, type: string) =>
+  invokeAdminContent({ action: 'create-custom', title, type });

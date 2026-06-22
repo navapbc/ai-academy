@@ -537,7 +537,22 @@ after reviews + CI.
 
 ---
 
-- [ ] **Chunk 6 (P5.4-6): Create + remove free-form lessons**
+- [x] **Chunk 6 (P5.4-6): Create + remove free-form lessons** — **Done** ✓ — new `create-custom`
+  action: pure `slugify` + `customCellId` (deterministic, `-N` collision guard, length-capped so
+  `custom-<slug>` always passes `isValidCellId` — otherwise the new lesson would 400 on its first
+  save-draft — with a `custom-lesson` fallback for an empty slug) + pure `buildCustomInsert`
+  (hidden `status='draft'`, `origin='custom'`, `stage=null`, `sort_order`=max+1, ungated-valid
+  defaults: `dimension=[]`, `evidence_type='reflection'`, `self_report_validity='na'`) in
+  `admin-content-core.ts`; the handler inserts via service_role (gathers existing ids + max
+  sort_order, audits the generated id). Soft-delete/restore **reuse the existing `archive`/`restore`
+  actions** (no new `delete-custom` — they already target any `cell_id`, and matrix cells are
+  archivable too, R6). Client `createCustomLesson` returns the generated id. UI: `CreateLessonModal`
+  (title + type, a11y dialog) + a "New lesson" affordance on `CmsHome` (on create → refetch + open
+  the new lesson's detail) + Archive/Restore on `CmsLessonDetail` (with a soft-delete notice). Custom
+  lessons stay invisible to gating + to learners until published (Chunk 1 `gating.ts`/`modules.ts`
+  coverage). lint+build+540 unit/component tests + gated integration (create→hidden draft→
+  publish+ungated→archive→restore, 5/5) green; browser-smoked the full create→archive→restore
+  round-trip as admin against the served `admin-content` function.
 
 **Goal:** Create a new `origin='custom'` lesson (title, type, chosen content types) that appears in
 the ungated "Additional lessons" group; soft-delete (archive) + restore. Reuses the editors from

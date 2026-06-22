@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, Loader2, AlertTriangle, ChevronRight, FileEdit } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, ChevronRight, FileEdit, Plus } from 'lucide-react';
 import {
   fetchCmsLessons,
   buildCmsLessonList,
@@ -13,6 +13,7 @@ import CmsLessonDetail from './CmsLessonDetail';
 import LessonEditor from './LessonEditor';
 import QuizEditor from './QuizEditor';
 import LabEditor from './LabEditor';
+import CreateLessonModal from './CreateLessonModal';
 
 // Admin CMS home (P5.4-2 / -3): an admin-only list of every lesson (matrix +
 // custom) with status, a pending-draft indicator, and an archived filter. Clicking
@@ -27,6 +28,7 @@ export default function CmsHome({ onBack }: { onBack: () => void }) {
   const [includeArchived, setIncludeArchived] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<'lesson' | 'quiz' | 'lab' | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -72,9 +74,19 @@ export default function CmsHome({ onBack }: { onBack: () => void }) {
         onEdit={() => setEditing('lesson')}
         onEditQuiz={() => setEditing('quiz')}
         onEditLab={() => setEditing('lab')}
+        onSaved={load}
       />
     );
   }
+
+  // After a custom lesson is created, refetch and open its read-only detail so
+  // the admin can pick which editor (text / quiz / lab) to add content with.
+  const handleCreated = (cellId: string) => {
+    setCreating(false);
+    setEditing(null);
+    setSelectedId(cellId);
+    load();
+  };
 
   const allLessons = rows ? buildCmsLessonList(rows) : [];
   const lessons = filterLessons(allLessons, includeArchived);
@@ -91,15 +103,34 @@ export default function CmsHome({ onBack }: { onBack: () => void }) {
       </button>
 
       <header className="space-y-1">
-        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-green">Admin</span>
-        <h1 className="text-2xl font-bold text-gray-900" tabIndex={-1}>
-          Content management
-        </h1>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="space-y-1">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-nava-green">
+              Admin
+            </span>
+            <h1 className="text-2xl font-bold text-gray-900" tabIndex={-1}>
+              Content management
+            </h1>
+          </div>
+          <button
+            onClick={() => setCreating(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-plum transition-all"
+          >
+            <Plus className="w-4 h-4" aria-hidden="true" />
+            New lesson
+          </button>
+        </div>
         <p className="text-sm text-gray-600">
           Every lesson in the matrix plus any custom lessons, with editorial status. Open a lesson
           to edit its text, video, and tutor reference, then publish.
         </p>
       </header>
+
+      <CreateLessonModal
+        isOpen={creating}
+        onClose={() => setCreating(false)}
+        onCreated={handleCreated}
+      />
 
       {rows && !loading && !error && archivedCount > 0 && (
         <label className="inline-flex items-center gap-2 text-sm text-gray-700">

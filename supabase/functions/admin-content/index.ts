@@ -13,6 +13,7 @@
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import {
   buildCorsHeaders,
+  buildCustomInsert,
   buildPublishUpdate,
   emailDomainAllowed,
   fixedWindowAllow,
@@ -43,7 +44,26 @@ async function applyAction(
   callerId: string,
   action: ContentAction,
 ): Promise<ApplyResult> {
-  // Every action targets an existing module — fetch it once (existence + version/draft).
+  const stamp = { updated_by: callerId, updated_at: new Date().toISOString() };
+
+  // create-custom is the only action without an incoming cellId — it generates a
+  // collision-free `custom-<slug>` id and inserts a fresh draft row (R2). It needs
+  // the existing ids (collision guard) + the current max sort_order, not a
+  // single-row fetch, so it is handled before the existence check below.
+  if (action.action === 'create-custom') {
+    const { data: all, error: listErr } = await admin.from('modules').select('cell_id, sort_order');
+    if (listErr) return { error: listErr.message };
+    const ids = (all ?? []).map((r) => r.cell_id as string);
+    const maxSortOrder = (all ?? []).reduce(
+      (m, r) => Math.max(m, (r.sort_order as number) ?? 0),
+      0,
+    );
+    const insert = buildCustomInsert(action.title, action.type, ids, maxSortOrder, callerId, stamp.updated_at);
+    const { error } = await admin.from('modules').insert(insert);
+    return error ? { error: error.message } : { error: null, detail: { cellId: insert.cell_id } };
+  }
+
+  // Every other action targets an existing module — fetch it once (existence + version/draft).
   const { data: row, error: readErr } = await admin
     .from('modules')
     .select('cell_id, version, draft, archived_at')
@@ -51,8 +71,6 @@ async function applyAction(
     .maybeSingle();
   if (readErr) return { error: readErr.message };
   if (!row) return { error: 'No lesson found for that id.', status: 404 };
-
-  const stamp = { updated_by: callerId, updated_at: new Date().toISOString() };
 
   switch (action.action) {
     case 'save-draft': {
@@ -164,11 +182,16 @@ Deno.serve(async (req: Request) => {
   }
 
   // --- Audit (best-effort: the mutation is the primary, already-applied effect) ---
+  // create-custom has no incoming cellId — the generated one comes back in detail.
+  const auditCellId =
+    action.action === 'create-custom'
+      ? ((result.detail.cellId as string | undefined) ?? null)
+      : action.cellId;
   const { error: auditErr } = await admin.from('content_changes').insert({
     actor_id: caller.id,
     actor_email: caller.email?.toLowerCase() ?? null,
     action: action.action,
-    cell_id: action.cellId,
+    cell_id: auditCellId,
     detail: result.detail,
   });
   if (auditErr) console.error('Audit insert failed:', auditErr.message);

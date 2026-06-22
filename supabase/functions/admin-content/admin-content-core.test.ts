@@ -8,6 +8,10 @@ import {
   validateSorterConfigJson,
   validateDraft,
   buildPublishUpdate,
+  buildCustomInsert,
+  slugify,
+  customCellId,
+  CUSTOM_ID_PREFIX,
   isAllowlistedAdmin,
   emailDomainAllowed,
   buildCorsHeaders,
@@ -275,6 +279,74 @@ describe('parseContentAction', () => {
     expect(parseContentAction({ action: 'delete-everything', cellId: '2.9' }).ok).toBe(false);
     expect(parseContentAction(null).ok).toBe(false);
     expect(parseContentAction('x').ok).toBe(false);
+  });
+
+  test('create-custom requires title + type and ignores cellId (server generates it)', () => {
+    const r = parseContentAction({ action: 'create-custom', title: '  My Lesson  ', type: 'content' });
+    expect(r).toEqual({ ok: true, value: { action: 'create-custom', title: 'My Lesson', type: 'content' } });
+    // no cellId required for create-custom
+    expect(parseContentAction({ action: 'create-custom', title: 'X', type: 'lab' }).ok).toBe(true);
+    // missing/blank title or type is rejected
+    expect(parseContentAction({ action: 'create-custom', title: '   ', type: 'content' }).ok).toBe(false);
+    expect(parseContentAction({ action: 'create-custom', title: 'X' }).ok).toBe(false);
+    expect(parseContentAction({ action: 'create-custom', title: 'X', type: '' }).ok).toBe(false);
+    expect(parseContentAction({ action: 'create-custom', title: 'x'.repeat(301), type: 'content' }).ok).toBe(false);
+  });
+});
+
+describe('slugify', () => {
+  test('lower-cases, collapses non-alphanumerics, trims hyphens', () => {
+    expect(slugify('Prompt Basics')).toBe('prompt-basics');
+    expect(slugify('  Hello, World!  ')).toBe('hello-world');
+    expect(slugify('A & B / C')).toBe('a-b-c');
+    expect(slugify('!!!')).toBe('');
+  });
+});
+
+describe('customCellId', () => {
+  test('generates custom-<slug>; collision-guards with -N; falls back for empty slug', () => {
+    expect(customCellId('Prompt Basics', [])).toBe('custom-prompt-basics');
+    expect(customCellId('Prompt Basics', ['custom-prompt-basics'])).toBe('custom-prompt-basics-2');
+    expect(customCellId('Prompt Basics', ['custom-prompt-basics', 'custom-prompt-basics-2'])).toBe(
+      'custom-prompt-basics-3',
+    );
+    expect(customCellId('!!!', [])).toBe('custom-lesson');
+  });
+
+  test('caps length so custom-<slug> always passes isValidCellId (first save-draft would 400 otherwise)', () => {
+    const id = customCellId('x'.repeat(300), []);
+    expect(id.length).toBeLessThanOrEqual(80);
+    expect(id.startsWith(CUSTOM_ID_PREFIX)).toBe(true);
+    expect(isValidCellId(id)).toBe(true);
+    // a collision suffix on a max-length title still fits + stays valid
+    const id2 = customCellId('x'.repeat(300), [id]);
+    expect(id2).not.toBe(id);
+    expect(isValidCellId(id2)).toBe(true);
+  });
+});
+
+describe('buildCustomInsert', () => {
+  test('builds a hidden draft custom row outside the matrix, sort_order after the max', () => {
+    const row = buildCustomInsert('My Lesson', 'content', ['custom-other'], 42, 'admin-uuid', '2026-06-22T00:00:00Z');
+    expect(row).toMatchObject({
+      cell_id: 'custom-my-lesson',
+      origin: 'custom',
+      stage: null,
+      status: 'draft', // invisible to learners until publish (R3)
+      title: 'My Lesson',
+      type: 'content',
+      self_report_validity: 'na',
+      version: 1,
+      sort_order: 43, // maxSortOrder + 1
+      updated_by: 'admin-uuid',
+    });
+    expect(row.dimension).toEqual([]);
+    expect(isValidCellId(row.cell_id as string)).toBe(true);
+  });
+
+  test('avoids colliding with an existing custom id', () => {
+    const row = buildCustomInsert('My Lesson', 'lab', ['custom-my-lesson'], 0, 'a', 'now');
+    expect(row.cell_id).toBe('custom-my-lesson-2');
   });
 });
 

@@ -184,4 +184,57 @@ describe.skipIf(!RUN)('admin-content write/read boundary (P5.4-1)', () => {
 
     await svc.from('modules').delete().eq('cell_id', cellId);
   });
+
+  // P5.4-6: the create-custom row shape (mirrors buildCustomInsert, whose slug +
+  // collision logic is unit-tested in admin-content-core.test.ts) goes through the
+  // full lifecycle at the DB level: hidden draft → published+ungated → archive →
+  // restore. A learner-visible custom lesson is `published` AND `archived_at is null`.
+  test('a created custom lesson is a hidden draft, then published+ungated, then archive/restore → R2/R3/R6', async () => {
+    const svc = serviceClient();
+    const { data: all } = await svc.from('modules').select('cell_id, sort_order');
+    const maxSort = (all ?? []).reduce((m, r) => Math.max(m, (r.sort_order as number) ?? 0), 0);
+
+    const cellId = uniqueCellId();
+    const { error: insErr } = await svc.from('modules').insert({
+      cell_id: cellId,
+      origin: 'custom',
+      stage: null,
+      status: 'draft', // invisible to learners until publish (R3)
+      title: 'Created custom lesson',
+      type: 'content',
+      dimension: [],
+      evidence_type: 'reflection',
+      self_report_validity: 'na',
+      body_md: null,
+      version: 1,
+      sort_order: maxSort + 1, // lands after every existing row
+    });
+    expect(insErr).toBeNull();
+
+    const learnerVisible = () =>
+      svc
+        .from('modules')
+        .select('cell_id, stage')
+        .is('archived_at', null)
+        .eq('origin', 'custom')
+        .eq('status', 'published')
+        .eq('cell_id', cellId);
+
+    // Created as a hidden draft: not learner-visible yet (R3).
+    expect((await learnerVisible()).data ?? []).toHaveLength(0);
+
+    // Publish → visible, and still ungated (stage stays null — never matrix gating) → R2.
+    await svc.from('modules').update({ status: 'published' }).eq('cell_id', cellId);
+    const pub = await learnerVisible();
+    expect(pub.data ?? []).toHaveLength(1);
+    expect(pub.data![0].stage).toBeNull();
+
+    // Archive hides it; restore brings it back (never hard-deleted) → R6.
+    await svc.from('modules').update({ archived_at: new Date().toISOString() }).eq('cell_id', cellId);
+    expect((await learnerVisible()).data ?? []).toHaveLength(0);
+    await svc.from('modules').update({ archived_at: null }).eq('cell_id', cellId);
+    expect((await learnerVisible()).data ?? []).toHaveLength(1);
+
+    await svc.from('modules').delete().eq('cell_id', cellId);
+  });
 });
