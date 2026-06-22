@@ -16,6 +16,7 @@ import StaffArea from './components/StaffArea';
 import LearnerDashboard from './components/LearnerDashboard';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
+import ContentContainer from './components/layout/ContentContainer';
 import SupportModal from './components/SupportModal';
 import LocalTutorFAB from './components/LocalTutorFAB';
 
@@ -254,19 +255,21 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
               selectedPersona={selectedPersona}
             />
           </div>
-          <div className={view === 'staff' ? 'max-w-5xl mx-auto p-8 lg:p-12 xl:p-16' : 'hidden'}>
+          {/* Staff is data-dense (dashboards, rosters, CMS lists) — Nava's wider
+              1440-grid content width (max-w-7xl) instead of the prose width. */}
+          <ContentContainer active={view === 'staff'} wide>
             <RoleGuard role={role} loading={roleLoading} allow={['admin', 'champion']}>
               {role && <StaffArea role={role} />}
             </RoleGuard>
-          </div>
+          </ContentContainer>
           {/* Learner self-view (P5.3a). Conditionally mounted (not hidden) so it
               fetches fresh on each open and reflects a just-completed module. */}
           {view === 'progress' && (
-            <div className="max-w-5xl mx-auto p-8 lg:p-12 xl:p-16">
+            <ContentContainer wide>
               <LearnerDashboard userId={userId} />
-            </div>
+            </ContentContainer>
           )}
-          <div className={view === 'learning' ? 'max-w-5xl mx-auto p-8 lg:p-12 xl:p-16' : 'hidden'}>
+          <ContentContainer active={view === 'learning'}>
             {currentModuleLocked ? (
               <LockedNotice
                 completed={stage1a.completed}
@@ -281,7 +284,7 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
                 onComplete={() => handleComplete(currentModule.id)}
               />
             )}
-          </div>
+          </ContentContainer>
         </div>
       </main>
 
