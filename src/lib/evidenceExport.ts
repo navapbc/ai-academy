@@ -471,3 +471,225 @@ export const CELL_CROSSWALK: Record<string, ComplianceClaims> = {
     ],
   },
 };
+
+// ---------------------------------------------------------------------------
+// Raw PostgREST row shapes (mirrors the DB column names).
+// `numeric` columns come back as strings from PostgREST.
+// ---------------------------------------------------------------------------
+
+/** One row from `learner_progress_summary`. */
+export interface EvidenceLearnerRow {
+  user_id: string;
+  cohort_id: string | null;
+  completion_pct: number | string | null;
+  avg_quiz_pct: number | string | null;
+  glat_passed: boolean;
+  reviewable_labs: number;
+}
+
+/** One row from `modules` (published, with matrix metadata). */
+export interface EvidenceModuleRow {
+  cell_id: string;
+  title: string;
+  stage: string | null;
+  dimension: string[];
+  evidence_type: string;
+}
+
+/** One row from `module_progress` (scoped to visible learners). */
+export interface EvidenceProgressRow {
+  user_id: string;
+  module_id: string;
+  status: string;
+  completed_at: string | null;
+}
+
+/** One row from `quiz_attempts` (scoped to visible learners). */
+export interface EvidenceQuizRow {
+  user_id: string;
+  module_id: string;
+  score: number | null;
+  max_score: number | null;
+  passed: boolean | null;
+  attempted_at: string;
+}
+
+/** One row from `lab_submissions` (scoped to visible learners). */
+export interface EvidenceLabRow {
+  id: string;
+  user_id: string;
+  lab_id: string;
+  status: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null; // uuid of reviewer
+  rubric_scores: {
+    grader: string;
+    perAnchor: AnchorScore[];
+    overall: number;
+    maxOverall: number;
+  } | null;
+}
+
+/** One row from `profiles` (for learner names and reviewer names). */
+export interface EvidenceProfileRow {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+}
+
+/** One row from `cohorts` (for cohort names). */
+export interface EvidenceCohortRow {
+  id: string;
+  name: string;
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+function displayName(profile: EvidenceProfileRow | undefined): string {
+  if (!profile) return 'Unknown';
+  return profile.full_name?.trim() || profile.email || 'Unknown';
+}
+
+// ---------------------------------------------------------------------------
+// Pure builder
+// ---------------------------------------------------------------------------
+
+export interface BuildEvidenceRowsInput {
+  learners: EvidenceLearnerRow[];
+  profiles: EvidenceProfileRow[];
+  cohortNames: EvidenceCohortRow[];
+  modules: EvidenceModuleRow[];
+  progress: EvidenceProgressRow[];
+  quizzes: EvidenceQuizRow[];
+  labs: EvidenceLabRow[];
+  reviewerProfiles: EvidenceProfileRow[];
+}
+
+/**
+ * Pure: joins all fetched data into one EvidenceRow per (learner × module).
+ * Modules are iterated in the order they appear in `modules` (sort_order from
+ * the DB); learners are iterated in the order they appear in `learners`
+ * (alphabetical from buildLearnerRoster).
+ *
+ * - Best quiz attempt: highest score/max_score fraction per learner per module.
+ * - Latest lab submission: newest created_at per learner per lab_id.
+ * - Crosswalk claims: from CELL_CROSSWALK by cell_id; empty arrays for custom lessons.
+ */
+export function buildEvidenceRows({
+  learners,
+  profiles,
+  cohortNames,
+  modules,
+  progress,
+  quizzes,
+  labs,
+  reviewerProfiles,
+}: BuildEvidenceRowsInput): EvidenceRow[] {
+  const profileById = new Map(profiles.map((p) => [p.id, p]));
+  const cohortById = new Map(cohortNames.map((c) => [c.id, c]));
+  const reviewerById = new Map(reviewerProfiles.map((p) => [p.id, p]));
+
+  // Index progress: (userId, moduleId) → row
+  const progressKey = (userId: string, moduleId: string) => `${userId}::${moduleId}`;
+  const progressMap = new Map<string, EvidenceProgressRow>();
+  for (const p of progress) {
+    progressMap.set(progressKey(p.user_id, p.module_id), p);
+  }
+
+  // Index quizzes: (userId, moduleId) → best attempt
+  interface BestQuiz {
+    pct: number;
+    passed: boolean | null;
+    attemptedAt: string;
+    count: number;
+  }
+  const bestQuiz = new Map<string, BestQuiz>();
+  const quizCountMap = new Map<string, number>();
+  for (const q of quizzes) {
+    const key = progressKey(q.user_id, q.module_id);
+    quizCountMap.set(key, (quizCountMap.get(key) ?? 0) + 1);
+    if (q.score === null || q.max_score === null || q.max_score <= 0) continue;
+    const pct = q.score / q.max_score;
+    const prior = bestQuiz.get(key);
+    if (!prior || pct > prior.pct) {
+      bestQuiz.set(key, { pct, passed: q.passed, attemptedAt: q.attempted_at, count: 0 });
+    }
+  }
+  // Attach counts to best-quiz entries
+  for (const [key, bq] of bestQuiz) {
+    bq.count = quizCountMap.get(key) ?? 1;
+  }
+
+  // Index labs: (userId, labId) → latest submission (newest created_at)
+  const latestLab = new Map<string, EvidenceLabRow>();
+  for (const lab of labs) {
+    const key = progressKey(lab.user_id, lab.lab_id);
+    const prior = latestLab.get(key);
+    if (!prior || lab.created_at > prior.created_at) {
+      latestLab.set(key, lab);
+    }
+  }
+
+  const rows: EvidenceRow[] = [];
+
+  for (const learner of learners) {
+    const profile = profileById.get(learner.user_id);
+    const cohort = learner.cohort_id ? cohortById.get(learner.cohort_id) : undefined;
+
+    for (const mod of modules) {
+      const pKey = progressKey(learner.user_id, mod.cell_id);
+      const prog = progressMap.get(pKey);
+      const bq = bestQuiz.get(pKey);
+      const lab = latestLab.get(pKey);
+      const quizCount = quizCountMap.get(pKey) ?? 0;
+      const cw = CELL_CROSSWALK[mod.cell_id] ?? { dol: [], euAiAct: [], m2521: [] };
+
+      // Lab overall score as 0..1 fraction
+      let labOverallScore: number | null = null;
+      if (lab?.rubric_scores) {
+        const { overall, maxOverall } = lab.rubric_scores;
+        labOverallScore = maxOverall > 0 ? overall / maxOverall : null;
+      }
+
+      rows.push({
+        learnerId: learner.user_id,
+        learnerName: displayName(profile),
+        learnerEmail: profile?.email ?? null,
+        cohortId: learner.cohort_id,
+        cohortName: cohort?.name ?? null,
+
+        cellId: mod.cell_id,
+        cellTitle: mod.title,
+        stage: mod.stage,
+        dimensions: mod.dimension,
+        evidenceType: mod.evidence_type,
+
+        completed: prog?.status === 'completed',
+        completedAt: prog?.completed_at ?? null,
+
+        quizScore: bq ? bq.pct : null,
+        quizPassed: bq ? bq.passed : null,
+        quizAttemptCount: quizCount,
+        lastQuizAttemptedAt: bq ? bq.attemptedAt : null,
+
+        labStatus: lab?.status ?? null,
+        labSubmittedAt: lab?.created_at ?? null,
+        labReviewedAt: lab?.reviewed_at ?? null,
+        labReviewerEmail: lab?.reviewed_by
+          ? (reviewerById.get(lab.reviewed_by)?.email ?? null)
+          : null,
+        labOverallScore,
+        labAnchorScores: lab?.rubric_scores?.perAnchor ?? null,
+
+        dolClaims: cw.dol,
+        euAiActClaims: cw.euAiAct,
+        m2521Claims: cw.m2521,
+      });
+    }
+  }
+
+  return rows;
+}

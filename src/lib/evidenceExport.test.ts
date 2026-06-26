@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { CELL_CROSSWALK, MATRIX_CELL_IDS } from './evidenceExport';
+import {
+  CELL_CROSSWALK, MATRIX_CELL_IDS,
+  buildEvidenceRows,
+} from './evidenceExport';
+import type {
+  EvidenceLearnerRow, EvidenceModuleRow, EvidenceProgressRow,
+  EvidenceQuizRow, EvidenceLabRow, EvidenceProfileRow, EvidenceCohortRow,
+} from './evidenceExport';
 
 describe('CELL_CROSSWALK', () => {
   it('has an entry for every matrix cell', () => {
@@ -19,5 +26,197 @@ describe('CELL_CROSSWALK', () => {
 
   it('has exactly 28 matrix cells', () => {
     expect(MATRIX_CELL_IDS).toHaveLength(28);
+  });
+});
+
+// Minimal fixtures that exercise the builder with a single learner + two modules.
+const learners: EvidenceLearnerRow[] = [
+  {
+    user_id: 'u1',
+    cohort_id: 'c1',
+    completion_pct: '0.5',
+    avg_quiz_pct: '0.75',
+    glat_passed: false,
+    reviewable_labs: 0,
+  },
+];
+
+const profiles: EvidenceProfileRow[] = [
+  { id: 'u1', full_name: 'Jane Doe', email: 'jane@navapbc.com' },
+];
+
+const cohortNames: EvidenceCohortRow[] = [
+  { id: 'c1', name: 'Cohort Alpha' },
+];
+
+const modules: EvidenceModuleRow[] = [
+  {
+    cell_id: '1.4',
+    title: 'Data Classification',
+    stage: '1a',
+    dimension: ['Discernment', 'Delegation'],
+    evidence_type: 'quiz',
+  },
+  {
+    cell_id: '2.1',
+    title: 'Prompt Construction',
+    stage: '2',
+    dimension: ['Description'],
+    evidence_type: 'performance-task',
+  },
+];
+
+const progress: EvidenceProgressRow[] = [
+  { user_id: 'u1', module_id: '1.4', status: 'completed', completed_at: '2026-06-01T10:00:00Z' },
+];
+
+const quizzes: EvidenceQuizRow[] = [
+  {
+    user_id: 'u1',
+    module_id: '1.4',
+    score: 3,
+    max_score: 4,
+    passed: true,
+    attempted_at: '2026-06-01T09:55:00Z',
+  },
+  {
+    user_id: 'u1',
+    module_id: '1.4',
+    score: 2,
+    max_score: 4,
+    passed: false,
+    attempted_at: '2026-06-01T09:40:00Z',
+  },
+];
+
+const labs: EvidenceLabRow[] = [
+  {
+    id: 'sub1',
+    user_id: 'u1',
+    lab_id: '2.1',
+    status: 'reviewed',
+    created_at: '2026-06-02T08:00:00Z',
+    reviewed_at: '2026-06-03T12:00:00Z',
+    reviewed_by: 'rev1',
+    rubric_scores: {
+      grader: 'llm',
+      perAnchor: [{ id: 'a1', label: 'Clarity', score: 2, max: 2, rationale: 'Good' }],
+      overall: 2,
+      maxOverall: 2,
+    },
+  },
+];
+
+const reviewerProfiles: EvidenceProfileRow[] = [
+  { id: 'rev1', full_name: 'Champion Chris', email: 'chris@navapbc.com' },
+];
+
+describe('buildEvidenceRows', () => {
+  const rows = buildEvidenceRows({
+    learners, profiles, cohortNames, modules, progress, quizzes, labs, reviewerProfiles,
+  });
+
+  it('produces one row per (learner × module)', () => {
+    expect(rows).toHaveLength(2);
+  });
+
+  it('sets learner identity fields', () => {
+    expect(rows[0].learnerId).toBe('u1');
+    expect(rows[0].learnerName).toBe('Jane Doe');
+    expect(rows[0].learnerEmail).toBe('jane@navapbc.com');
+    expect(rows[0].cohortId).toBe('c1');
+    expect(rows[0].cohortName).toBe('Cohort Alpha');
+  });
+
+  it('sets module metadata fields', () => {
+    const row14 = rows.find((r) => r.cellId === '1.4')!;
+    expect(row14.cellTitle).toBe('Data Classification');
+    expect(row14.stage).toBe('1a');
+    expect(row14.dimensions).toEqual(['Discernment', 'Delegation']);
+    expect(row14.evidenceType).toBe('quiz');
+  });
+
+  it('marks completion from module_progress', () => {
+    const row14 = rows.find((r) => r.cellId === '1.4')!;
+    expect(row14.completed).toBe(true);
+    expect(row14.completedAt).toBe('2026-06-01T10:00:00Z');
+
+    const row21 = rows.find((r) => r.cellId === '2.1')!;
+    expect(row21.completed).toBe(false);
+    expect(row21.completedAt).toBeNull();
+  });
+
+  it('takes the best quiz attempt (highest score fraction)', () => {
+    const row14 = rows.find((r) => r.cellId === '1.4')!;
+    expect(row14.quizScore).toBeCloseTo(0.75);
+    expect(row14.quizPassed).toBe(true);
+    expect(row14.quizAttemptCount).toBe(2);
+    expect(row14.lastQuizAttemptedAt).toBe('2026-06-01T09:55:00Z');
+  });
+
+  it('sets null quiz fields when no attempts', () => {
+    const row21 = rows.find((r) => r.cellId === '2.1')!;
+    expect(row21.quizScore).toBeNull();
+    expect(row21.quizPassed).toBeNull();
+    expect(row21.quizAttemptCount).toBe(0);
+    expect(row21.lastQuizAttemptedAt).toBeNull();
+  });
+
+  it('sets lab evidence fields from the latest submission', () => {
+    const row21 = rows.find((r) => r.cellId === '2.1')!;
+    expect(row21.labStatus).toBe('reviewed');
+    expect(row21.labSubmittedAt).toBe('2026-06-02T08:00:00Z');
+    expect(row21.labReviewedAt).toBe('2026-06-03T12:00:00Z');
+    expect(row21.labReviewerEmail).toBe('chris@navapbc.com');
+    expect(row21.labOverallScore).toBe(1); // 2/2
+    expect(row21.labAnchorScores).toHaveLength(1);
+  });
+
+  it('sets null lab fields when no submission', () => {
+    const row14 = rows.find((r) => r.cellId === '1.4')!;
+    expect(row14.labStatus).toBeNull();
+    expect(row14.labSubmittedAt).toBeNull();
+    expect(row14.labReviewedAt).toBeNull();
+    expect(row14.labReviewerEmail).toBeNull();
+    expect(row14.labOverallScore).toBeNull();
+    expect(row14.labAnchorScores).toBeNull();
+  });
+
+  it('attaches crosswalk claims from CELL_CROSSWALK', () => {
+    const row14 = rows.find((r) => r.cellId === '1.4')!;
+    const cw = CELL_CROSSWALK['1.4'];
+    expect(row14.dolClaims).toEqual(cw.dol);
+    expect(row14.euAiActClaims).toEqual(cw.euAiAct);
+    expect(row14.m2521Claims).toEqual(cw.m2521);
+  });
+
+  it('falls back gracefully for a cell not in CELL_CROSSWALK (custom lesson)', () => {
+    const customModules: EvidenceModuleRow[] = [
+      { cell_id: 'custom-my-lesson', title: 'My Lesson', stage: null, dimension: [], evidence_type: 'quiz' },
+    ];
+    const customRows = buildEvidenceRows({
+      learners, profiles, cohortNames, modules: customModules,
+      progress: [], quizzes: [], labs: [], reviewerProfiles: [],
+    });
+    expect(customRows[0].dolClaims).toEqual([]);
+    expect(customRows[0].euAiActClaims).toEqual([]);
+    expect(customRows[0].m2521Claims).toEqual([]);
+  });
+
+  it('uses email as learner name when full_name is absent', () => {
+    const noNameProfiles: EvidenceProfileRow[] = [
+      { id: 'u1', full_name: null, email: 'jane@navapbc.com' },
+    ];
+    const result = buildEvidenceRows({
+      learners, profiles: noNameProfiles, cohortNames, modules,
+      progress: [], quizzes: [], labs: [], reviewerProfiles: [],
+    });
+    expect(result[0].learnerName).toBe('jane@navapbc.com');
+  });
+
+  it('sorts rows: learner name asc, then module sort_order (module list order)', () => {
+    // The module list comes in sort_order from the DB; rows should preserve that order.
+    expect(rows[0].cellId).toBe('1.4');
+    expect(rows[1].cellId).toBe('2.1');
   });
 });
