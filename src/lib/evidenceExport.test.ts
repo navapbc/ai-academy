@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   CELL_CROSSWALK, MATRIX_CELL_IDS,
   buildEvidenceRows,
@@ -218,5 +218,100 @@ describe('buildEvidenceRows', () => {
     // The module list comes in sort_order from the DB; rows should preserve that order.
     expect(rows[0].cellId).toBe('1.4');
     expect(rows[1].cellId).toBe('2.1');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// fetchCohortEvidence — mocked Supabase tests
+// ---------------------------------------------------------------------------
+
+import { vi } from 'vitest';
+
+vi.mock('./supabaseClient', () => ({
+  getSupabaseClient: vi.fn(),
+}));
+
+import { getSupabaseClient } from './supabaseClient';
+import { fetchCohortEvidence } from './evidenceExport';
+
+function makeQuery(data: unknown[], error: null = null) {
+  const chain = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
+    order: vi.fn().mockResolvedValue({ data, error }),
+  };
+  // Also make the chain itself thenable for queries that don't call order()
+  (chain as unknown as { then: Promise<unknown>['then'] }).then = (resolve?, reject?) =>
+    Promise.resolve({ data, error }).then(resolve, reject);
+  return chain;
+}
+
+describe('fetchCohortEvidence', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns an empty array when no learners are visible', async () => {
+    const sb = { from: vi.fn().mockReturnValue(makeQuery([])) };
+    vi.mocked(getSupabaseClient).mockReturnValue(sb as unknown as ReturnType<typeof getSupabaseClient>);
+
+    const result = await fetchCohortEvidence();
+    expect(result).toEqual([]);
+    // Only one query should have run (learner_progress_summary — returned empty)
+    expect(sb.from).toHaveBeenCalledWith('learner_progress_summary');
+  });
+
+  it('queries the correct tables with correct columns', async () => {
+    const learnerRow = {
+      user_id: 'u1', cohort_id: 'c1',
+      completion_pct: '1', avg_quiz_pct: '1', glat_passed: true, reviewable_labs: 0,
+    };
+    const labRow = {
+      id: 'sub1', user_id: 'u1', lab_id: '2.1', status: 'reviewed',
+      created_at: '2026-06-01T00:00:00Z', reviewed_at: '2026-06-02T00:00:00Z',
+      reviewed_by: 'rev1', rubric_scores: null,
+    };
+
+    const sbCalls: Record<string, unknown[]> = {};
+    const sb = {
+      from: vi.fn((table: string) => {
+        let data: unknown[] = [];
+        if (table === 'learner_progress_summary') data = [learnerRow];
+        if (table === 'lab_submissions') data = [labRow];
+        sbCalls[table] = data;
+        return makeQuery(data);
+      }),
+    };
+    vi.mocked(getSupabaseClient).mockReturnValue(sb as unknown as ReturnType<typeof getSupabaseClient>);
+
+    await fetchCohortEvidence();
+
+    const queriedTables = (sb.from as ReturnType<typeof vi.fn>).mock.calls.map(
+      (c: string[]) => c[0],
+    );
+    expect(queriedTables).toContain('learner_progress_summary');
+    expect(queriedTables).toContain('profiles');
+    expect(queriedTables).toContain('cohorts');
+    expect(queriedTables).toContain('modules');
+    expect(queriedTables).toContain('module_progress');
+    expect(queriedTables).toContain('quiz_attempts');
+    expect(queriedTables).toContain('lab_submissions');
+  });
+
+  it('throws when Supabase returns an error', async () => {
+    const sb = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: null, error: new Error('DB error') }),
+        then: ((resolve?, reject?) =>
+          Promise.resolve({ data: null, error: new Error('DB error') }).then(resolve, reject)) as Promise<unknown>['then'],
+      }),
+    };
+    vi.mocked(getSupabaseClient).mockReturnValue(sb as unknown as ReturnType<typeof getSupabaseClient>);
+
+    await expect(fetchCohortEvidence()).rejects.toThrow('DB error');
   });
 });

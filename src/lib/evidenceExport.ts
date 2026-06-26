@@ -3,6 +3,7 @@
 // No new migration or RLS: rides on P5.1c champion/admin SELECT + P5.2a view.
 
 import type { AnchorScore } from './grading';
+import { getSupabaseClient } from './supabaseClient';
 
 // ---------------------------------------------------------------------------
 // Compliance crosswalk types
@@ -692,4 +693,108 @@ export function buildEvidenceRows({
   }
 
   return rows;
+}
+
+// ---------------------------------------------------------------------------
+// Async fetcher (P5.6a)
+// ---------------------------------------------------------------------------
+
+const LEARNER_COLS =
+  'user_id, cohort_id, completion_pct, avg_quiz_pct, glat_passed, reviewable_labs';
+
+const MODULE_COLS =
+  'cell_id, title, stage, dimension, evidence_type';
+
+const PROGRESS_COLS = 'user_id, module_id, status, completed_at';
+
+const QUIZ_COLS = 'user_id, module_id, score, max_score, passed, attempted_at';
+
+const LAB_COLS =
+  'id, user_id, lab_id, status, created_at, reviewed_at, reviewed_by, rubric_scores';
+
+/**
+ * Async: fetches all data needed for evidence export in 3 sequential rounds
+ * (to honour the RLS pattern: scope visible learners first, then look up names
+ * only for the IDs surfaced by the view).
+ *
+ * Round 1: `learner_progress_summary` — scoped by caller's role (P5.1c).
+ * Round 2 (parallel): profile names, cohort names, published modules,
+ *   module_progress, quiz_attempts, lab_submissions — all filtered to the
+ *   user_ids from round 1.
+ * Round 3: reviewer profile names — filtered to the reviewed_by uuids from
+ *   the lab_submissions result.
+ *
+ * Returns an empty array when no learners are visible to the caller.
+ */
+export async function fetchCohortEvidence(): Promise<EvidenceRow[]> {
+  const sb = getSupabaseClient();
+
+  // Round 1 — scope
+  const { data: learnerData, error: learnerErr } = await sb
+    .from('learner_progress_summary')
+    .select(LEARNER_COLS);
+  if (learnerErr) throw learnerErr;
+
+  const learners = (learnerData ?? []) as EvidenceLearnerRow[];
+  if (learners.length === 0) return [];
+
+  const userIds = learners.map((l) => l.user_id);
+  const cohortIds = [...new Set(learners.map((l) => l.cohort_id).filter(Boolean))] as string[];
+
+  // Round 2 — parallel bulk reads
+  const [
+    profilesRes,
+    cohortNamesRes,
+    modulesRes,
+    progressRes,
+    quizRes,
+    labRes,
+  ] = await Promise.all([
+    sb.from('profiles').select('id, full_name, email').in('id', userIds),
+    cohortIds.length > 0
+      ? sb.from('cohorts').select('id, name').in('id', cohortIds)
+      : Promise.resolve({ data: [], error: null }),
+    sb
+      .from('modules')
+      .select(MODULE_COLS)
+      .eq('status', 'published')
+      .order('sort_order', { ascending: true }),
+    sb.from('module_progress').select(PROGRESS_COLS).in('user_id', userIds),
+    sb.from('quiz_attempts').select(QUIZ_COLS).in('user_id', userIds),
+    sb.from('lab_submissions').select(LAB_COLS).in('user_id', userIds),
+  ]);
+
+  if (profilesRes.error) throw profilesRes.error;
+  if (cohortNamesRes.error) throw cohortNamesRes.error;
+  if (modulesRes.error) throw modulesRes.error;
+  if (progressRes.error) throw progressRes.error;
+  if (quizRes.error) throw quizRes.error;
+  if (labRes.error) throw labRes.error;
+
+  // Round 3 — reviewer names (IDs come from lab results)
+  const labs = (labRes.data ?? []) as EvidenceLabRow[];
+  const reviewerIds = [
+    ...new Set(labs.map((l) => l.reviewed_by).filter(Boolean)),
+  ] as string[];
+
+  let reviewerProfiles: EvidenceProfileRow[] = [];
+  if (reviewerIds.length > 0) {
+    const { data: revData, error: revErr } = await sb
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', reviewerIds);
+    if (revErr) throw revErr;
+    reviewerProfiles = (revData ?? []) as EvidenceProfileRow[];
+  }
+
+  return buildEvidenceRows({
+    learners,
+    profiles: (profilesRes.data ?? []) as EvidenceProfileRow[],
+    cohortNames: (cohortNamesRes.data ?? []) as EvidenceCohortRow[],
+    modules: (modulesRes.data ?? []) as EvidenceModuleRow[],
+    progress: (progressRes.data ?? []) as EvidenceProgressRow[],
+    quizzes: (quizRes.data ?? []) as EvidenceQuizRow[],
+    labs,
+    reviewerProfiles,
+  });
 }
