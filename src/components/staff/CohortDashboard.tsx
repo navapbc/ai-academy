@@ -5,6 +5,7 @@ import type { CohortSummary, ScoreDistribution } from '../../lib/dashboard';
 import type { LearnerRosterEntry } from '../../lib/learnerDetail';
 import { fetchCohortEvidence } from '../../lib/evidenceExport';
 import { serializeEvidenceCsv, buildCsvFilename, downloadCsv } from '../../lib/csvExport';
+import { downloadEvidencePdf } from '../../lib/pdfExport';
 
 // Staff cohort dashboard (P5.2b): the first UI on the P5.2a aggregation views.
 // Reachability is gated by RoleGuard (P5.1d); data is scoped by RLS (P5.1c/P5.2a).
@@ -146,19 +147,23 @@ export default function CohortDashboard({
 }) {
   const { summaries, distribution, learners, loading, error, reload } = useDashboard();
   const [selected, setSelected] = useState<string>('all');
-  const [exportState, setExportState] = useState<'idle' | 'loading' | 'error'>('idle');
+  // Tracks which export (if any) is in flight, so each button shows its own spinner.
+  const [exportState, setExportState] = useState<'idle' | 'csv' | 'pdf' | 'error'>('idle');
   const exportError = useRef<string | null>(null);
 
-  async function handleExport() {
-    setExportState('loading');
+  async function handleExport(format: 'csv' | 'pdf') {
+    setExportState(format);
     exportError.current = null;
     try {
       const cohortId = selected === 'all' ? undefined : selected;
       const rows = await fetchCohortEvidence(cohortId);
-      const csv = serializeEvidenceCsv(rows);
       const cohortName =
         selected === 'all' ? undefined : summaries.find((s) => s.cohortId === selected)?.cohortName;
-      downloadCsv(csv, buildCsvFilename(cohortName));
+      if (format === 'csv') {
+        downloadCsv(serializeEvidenceCsv(rows), buildCsvFilename(cohortName));
+      } else {
+        downloadEvidencePdf(rows, { cohortName });
+      }
       setExportState('idle');
     } catch (err) {
       exportError.current = err instanceof Error ? err.message : 'Export failed';
@@ -246,19 +251,34 @@ export default function CohortDashboard({
           ))}
         </select>
 
-        <button
-          onClick={handleExport}
-          disabled={exportState === 'loading'}
-          className="ml-auto flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-          aria-label="Download evidence report as CSV"
-        >
-          {exportState === 'loading' ? (
-            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Download className="w-4 h-4" aria-hidden="true" />
-          )}
-          {exportState === 'loading' ? 'Exporting…' : 'Download CSV'}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => handleExport('csv')}
+            disabled={exportState === 'csv' || exportState === 'pdf'}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            aria-label="Download evidence report as CSV"
+          >
+            {exportState === 'csv' ? (
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Download className="w-4 h-4" aria-hidden="true" />
+            )}
+            {exportState === 'csv' ? 'Exporting…' : 'Download CSV'}
+          </button>
+          <button
+            onClick={() => handleExport('pdf')}
+            disabled={exportState === 'csv' || exportState === 'pdf'}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            aria-label="Download evidence report as PDF"
+          >
+            {exportState === 'pdf' ? (
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Download className="w-4 h-4" aria-hidden="true" />
+            )}
+            {exportState === 'pdf' ? 'Exporting…' : 'Download PDF'}
+          </button>
+        </div>
         {exportState === 'error' && (
           <p className="w-full text-xs text-red-600" role="alert">
             {exportError.current ?? 'Export failed. Please try again.'}
