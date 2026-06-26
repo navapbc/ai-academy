@@ -151,7 +151,7 @@ describe('buildEvidenceRows', () => {
     expect(row14.quizScore).toBeCloseTo(0.75);
     expect(row14.quizPassed).toBe(true);
     expect(row14.quizAttemptCount).toBe(2);
-    expect(row14.lastQuizAttemptedAt).toBe('2026-06-01T09:55:00Z');
+    expect(row14.bestQuizAttemptedAt).toBe('2026-06-01T09:55:00Z');
   });
 
   it('sets null quiz fields when no attempts', () => {
@@ -159,7 +159,7 @@ describe('buildEvidenceRows', () => {
     expect(row21.quizScore).toBeNull();
     expect(row21.quizPassed).toBeNull();
     expect(row21.quizAttemptCount).toBe(0);
-    expect(row21.lastQuizAttemptedAt).toBeNull();
+    expect(row21.bestQuizAttemptedAt).toBeNull();
   });
 
   it('sets lab evidence fields from the latest submission', () => {
@@ -256,7 +256,7 @@ describe('fetchCohortEvidence', () => {
     const sb = { from: vi.fn().mockReturnValue(makeQuery([])) };
     vi.mocked(getSupabaseClient).mockReturnValue(sb as unknown as ReturnType<typeof getSupabaseClient>);
 
-    const result = await fetchCohortEvidence();
+    const result = await fetchCohortEvidence('cohort-1');
     expect(result).toEqual([]);
     // Only one query should have run (learner_progress_summary — returned empty)
     expect(sb.from).toHaveBeenCalledWith('learner_progress_summary');
@@ -273,13 +273,11 @@ describe('fetchCohortEvidence', () => {
       reviewed_by: 'rev1', rubric_scores: null,
     };
 
-    const sbCalls: Record<string, unknown[]> = {};
     const sb = {
       from: vi.fn((table: string) => {
         let data: unknown[] = [];
         if (table === 'learner_progress_summary') data = [learnerRow];
         if (table === 'lab_submissions') data = [labRow];
-        sbCalls[table] = data;
         return makeQuery(data);
       }),
     };
@@ -297,6 +295,41 @@ describe('fetchCohortEvidence', () => {
     expect(queriedTables).toContain('module_progress');
     expect(queriedTables).toContain('quiz_attempts');
     expect(queriedTables).toContain('lab_submissions');
+  });
+
+  it('labReviewerEmail is null on the champion path (reviewer profiles return empty due to RLS)', async () => {
+    // The champion SELECT policy on profiles scopes to enrolled learners, so
+    // reviewers (champions/admins) return zero rows for a champion caller.
+    const learnerRow = {
+      user_id: 'u1', cohort_id: 'c1',
+      completion_pct: '1', avg_quiz_pct: '1', glat_passed: true, reviewable_labs: 0,
+    };
+    const labRow = {
+      id: 'sub1', user_id: 'u1', lab_id: '2.1', status: 'reviewed',
+      created_at: '2026-06-01T00:00:00Z', reviewed_at: '2026-06-02T00:00:00Z',
+      reviewed_by: 'rev1', rubric_scores: null,
+    };
+    const moduleRow = {
+      cell_id: '2.1', title: 'Prompt Construction', stage: '2',
+      dimension: ['Description'], evidence_type: 'performance-task',
+    };
+    const sb = {
+      from: vi.fn((table: string) => {
+        let data: unknown[] = [];
+        if (table === 'learner_progress_summary') data = [learnerRow];
+        if (table === 'lab_submissions') data = [labRow];
+        if (table === 'modules') data = [moduleRow];
+        // profiles returns empty for champion caller (RLS scopes to learners only)
+        return makeQuery(data);
+      }),
+    };
+    vi.mocked(getSupabaseClient).mockReturnValue(sb as unknown as ReturnType<typeof getSupabaseClient>);
+
+    const result = await fetchCohortEvidence('c1');
+    const row21 = result.find((r) => r.cellId === '2.1');
+    // reviewerProfiles will be empty → labReviewerEmail is null
+    expect(row21).toBeDefined();
+    expect(row21?.labReviewerEmail).toBeNull();
   });
 
   it('throws when Supabase returns an error', async () => {

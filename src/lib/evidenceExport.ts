@@ -45,7 +45,7 @@ export interface EvidenceRow {
   quizScore: number | null;       // best attempt: score/max_score as 0..1 fraction
   quizPassed: boolean | null;
   quizAttemptCount: number;
-  lastQuizAttemptedAt: string | null; // quiz_attempts.attempted_at (best attempt row)
+  bestQuizAttemptedAt: string | null; // quiz_attempts.attempted_at (best attempt row)
 
   // Lab submission (null fields when no submission)
   labStatus: string | null;        // 'reviewable' | 'reviewed' | 'returned'
@@ -569,13 +569,20 @@ export interface BuildEvidenceRowsInput {
   reviewerProfiles: EvidenceProfileRow[];
 }
 
+// BestQuiz — internal working type for tracking best quiz attempt per (learner, module).
+interface BestQuiz {
+  pct: number;
+  passed: boolean | null;
+  attemptedAt: string;
+}
+
 /**
  * Pure: joins all fetched data into one EvidenceRow per (learner × module).
- * Modules are iterated in the order they appear in `modules` (sort_order from
- * the DB); learners are iterated in the order they appear in `learners`
- * (alphabetical from buildLearnerRoster).
+ * Rows are sorted: learner name ascending (locale), then module order preserved
+ * from the `modules` list (sort_order from the DB query).
  *
  * - Best quiz attempt: highest score/max_score fraction per learner per module.
+ *   On a tie, the newer attempt (attempted_at) wins.
  * - Latest lab submission: newest created_at per learner per lab_id.
  * - Crosswalk claims: from CELL_CROSSWALK by cell_id; empty arrays for custom lessons.
  */
@@ -601,12 +608,6 @@ export function buildEvidenceRows({
   }
 
   // Index quizzes: (userId, moduleId) → best attempt
-  interface BestQuiz {
-    pct: number;
-    passed: boolean | null;
-    attemptedAt: string;
-    count: number;
-  }
   const bestQuiz = new Map<string, BestQuiz>();
   const quizCountMap = new Map<string, number>();
   for (const q of quizzes) {
@@ -615,13 +616,9 @@ export function buildEvidenceRows({
     if (q.score === null || q.max_score === null || q.max_score <= 0) continue;
     const pct = q.score / q.max_score;
     const prior = bestQuiz.get(key);
-    if (!prior || pct > prior.pct) {
-      bestQuiz.set(key, { pct, passed: q.passed, attemptedAt: q.attempted_at, count: 0 });
+    if (!prior || pct > prior.pct || (pct === prior.pct && q.attempted_at > prior.attemptedAt)) {
+      bestQuiz.set(key, { pct, passed: q.passed, attemptedAt: q.attempted_at });
     }
-  }
-  // Attach counts to best-quiz entries
-  for (const [key, bq] of bestQuiz) {
-    bq.count = quizCountMap.get(key) ?? 1;
   }
 
   // Index labs: (userId, labId) → latest submission (newest created_at)
@@ -674,7 +671,7 @@ export function buildEvidenceRows({
         quizScore: bq ? bq.pct : null,
         quizPassed: bq ? bq.passed : null,
         quizAttemptCount: quizCount,
-        lastQuizAttemptedAt: bq ? bq.attemptedAt : null,
+        bestQuizAttemptedAt: bq ? bq.attemptedAt : null,
 
         labStatus: lab?.status ?? null,
         labSubmittedAt: lab?.created_at ?? null,
@@ -692,7 +689,12 @@ export function buildEvidenceRows({
     }
   }
 
-  return rows;
+  return rows.sort((a, b) => {
+    const nameOrder = a.learnerName.localeCompare(b.learnerName);
+    if (nameOrder !== 0) return nameOrder;
+    // modules already come in sort_order from the DB; preserve their relative order
+    return 0;
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -726,13 +728,19 @@ const LAB_COLS =
  *
  * Returns an empty array when no learners are visible to the caller.
  */
-export async function fetchCohortEvidence(): Promise<EvidenceRow[]> {
+export async function fetchCohortEvidence(cohortId?: string): Promise<EvidenceRow[]> {
   const sb = getSupabaseClient();
 
   // Round 1 — scope
-  const { data: learnerData, error: learnerErr } = await sb
-    .from('learner_progress_summary')
-    .select(LEARNER_COLS);
+  // When cohortId is provided, filter to that cohort to bound the learner list
+  // (avoids HTTP 414 from large .in() on Round 2 queries).
+  // When cohortId is undefined (admin all-cohorts path), all visible learners are
+  // returned; NOTE: this path may hit URL-length limits at very large scale.
+  let round1Query = sb.from('learner_progress_summary').select(LEARNER_COLS);
+  if (cohortId) {
+    round1Query = round1Query.eq('cohort_id', cohortId);
+  }
+  const { data: learnerData, error: learnerErr } = await round1Query;
   if (learnerErr) throw learnerErr;
 
   const learners = (learnerData ?? []) as EvidenceLearnerRow[];
@@ -771,7 +779,9 @@ export async function fetchCohortEvidence(): Promise<EvidenceRow[]> {
   if (quizRes.error) throw quizRes.error;
   if (labRes.error) throw labRes.error;
 
-  // Round 3 — reviewer names (IDs come from lab results)
+  // Round 3 — reviewer names (admin path only: the champion SELECT policy on
+  // profiles scopes to enrolled learners, so reviewers — who are champions/admins
+  // — return zero rows for a champion caller; labReviewerEmail is null on that path).
   const labs = (labRes.data ?? []) as EvidenceLabRow[];
   const reviewerIds = [
     ...new Set(labs.map((l) => l.reviewed_by).filter(Boolean)),
