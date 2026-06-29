@@ -18,19 +18,19 @@
 // Pure logic lives in ./chat-core.ts (unit-tested under vitest).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import {
+  ANTHROPIC_API,
   buildCorsHeaders,
   buildSystemBlocks,
   emailDomainAllowed,
   fixedWindowAllow,
   isStop,
   parseEvent,
+  resolveDefaultModel,
   validateChatRequest,
   type RateLimitState,
 } from './chat-core.ts';
 
-const DEFAULT_MODEL = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-haiku-4-5';
-const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_VERSION = '2023-06-01';
+const DEFAULT_MODEL = resolveDefaultModel(Deno.env.get('ANTHROPIC_MODEL'));
 
 const ALLOWED_EMAIL_DOMAIN = 'navapbc.com';
 
@@ -120,11 +120,11 @@ Deno.serve(async (req: Request) => {
 
   let upstream: Response;
   try {
-    upstream = await fetch(ANTHROPIC_URL, {
+    upstream = await fetch(ANTHROPIC_API.url, {
       method: 'POST',
       headers: {
         'x-api-key': apiKey,
-        'anthropic-version': ANTHROPIC_VERSION,
+        'anthropic-version': ANTHROPIC_API.version,
         'content-type': 'application/json',
       },
       body: JSON.stringify(anthropicBody),
