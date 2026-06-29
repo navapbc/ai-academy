@@ -3,11 +3,13 @@ import { parseVerdict, buildGradeUserMessage, type GradingRubric } from './verdi
 import {
   MODEL_ALLOWLIST as CHAT_ALLOWLIST,
   ANTHROPIC_API as CHAT_API,
+  MODELS as CHAT_MODELS,
 } from '../chat/chat-core';
 import {
   ANTHROPIC_API,
   FALLBACK_MODEL,
   MODEL_ALLOWLIST,
+  MODELS,
   resolveDefaultModel,
 } from './verdict';
 
@@ -17,6 +19,9 @@ describe('grade/chat model config parity (P6.1)', () => {
   });
   test('Anthropic API config matches chat', () => {
     expect(ANTHROPIC_API).toEqual(CHAT_API);
+  });
+  test('MODELS (incl. provider field) match chat', () => {
+    expect(MODELS).toEqual(CHAT_MODELS);
   });
 });
 
