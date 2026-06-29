@@ -109,7 +109,7 @@ should not exist on the project.
 
 | Secret | Purpose | Notes |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Server-side Claude key for `chat` / `grade` | Org token; rotation operator-pending — see the rotation runbook below; never a GitHub secret |
+| `ANTHROPIC_API_KEY` | Server-side Claude key for `chat` / `grade` | Org token (staging rotated & verified; prod set at prod standup — see the rotation runbook below); never a GitHub secret |
 | `ANTHROPIC_MODEL` | Override default model | Optional. Validated against the allow-list; off-list values fall back to Haiku |
 | `APP_ORIGIN` | Deployed site origin for the Edge Functions' CORS allow-list | Scheme + host, no trailing slash — e.g. `https://<your-prod-site>`. Required: without it cross-origin browser calls are CORS-rejected even if the deploy succeeded |
 | `BOOTSTRAP_ADMIN_EMAILS` | Break-glass admin set for the `admin-set-role` function | Comma-separated `@navapbc.com` addresses |
