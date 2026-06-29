@@ -6,12 +6,10 @@
 // tested under vitest). Auth/CORS mirror `chat`; helpers are inlined so this
 // function bundles independently.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { GRADE_SYSTEM_PROMPT, buildGradeUserMessage, parseVerdict } from './verdict.ts';
+import { GRADE_SYSTEM_PROMPT, buildGradeUserMessage, parseVerdict, ANTHROPIC_API, resolveDefaultModel } from './verdict.ts';
 import type { GradingRubric, GradeSubmission } from './verdict.ts';
 
-const DEFAULT_MODEL = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-haiku-4-5';
-const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_VERSION = '2023-06-01';
+const DEFAULT_MODEL = resolveDefaultModel(Deno.env.get('ANTHROPIC_MODEL'));
 const ALLOWED_EMAIL_DOMAIN = 'navapbc.com';
 const MAX_TOKENS = 1024;
 const ALLOWED_ORIGINS = [
@@ -133,11 +131,11 @@ Deno.serve(async (req: Request) => {
 
   let upstream: Response;
   try {
-    upstream = await fetch(ANTHROPIC_URL, {
+    upstream = await fetch(ANTHROPIC_API.url, {
       method: 'POST',
       headers: {
         'x-api-key': apiKey,
-        'anthropic-version': ANTHROPIC_VERSION,
+        'anthropic-version': ANTHROPIC_API.version,
         'content-type': 'application/json',
       },
       body: JSON.stringify(anthropicBody),

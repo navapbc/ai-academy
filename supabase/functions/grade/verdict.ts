@@ -2,6 +2,38 @@
 // runs under vitest like chat/chat-core.ts. The Edge Function (index.ts) calls
 // Claude and feeds the raw model text to parseVerdict.
 
+// --- Provider + model config (P6.1) -----------------------------------------
+// Mirrors chat-core.ts. Duplicated (NOT imported) so this function bundles
+// independently under Deno — see the index.ts header. A vitest parity test
+// (verdict.test.ts) asserts these stay identical to chat-core's.
+export interface ModelDescriptor {
+  id: string;
+  provider: 'anthropic';
+}
+
+export const MODELS: ModelDescriptor[] = [
+  { id: 'claude-haiku-4-5', provider: 'anthropic' },
+  { id: 'claude-sonnet-4-6', provider: 'anthropic' },
+];
+
+export const MODEL_ALLOWLIST: string[] = MODELS.map((m) => m.id);
+
+export const FALLBACK_MODEL = 'claude-haiku-4-5';
+
+export const ANTHROPIC_API = {
+  url: 'https://api.anthropic.com/v1/messages',
+  version: '2023-06-01',
+} as const;
+
+/**
+ * Resolves the operator-configured default model: the env value if it's on the
+ * allow-list, else the safe fallback. `grade` never accepts a client-supplied
+ * model (the judge model is server-fixed) — this only validates the env default.
+ */
+export function resolveDefaultModel(envModel: string | undefined): string {
+  return envModel && MODEL_ALLOWLIST.includes(envModel) ? envModel : FALLBACK_MODEL;
+}
+
 export interface RubricAnchor { id: string; label: string; description: string }
 export interface GradingRubric { anchors: RubricAnchor[] }
 /** One labelled block of the work the judge reads (P4.3b). */
