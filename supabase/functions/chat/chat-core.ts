@@ -4,14 +4,47 @@
 // into here. Extracting this also closes the audit's "SSE parser is untested"
 // coverage gap.
 
-// --- Model allow-list (SEC-03 / LLM-03) -------------------------------------
-// Mirrors the client options in src/lib/models.ts. The server is authoritative:
-// a raw request naming any other model is rejected, so a caller can't force an
-// expensive model regardless of the UI.
-export const MODEL_ALLOWLIST = ['claude-haiku-4-5', 'claude-sonnet-4-6'] as const;
+// --- Provider + model config (SEC-03 / LLM-03 / P6.1) -----------------------
+// Single source of truth for this function. The server is authoritative: a raw
+// request naming any other model is rejected, so a caller can't force an
+// expensive model regardless of the UI. `provider` is the deliberate light seam
+// (P6.1, D1) — Claude-only today; a second provider would be an *additive*
+// entry here, not a built-out abstraction. Mirrored (not imported) in
+// grade/verdict.ts so each function bundles independently under Deno; a vitest
+// parity test keeps the two in sync.
+export interface ModelDescriptor {
+  id: string;
+  provider: 'anthropic';
+}
+
+export const MODELS: ModelDescriptor[] = [
+  { id: 'claude-haiku-4-5', provider: 'anthropic' },
+  { id: 'claude-sonnet-4-6', provider: 'anthropic' },
+];
+
+export const MODEL_ALLOWLIST: string[] = MODELS.map((m) => m.id);
+
+// The safe hardcoded fallback used when no (or an invalid) ANTHROPIC_MODEL env
+// is configured — must itself be allow-listed.
+export const FALLBACK_MODEL = 'claude-haiku-4-5';
+
+// Anthropic Messages API endpoint + pinned wire version (was inlined in index.ts).
+export const ANTHROPIC_API = {
+  url: 'https://api.anthropic.com/v1/messages',
+  version: '2023-06-01',
+} as const;
 
 export function isModelAllowed(model: string): boolean {
-  return (MODEL_ALLOWLIST as readonly string[]).includes(model);
+  return MODEL_ALLOWLIST.includes(model);
+}
+
+/**
+ * Resolves the operator-configured default model: the env value if it's on the
+ * allow-list, else the safe fallback. Stops a typo'd ANTHROPIC_MODEL from
+ * sending an off-list/invalid model on requests that omit `model` (P6.1).
+ */
+export function resolveDefaultModel(envModel: string | undefined): string {
+  return envModel && isModelAllowed(envModel) ? envModel : FALLBACK_MODEL;
 }
 
 // --- max_tokens ceiling (SEC-04 / LLM-04) -----------------------------------

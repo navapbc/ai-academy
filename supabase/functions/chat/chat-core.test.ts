@@ -1,16 +1,19 @@
 import { describe, test, expect } from 'vitest';
 import {
+  ANTHROPIC_API,
   buildCorsHeaders,
   buildSystemBlocks,
   clampMaxTokens,
   DEFAULT_MAX_TOKENS,
   emailDomainAllowed,
+  FALLBACK_MODEL,
   fixedWindowAllow,
   isModelAllowed,
   isStop,
   MAX_MESSAGES,
   MAX_TOKENS_CEILING,
   parseEvent,
+  resolveDefaultModel,
   validateChatRequest,
   type RateLimitState,
 } from './chat-core';
@@ -169,5 +172,25 @@ describe('fixedWindowAllow (LLM-01)', () => {
     expect(fixedWindowAllow(store, 'a', 0, 1, 1000)).toBe(true);
     expect(fixedWindowAllow(store, 'a', 1, 1, 1000)).toBe(false);
     expect(fixedWindowAllow(store, 'b', 1, 1, 1000)).toBe(true);
+  });
+});
+
+describe('resolveDefaultModel (P6.1)', () => {
+  test('uses an allow-listed env model when set', () => {
+    expect(resolveDefaultModel('claude-sonnet-4-6')).toBe('claude-sonnet-4-6');
+  });
+  test('falls back to FALLBACK_MODEL for an off-list or unset env model', () => {
+    expect(resolveDefaultModel('claude-opus-4-8')).toBe(FALLBACK_MODEL);
+    expect(resolveDefaultModel(undefined)).toBe(FALLBACK_MODEL);
+  });
+  test('FALLBACK_MODEL is itself allow-listed', () => {
+    expect(isModelAllowed(FALLBACK_MODEL)).toBe(true);
+  });
+});
+
+describe('ANTHROPIC_API config (P6.1)', () => {
+  test('exposes the messages endpoint and pinned wire version', () => {
+    expect(ANTHROPIC_API.url).toBe('https://api.anthropic.com/v1/messages');
+    expect(ANTHROPIC_API.version).toBe('2023-06-01');
   });
 });

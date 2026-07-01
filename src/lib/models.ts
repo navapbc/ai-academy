@@ -4,6 +4,9 @@
 // enough to let learners compare a fast/cheap model against a more capable
 // one. The Edge Function defaults to Haiku 4.5 when no model is sent; these
 // ids let the client override per request.
+//
+// NOTE: the server-side allow-list in supabase/functions/chat/chat-core.ts
+// (MODELS / MODEL_ALLOWLIST) is authoritative. Keep these ids a subset of it.
 
 export interface ClaudeModel {
   id: string;
