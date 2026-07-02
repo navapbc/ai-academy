@@ -122,6 +122,17 @@ describe('LessonEditor (P5.4-3)', () => {
     expect(h.publishLesson).toHaveBeenCalledWith('2.9', 'Fixed the reflection prompt');
   });
 
+  test('clears the change-note field after a successful publish (X.2)', async () => {
+    render(<LessonEditor lesson={lesson()} onBack={() => {}} onSaved={() => {}} />);
+    const noteField = screen.getByLabelText(/what changed/i);
+    await userEvent.type(noteField, 'Fixed the reflection prompt');
+    await userEvent.click(screen.getByRole('button', { name: /publish/i }));
+
+    // On success the editor resets the note (setNote('')), so the field is empty.
+    expect(await screen.findByRole('status')).toHaveTextContent(/published/i);
+    expect(noteField).toHaveValue('');
+  });
+
   test('an over-long change-note blocks Publish with an inline hint (X.2)', async () => {
     render(<LessonEditor lesson={lesson()} onBack={() => {}} onSaved={() => {}} />);
     await userEvent.type(screen.getByLabelText(/what changed/i), 'x'.repeat(501));

@@ -88,7 +88,7 @@ export function validateQuizQuestions(
 
 /**
  * Max length of the optional publish change-note (X.2). Mirrors the server cap
- * (admin-content-core `normalizeNote`, ≤500 chars) for a light client-side hint —
+ * (admin-content-core `normalizePublishNote`, ≤500 chars) for a light client-side hint —
  * the Edge Function re-validates and is authoritative.
  */
 export const NOTE_MAX_LENGTH = 500;
