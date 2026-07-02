@@ -4,6 +4,7 @@ import { PenLine, Check, Sparkles, Eye } from 'lucide-react';
 import type { ReflectionConfig } from '../../types';
 import { useAuth } from '../../lib/auth';
 import { recordLabSubmission } from '../../lib/progress';
+import PiiNotice from '../PiiNotice';
 
 interface Props {
   config: ReflectionConfig;
@@ -104,6 +105,7 @@ export default function ReflectionCapture({ config, labId }: Props) {
         </motion.div>
       ) : (
         <>
+          <PiiNotice />
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}

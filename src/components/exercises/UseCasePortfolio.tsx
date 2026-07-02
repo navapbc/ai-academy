@@ -4,6 +4,7 @@ import { Library, Plus, Trash2, ThumbsUp, ThumbsDown, Check, Eye, Sparkles } fro
 import type { UseCasePortfolioConfig } from '../../types';
 import { useAuth } from '../../lib/auth';
 import { recordLabSubmission } from '../../lib/progress';
+import PiiNotice from '../PiiNotice';
 import {
   evaluatePortfolioReadiness,
   isEntryComplete,
@@ -157,6 +158,8 @@ export default function UseCasePortfolio({ config, labId }: Props) {
         </motion.div>
       ) : (
         <>
+          <PiiNotice />
+
           {/* Part 1 — the use-case library */}
           <div className="space-y-4">
             <p className="text-xs text-gray-500 leading-relaxed">{library.helper}</p>

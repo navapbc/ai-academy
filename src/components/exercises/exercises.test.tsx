@@ -219,6 +219,14 @@ describe('ReflectionCapture', () => {
       transcript: expect.objectContaining({ kind: 'reflection' }),
     }));
   });
+
+  // P6.6: the shared PII-reminder notice sits above the reflection textarea.
+  test('renders the PII reminder notice above the reflection input', () => {
+    render(<ReflectionCapture config={config} labId="1.8" />);
+    expect(
+      screen.getByText(/don't paste real client or constituent data/i),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('OutputAudit', () => {
@@ -497,6 +505,14 @@ describe('UseCasePortfolio (2.11, P4.8)', () => {
     render(<UseCasePortfolio config={config} labId="2.11" onComplete={onComplete} />);
     expect(onComplete).not.toHaveBeenCalled();
   });
+
+  // P6.6: the shared PII-reminder notice sits above the portfolio entry form.
+  test('renders the PII reminder notice above the portfolio input', () => {
+    render(<UseCasePortfolio config={config} labId="2.11" />);
+    expect(
+      screen.getByText(/don't paste real client or constituent data/i),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('FailureLog (2.9, P4.9)', () => {
@@ -554,5 +570,13 @@ describe('FailureLog (2.9, P4.9)', () => {
     // @ts-expect-error onComplete is intentionally not part of FailureLog's props
     render(<FailureLog config={config} labId="2.9" onComplete={onComplete} />);
     expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  // P6.6: the shared PII-reminder notice sits above the failure-log entry form.
+  test('renders the PII reminder notice above the failure-log input', () => {
+    render(<FailureLog config={config} labId="2.9" />);
+    expect(
+      screen.getByText(/don't paste real client or constituent data/i),
+    ).toBeInTheDocument();
   });
 });

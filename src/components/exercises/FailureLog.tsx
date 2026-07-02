@@ -4,6 +4,7 @@ import { ClipboardList, Plus, Trash2, Check, Eye, Sparkles } from 'lucide-react'
 import type { FailureLogConfig } from '../../types';
 import { useAuth } from '../../lib/auth';
 import { recordLabSubmission } from '../../lib/progress';
+import PiiNotice from '../PiiNotice';
 import {
   evaluateFailureLogReadiness,
   isFailureEntryComplete,
@@ -127,6 +128,8 @@ export default function FailureLog({ config, labId }: Props) {
       ) : (
         <>
           <p className="text-xs text-gray-500 leading-relaxed">{config.helper}</p>
+
+          <PiiNotice />
 
           <div className="space-y-4">
             {entries.map((_, i) => (
