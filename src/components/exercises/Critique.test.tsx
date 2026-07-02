@@ -60,7 +60,6 @@ describe('Critique', () => {
   // covers SourcedFreeTextLab, which backs both Critique and Synthesis).
   test('renders the PII reminder notice above the critique input', () => {
     render(<Critique config={config} labId="2.2" />);
-    expect(screen.getByRole('note')).toBeInTheDocument();
     expect(
       screen.getByText(/don't paste real client or constituent data/i),
     ).toBeInTheDocument();

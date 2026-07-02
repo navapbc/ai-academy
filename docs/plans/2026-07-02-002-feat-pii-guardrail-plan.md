@@ -40,7 +40,7 @@ Learners paste text into hands-on labs that goes to Claude; there's no reminder 
 - **Test conventions:** component tests use `// @vitest-environment jsdom`.
 
 ### Institutional Learnings
-- No `docs/solutions/`. Accessibility precedent (W2-9): notices should be non-intrusive and screen-reader friendly (`role="note"`), consistent with prior a11y work.
+- No `docs/solutions/`. Accessibility: keep the notice non-intrusive and screen-reader friendly. Note: W2-9 established `role="status"`/`aria-live` for *live status* regions — not applicable to a static reminder. `role="note"` is a non-standard ARIA role with inconsistent AT support, so the notice is a plain always-present block (text read in normal document order), no non-standard role.
 
 ## Key Technical Decisions
 - **One shared presentational component** (`PiiNotice`) placed per surface, not copy-pasted text — consistency + P6.6 reuse.

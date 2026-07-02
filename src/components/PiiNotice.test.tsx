@@ -14,13 +14,8 @@ describe('PiiNotice', () => {
     expect(screen.getByText(/use fake or sample data/i)).toBeInTheDocument();
   });
 
-  test('is exposed as an accessible note', () => {
-    render(<PiiNotice />);
-    expect(screen.getByRole('note')).toBeInTheDocument();
-  });
-
   test('applies a passed className', () => {
-    render(<PiiNotice className="mt-4" />);
-    expect(screen.getByRole('note')).toHaveClass('mt-4');
+    const { container } = render(<PiiNotice className="mt-4" />);
+    expect(container.firstChild).toHaveClass('mt-4');
   });
 });

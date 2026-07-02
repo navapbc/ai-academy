@@ -165,7 +165,6 @@ describe('Lab — error paths (W2-4)', () => {
   // additively — it must not interfere with the run/save/grade flow above.
   test('renders the PII reminder notice near the prompt input', () => {
     render(<Lab onComplete={() => {}} labId="2.1" config={config} />);
-    expect(screen.getByRole('note')).toBeInTheDocument();
     expect(
       screen.getByText(/don't paste real client or constituent data/i),
     ).toBeInTheDocument();
