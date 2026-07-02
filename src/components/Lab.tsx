@@ -157,6 +157,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
           <select
             value={model}
             onChange={e => setModel(e.target.value)}
+            aria-label="Model"
             className="bg-transparent border-none outline-none text-xs font-bold text-nava-green cursor-pointer"
           >
             {CLAUDE_MODELS.map(m => (

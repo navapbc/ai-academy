@@ -10,9 +10,16 @@
 // 3. React Testing Library leaves mounted trees in the document between tests;
 //    we unmount them after each test. Guarded on `document` so the node-env
 //    suites (which have no DOM) skip it cleanly.
+// 4. vitest-axe's `toHaveNoViolations()` matcher (P6.4) is registered suite-wide
+//    here so the axe surface tests can assert it; the `extend-expect` import
+//    augments vitest's `Assertion` type so it's typed with no `any`.
 import { WebSocket } from 'ws';
-import { afterEach } from 'vitest';
+import { afterEach, expect } from 'vitest';
 import '@testing-library/jest-dom/vitest';
+import * as axeMatchers from 'vitest-axe/matchers';
+import 'vitest-axe/extend-expect';
+
+expect.extend(axeMatchers);
 
 if (typeof globalThis.WebSocket === 'undefined') {
   (globalThis as { WebSocket?: unknown }).WebSocket = WebSocket;
