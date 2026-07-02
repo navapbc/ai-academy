@@ -53,6 +53,18 @@ const RATE_WINDOW_MS = 60_000; // per minute
 const rateStore = new Map<string, RateLimitState>();
 
 /**
+ * Run a promise as background work that never blocks/delays the response/stream.
+ * On Supabase Edge (Deno) `EdgeRuntime.waitUntil` keeps the isolate alive until
+ * the promise settles AFTER the stream is closed; elsewhere we just drop the
+ * awaited reference (recordUsage swallows its own errors, so this is safe).
+ */
+function fireAndForget(p: Promise<unknown>): void {
+  const er = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
+  if (er?.waitUntil) er.waitUntil(p);
+  else void p;
+}
+
+/**
  * Records one claude_usage row, best-effort (P6.2). Writes with a service_role
  * client (the table has no client-write RLS — mirrors admin-content). CRITICAL:
  * this is fire-and-forget from the stream's close path — any failure is logged
@@ -65,7 +77,7 @@ async function recordUsage(
 ): Promise<void> {
   try {
     // Optional, trivial operator signal: warn if a single call is unusually large.
-    const alertThreshold = Number(Deno.env.get('USAGE_ALERT_TOKENS_PER_WINDOW'));
+    const alertThreshold = Number(Deno.env.get('USAGE_ALERT_TOKENS_PER_CALL'));
     if (
       Number.isFinite(alertThreshold) &&
       alertThreshold > 0 &&
@@ -203,6 +215,16 @@ Deno.serve(async (req: Request) => {
       // touches the enqueued bytes; the DB write happens only after close.
       const usageAcc = newUsageAccumulator();
 
+      // Single close-and-record call site (consolidated): closes the stream and
+      // fires the usage write exactly once, regardless of which path ends the
+      // stream (`message_stop` event vs. reader-done fallback). The DB write is
+      // fire-and-forget so a slow DB can never delay/extend the stream close.
+      const closeAndRecord = () => {
+        controller.close();
+        const usage = finalizeUsage(usageAcc);
+        if (usage) fireAndForget(recordUsage(user.id, model, usage));
+      };
+
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -236,10 +258,8 @@ Deno.serve(async (req: Request) => {
               return;
             }
             if (isStop(event)) {
-              controller.close();
               await reader.cancel().catch(() => {});
-              const stopUsage = finalizeUsage(usageAcc);
-              if (stopUsage) await recordUsage(user.id, model, stopUsage);
+              closeAndRecord();
               return;
             }
           }
@@ -251,11 +271,9 @@ Deno.serve(async (req: Request) => {
         reader.releaseLock();
       }
 
-      controller.close();
-      // Record usage only after the client stream has been fully delivered and
-      // closed, so the DB write can never delay or break token delivery (R2/R5).
-      const usage = finalizeUsage(usageAcc);
-      if (usage) await recordUsage(user.id, model, usage);
+      // Fallback: the reader reported done without a `message_stop` event. Close
+      // and record through the same single call site (R2/R5).
+      closeAndRecord();
     },
   });
 

@@ -51,6 +51,18 @@ function emailDomainAllowed(email: string | undefined): boolean {
   return !!email && email.split('@')[1]?.toLowerCase() === ALLOWED_EMAIL_DOMAIN;
 }
 
+/**
+ * Run a promise as background work that never blocks/delays the response. On
+ * Supabase Edge (Deno) `EdgeRuntime.waitUntil` keeps the isolate alive until the
+ * promise settles AFTER the Response is returned; elsewhere we just drop the
+ * awaited reference (recordUsage swallows its own errors, so this is safe).
+ */
+function fireAndForget(p: Promise<unknown>): void {
+  const er = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
+  if (er?.waitUntil) er.waitUntil(p);
+  else void p;
+}
+
 function isRubric(v: unknown): v is GradingRubric {
   const r = v as { anchors?: unknown };
   return (
@@ -85,7 +97,7 @@ function isSubmission(v: unknown): v is GradeSubmission {
  */
 async function recordUsage(userId: string, model: string, usage: UsageTotals): Promise<void> {
   try {
-    const alertThreshold = Number(Deno.env.get('USAGE_ALERT_TOKENS_PER_WINDOW'));
+    const alertThreshold = Number(Deno.env.get('USAGE_ALERT_TOKENS_PER_CALL'));
     if (
       Number.isFinite(alertThreshold) &&
       alertThreshold > 0 &&
@@ -192,10 +204,10 @@ Deno.serve(async (req: Request) => {
     | { content?: { type: string; text?: string }[]; usage?: unknown }
     | null;
 
-  // Best-effort usage capture (P6.2): record the token counts from the response
-  // before returning. Non-blocking — a failure never changes the verdict (R2/R5).
+  // Best-effort usage capture (P6.2): record the token counts fire-and-forget so
+  // the DB write never adds latency to (or hangs) the verdict response (R2/R5).
   const usage = extractUsage(data);
-  if (usage) await recordUsage(user.id, DEFAULT_MODEL, usage);
+  if (usage) fireAndForget(recordUsage(user.id, DEFAULT_MODEL, usage));
 
   const text = data?.content?.find((b) => b.type === 'text')?.text ?? '';
   const verdict = parseVerdict(text, rubric);

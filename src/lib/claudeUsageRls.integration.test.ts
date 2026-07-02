@@ -106,6 +106,22 @@ describe.skipIf(!RUN)('claude_usage RLS (P6.2 Unit 1)', () => {
     expect(read.data?.length).toBe(0);
   });
 
+  test('a champion reads zero rows (champions have elevated reads elsewhere but are excluded here)', async () => {
+    const svc = serviceClient();
+    const champion = await newUser('p62-champion');
+    const model = `claude-usage-${champion.uid}`;
+    await seedUsage(svc, champion.uid, model);
+    // Promote to champion via service_role (the client trigger blocks role writes).
+    expect(
+      (await svc.from('profiles').update({ role: 'champion' }).eq('id', champion.uid)).error,
+    ).toBeNull();
+
+    // is_admin() is false for champions → the admin-only read policy denies them.
+    const read = await champion.client.from('claude_usage').select('id').eq('model', model);
+    expect(read.error).toBeNull();
+    expect(read.data?.length).toBe(0);
+  });
+
   test('an authenticated (non-service) client cannot insert/update/delete (no write policy)', async () => {
     const svc = serviceClient();
     const user = await newUser('p62-writer');
