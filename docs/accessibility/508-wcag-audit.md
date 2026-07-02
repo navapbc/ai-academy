@@ -7,7 +7,7 @@ Automated tooling (static + runtime) catches roughly 30–40% of WCAG issues. Th
 ## What the automated pass covers
 
 - **Static (all JSX):** `eslint-plugin-jsx-a11y` recommended ruleset at **error** severity (31 active rules) — `npm run lint` fails on any violation. Zero violations in app source. (One `jsx-a11y/aria-role` false positive suppressed in two test files where `role` is a domain prop, not an ARIA attribute.)
-- **Runtime (representative surfaces):** `vitest-axe` (axe-core 4.x) assertions in `src/test/a11y.axe.test.tsx`, zero violations, over: Login, PiiNotice, UsageMonitoring, CohortDashboard (staff), ModuleRenderer (content lesson + quiz), Lab (2.1), Critique/SourcedFreeTextLab, HarmRubric.
+- **Runtime (representative surfaces):** `vitest-axe` (axe-core 4.x) assertions in `src/test/a11y.axe.test.tsx`, zero violations, over: Login, PiiNotice, UsageMonitoring, CohortDashboard (staff), ModuleRenderer (content lesson + quiz), Lab (2.1), Critique/SourcedFreeTextLab, HarmRubric, GlatExam (2.14 exit gate), ScenarioSorter (1.3), LearnerDashboard (self-view), and LocalTutorFAB (open chat dialog). Async-loaded surfaces (UsageMonitoring, CohortDashboard, LearnerDashboard) are scanned in their **loaded** state — the test waits for the populated table/roster before running axe, so it exercises real content markup, not the loading spinner.
 - **Prior a11y work (W2-9):** focus management on view change, `role="status"`/`aria-live` grading regions, `sr-only` correctness on HarmRubric, decorative icons `aria-hidden`.
 
 Legend: **A** = automated-verified (jsx-a11y and/or axe) · **F** = fixed in this work · **M** = needs manual verification.
