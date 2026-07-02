@@ -4,6 +4,7 @@ import { Bot, X, Sparkles, Send } from 'lucide-react';
 import { streamChat, type ChatMessage } from '../lib/llm';
 import { AIPersona, Module, Phase } from '../types';
 import { useDialogA11y } from '../lib/useDialogA11y';
+import PiiNotice from './PiiNotice';
 
 interface Props {
   selectedPersona: AIPersona;
@@ -204,7 +205,8 @@ export default function LocalTutorFAB({ currentModule, phases }: Props) {
             </div>
 
             {/* Composer */}
-            <div className="border-t border-gray-100 p-3 shrink-0">
+            <div className="border-t border-gray-100 p-3 shrink-0 space-y-2">
+              <PiiNotice />
               <div className="flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-nava-green focus-within:border-transparent transition-all">
                 <textarea
                   value={input}

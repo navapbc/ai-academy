@@ -7,6 +7,7 @@ import { streamChat } from '../../lib/llm';
 import { DEFAULT_MODEL_ID } from '../../lib/models';
 import { recordLabSubmission } from '../../lib/progress';
 import { computePairedCalibration, type CalibrationResult } from './pairedCalibration.compute';
+import PiiNotice from '../PiiNotice';
 
 interface Props {
   config: PairedCalibrationConfig;
@@ -278,6 +279,7 @@ export default function PairedCalibration({ config, labId }: Props) {
             </span>
           </div>
           <p className="text-xs text-gray-600 leading-relaxed">{onTask.brief}</p>
+          <PiiNotice />
           <textarea
             value={onPrompt}
             onChange={(e) => setOnPrompt(e.target.value)}

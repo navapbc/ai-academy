@@ -9,6 +9,7 @@ import { recordLabSubmission } from '../../lib/progress';
 import { useLabGrading } from '../../lib/useLabGrading';
 import GradeResultCard from '../GradeResultCard';
 import GradeError from '../GradeError';
+import PiiNotice from '../PiiNotice';
 
 // Shared "read one sourced markdown block → write free text → LLM-graded in place"
 // exercise. Both the 2.2/2.3 critique (P4.3b) and the 2.7 synthesis (P4.4a) are
@@ -140,6 +141,7 @@ export default function SourcedFreeTextLab({
         </div>
       ) : (
         <>
+          <PiiNotice />
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}

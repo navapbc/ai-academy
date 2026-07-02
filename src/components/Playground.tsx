@@ -10,6 +10,7 @@ import { streamChat } from '../lib/llm';
 import { CLAUDE_MODELS, DEFAULT_MODEL_ID } from '../lib/models';
 import { AIPersona } from '../types';
 import { AI_PERSONAS } from '../constants';
+import PiiNotice from './PiiNotice';
 
 interface PlaygroundProps {
   selectedPersona: AIPersona;
@@ -333,6 +334,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
 
       {/* Input bar */}
       <div className="border-t border-gray-100 p-4 shrink-0">
+        <PiiNotice className="mb-3" />
         <div className="relative">
           <textarea
             value={userInput}
