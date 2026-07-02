@@ -9,6 +9,7 @@ import { recordLabSubmission } from '../../lib/progress';
 import { useLabGrading } from '../../lib/useLabGrading';
 import GradeResultCard from '../GradeResultCard';
 import GradeError from '../GradeError';
+import PiiNotice from '../PiiNotice';
 
 // The iteration lab (P4.5c) on cell 2.4 "Iteration as the literate behavior". The
 // learner conducts a real MULTI-TURN refinement conversation with Claude toward a
@@ -266,6 +267,7 @@ export default function IterationLab({ config, labId }: Props) {
         <label htmlFor="iteration-input" className="text-[11px] font-black uppercase tracking-widest text-nava-plum">
           {messages.length === 0 ? 'Your starter prompt' : 'Your next turn'}
         </label>
+        <PiiNotice />
         <textarea
           id="iteration-input"
           value={input}

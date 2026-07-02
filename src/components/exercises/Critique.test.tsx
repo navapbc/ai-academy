@@ -56,6 +56,16 @@ describe('Critique', () => {
     expect(screen.getByText('AI-generated eligibility summary')).toBeInTheDocument();
   });
 
+  // P6.3: the shared PII-reminder notice sits above the free-text input (this
+  // covers SourcedFreeTextLab, which backs both Critique and Synthesis).
+  test('renders the PII reminder notice above the critique input', () => {
+    render(<Critique config={config} labId="2.2" />);
+    expect(screen.getByRole('note')).toBeInTheDocument();
+    expect(
+      screen.getByText(/don't paste real client or constituent data/i),
+    ).toBeInTheDocument();
+  });
+
   test('Save is disabled below the word floor and enabled above it', () => {
     render(<Critique config={config} labId="2.2" />);
     const textarea = screen.getByLabelText(/Your critique/i);

@@ -1,0 +1,26 @@
+// @vitest-environment jsdom
+import { describe, test, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import PiiNotice from './PiiNotice';
+
+// P6.3: the shared PII-reminder notice is presentational and accessible. It's the
+// single source of truth for the reminder copy placed on every Claude-call surface.
+describe('PiiNotice', () => {
+  test('renders the reminder teaching copy', () => {
+    render(<PiiNotice />);
+    expect(
+      screen.getByText(/don't paste real client or constituent data/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/use fake or sample data/i)).toBeInTheDocument();
+  });
+
+  test('is exposed as an accessible note', () => {
+    render(<PiiNotice />);
+    expect(screen.getByRole('note')).toBeInTheDocument();
+  });
+
+  test('applies a passed className', () => {
+    render(<PiiNotice className="mt-4" />);
+    expect(screen.getByRole('note')).toHaveClass('mt-4');
+  });
+});

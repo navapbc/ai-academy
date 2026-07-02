@@ -161,6 +161,16 @@ describe('Lab — error paths (W2-4)', () => {
     await waitFor(() => expect(screen.getByText(/Role & context/)).toBeInTheDocument());
   });
 
+  // P6.3: the shared PII-reminder notice is present on this Claude-call surface,
+  // additively — it must not interfere with the run/save/grade flow above.
+  test('renders the PII reminder notice near the prompt input', () => {
+    render(<Lab onComplete={() => {}} labId="2.1" config={config} />);
+    expect(screen.getByRole('note')).toBeInTheDocument();
+    expect(
+      screen.getByText(/don't paste real client or constituent data/i),
+    ).toBeInTheDocument();
+  });
+
   test('happy path still saves, grades, and offers Continue (gate semantics unchanged)', async () => {
     const onComplete = vi.fn();
     render(<Lab onComplete={onComplete} labId="2.1" config={config} />);

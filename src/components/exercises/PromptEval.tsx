@@ -9,6 +9,7 @@ import { recordLabSubmission } from '../../lib/progress';
 import { useLabGrading } from '../../lib/useLabGrading';
 import GradeResultCard from '../GradeResultCard';
 import GradeError from '../GradeError';
+import PiiNotice from '../PiiNotice';
 
 // The reusable-prompt eval (P4.5b) on cell 2.10 "Test-driven and constraint-first
 // prompting". The learner reads a RECURRING task + the constraints to encode + a
@@ -239,6 +240,7 @@ export default function PromptEval({ config, labId }: Props) {
             never invent — then describe the task. Write it to work on any record, not just one.
           </p>
         </div>
+        <PiiNotice />
         <textarea
           id="prompt-eval-input"
           value={prompt}

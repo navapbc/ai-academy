@@ -7,6 +7,7 @@ import { recordLabSubmission } from '../lib/progress';
 import { useLabGrading } from '../lib/useLabGrading';
 import GradeResultCard from './GradeResultCard';
 import GradeError from './GradeError';
+import PiiNotice from './PiiNotice';
 import { useAuth } from '../lib/auth';
 import { AIPersona, LabConfig } from '../types';
 import { labHeader } from './labHeader';
@@ -214,6 +215,8 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
                 )}
               </AnimatePresence>
             </div>
+
+            <PiiNotice />
 
             <div className="relative">
               <textarea

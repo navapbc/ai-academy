@@ -11,6 +11,7 @@ import { recordLabSubmission } from '../../lib/progress';
 import { useLabGrading } from '../../lib/useLabGrading';
 import GradeResultCard from '../GradeResultCard';
 import GradeError from '../GradeError';
+import PiiNotice from '../PiiNotice';
 
 // The voice-edit exercise (P4.4b) on cell 2.6 "AI for writing tasks". Two phases:
 //   1. Generate — read a dense source + a writing brief, then generate an AI FIRST
@@ -289,6 +290,7 @@ export default function VoiceEdit({ config, labId }: Props) {
             </div>
           ) : (
             <>
+              <PiiNotice />
               <textarea
                 id="voice-edit-revision"
                 value={revision}
