@@ -1,5 +1,39 @@
 import { describe, test, expect } from 'vitest';
 import { parseVerdict, buildGradeUserMessage, type GradingRubric } from './verdict';
+import {
+  MODEL_ALLOWLIST as CHAT_ALLOWLIST,
+  ANTHROPIC_API as CHAT_API,
+  MODELS as CHAT_MODELS,
+} from '../chat/chat-core';
+import {
+  ANTHROPIC_API,
+  FALLBACK_MODEL,
+  MODEL_ALLOWLIST,
+  MODELS,
+  resolveDefaultModel,
+} from './verdict';
+
+describe('grade/chat model config parity (P6.1)', () => {
+  test('allow-lists match chat', () => {
+    expect([...MODEL_ALLOWLIST].sort()).toEqual([...CHAT_ALLOWLIST].sort());
+  });
+  test('Anthropic API config matches chat', () => {
+    expect(ANTHROPIC_API).toEqual(CHAT_API);
+  });
+  test('MODELS (incl. provider field) match chat', () => {
+    expect(MODELS).toEqual(CHAT_MODELS);
+  });
+});
+
+describe('grade resolveDefaultModel (P6.1)', () => {
+  test('uses an allow-listed env model', () => {
+    expect(resolveDefaultModel('claude-sonnet-4-6')).toBe('claude-sonnet-4-6');
+  });
+  test('falls back for an off-list or unset env model', () => {
+    expect(resolveDefaultModel('claude-opus-4-8')).toBe(FALLBACK_MODEL);
+    expect(resolveDefaultModel(undefined)).toBe(FALLBACK_MODEL);
+  });
+});
 
 const rubric: GradingRubric = {
   anchors: [

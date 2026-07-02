@@ -12,7 +12,13 @@
 
 // --- Action model -----------------------------------------------------------
 
-export const CONTENT_ACTIONS = ['save-draft', 'publish', 'archive', 'restore'] as const;
+export const CONTENT_ACTIONS = [
+  'save-draft',
+  'publish',
+  'archive',
+  'restore',
+  'create-custom',
+] as const;
 export type ContentActionType = (typeof CONTENT_ACTIONS)[number];
 
 /**
@@ -47,7 +53,8 @@ export type ContentAction =
   | { action: 'save-draft'; cellId: string; draft: DraftFields }
   | { action: 'publish'; cellId: string }
   | { action: 'archive'; cellId: string }
-  | { action: 'restore'; cellId: string };
+  | { action: 'restore'; cellId: string }
+  | { action: 'create-custom'; title: string; type: string };
 
 export type ParseResult =
   | { ok: true; value: ContentAction }
@@ -67,6 +74,45 @@ const TYPE_MAX = 40;
 
 export function isValidCellId(v: unknown): v is string {
   return typeof v === 'string' && v.length <= CELL_ID_MAX && CELL_ID_RE.test(v);
+}
+
+// --- Custom (free-form) lessons (P5.4-6) -------------------------------------
+// A custom lesson is created with a server-generated cell_id `custom-<slug>`.
+// The slug is derived deterministically from the title and collision-guarded
+// against existing ids, so creating "Prompt basics" twice yields distinct ids.
+
+/** The fixed prefix every custom lesson's cell_id carries. */
+export const CUSTOM_ID_PREFIX = 'custom-';
+// The slug must leave room for the prefix within the cell_id length cap, so the
+// generated id always passes isValidCellId — otherwise the new lesson would 400
+// on its first save-draft (which re-validates the cell_id).
+const CUSTOM_SLUG_MAX = CELL_ID_MAX - CUSTOM_ID_PREFIX.length;
+
+/** lower-cases, collapses non-alphanumerics to single hyphens, trims hyphens. */
+export function slugify(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Deterministic, collision-free `custom-<slug>` cell_id for a new lesson. The
+ * slug is truncated so `custom-<slug>` always fits CELL_ID_MAX (incl. room for a
+ * disambiguating `-N` suffix); an all-punctuation/empty title falls back to
+ * `custom-lesson`. On collision with an existing id, appends `-2`, `-3`, …
+ */
+export function customCellId(title: string, existingIds: readonly string[]): string {
+  const taken = new Set(existingIds);
+  const base = slugify(title);
+  for (let n = 1; ; n++) {
+    const suffix = n === 1 ? '' : `-${n}`;
+    const room = CUSTOM_SLUG_MAX - suffix.length;
+    const trimmed = base.slice(0, room).replace(/-+$/g, '');
+    const slug = trimmed === '' ? 'lesson' : trimmed;
+    const id = `${CUSTOM_ID_PREFIX}${slug}${suffix}`;
+    if (!taken.has(id)) return id;
+  }
 }
 
 // --- Field validators --------------------------------------------------------
@@ -668,12 +714,27 @@ export function parseContentAction(body: unknown): ParseResult {
   if (typeof action !== 'string' || !(CONTENT_ACTIONS as readonly string[]).includes(action)) {
     return err(`\`action\` must be one of: ${CONTENT_ACTIONS.join(', ')}.`);
   }
+
+  // create-custom is the one action with no incoming cellId — the server
+  // generates `custom-<slug>` — so it is validated before the cellId gate.
+  if (action === 'create-custom') {
+    if (typeof b.title !== 'string' || b.title.trim() === '') {
+      return err('`title` must be a non-empty string.');
+    }
+    if (b.title.length > TITLE_MAX) return err(`\`title\` must be at most ${TITLE_MAX} characters.`);
+    if (typeof b.type !== 'string' || b.type.trim() === '') {
+      return err('`type` must be a non-empty string.');
+    }
+    if (b.type.length > TYPE_MAX) return err(`\`type\` must be at most ${TYPE_MAX} characters.`);
+    return ok({ action, title: b.title.trim(), type: b.type.trim() });
+  }
+
   if (!isValidCellId(b.cellId)) {
     return err('`cellId` must be a valid module id.');
   }
   const cellId = b.cellId;
 
-  switch (action as ContentActionType) {
+  switch (action as Exclude<ContentActionType, 'create-custom'>) {
     case 'save-draft': {
       const d = validateDraft(b.draft);
       return d.ok ? ok({ action, cellId, draft: d.value }) : d;
@@ -705,6 +766,45 @@ export function buildPublishUpdate(
   update.version = currentVersion + 1;
   update.draft = null;
   return update;
+}
+
+/**
+ * Builds the full row for a new free-form (custom) lesson (P5.4-6). It starts as
+ * a `draft` so it is invisible to learners until Publish (R3): `origin='custom'`
+ * + `stage=null` puts it in the ungated "Additional lessons" group, never the
+ * matrix gating. The title/type sit in the LIVE columns (the row is hidden by
+ * status, so this is safe); the admin then stages body/quiz/lab edits into
+ * `draft` via the reused editors and Publish promotes them. `sort_order` lands
+ * after every existing row. The caller passes the existing ids (collision guard)
+ * and the current max sort_order. The generated cell_id always satisfies
+ * isValidCellId (the slug is length-capped) so later actions accept it.
+ */
+export function buildCustomInsert(
+  title: string,
+  type: string,
+  existingIds: readonly string[],
+  maxSortOrder: number,
+  callerId: string,
+  now: string,
+): Record<string, unknown> {
+  return {
+    cell_id: customCellId(title, existingIds),
+    origin: 'custom',
+    stage: null,
+    status: 'draft',
+    title: title.trim(),
+    type,
+    // Free-form lessons sit outside the matrix's 4D/evidence framework; use
+    // ungated-appropriate, schema-valid defaults (no self-report evidence).
+    dimension: [],
+    evidence_type: 'reflection',
+    self_report_validity: 'na',
+    body_md: null,
+    version: 1,
+    sort_order: maxSortOrder + 1,
+    updated_by: callerId,
+    updated_at: now,
+  };
 }
 
 // --- Allowlist / domain (mirrors admin-cohorts-core) -------------------------
