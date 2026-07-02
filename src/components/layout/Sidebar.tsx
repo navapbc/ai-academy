@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BarChart3, X, CheckCircle2, LifeBuoy, Terminal, Lock, ShieldCheck, GraduationCap } from 'lucide-react';
+import { BarChart3, X, CheckCircle2, LifeBuoy, Terminal, Lock, ShieldCheck, GraduationCap, Layers } from 'lucide-react';
 import { Phase, UserProgress, View } from '../../types';
 import { isModuleLive } from '../../lib/modules';
 import { isModuleLocked } from '../../lib/gating';
@@ -109,6 +109,22 @@ export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSel
               >
                 <GraduationCap className="w-4 h-4 shrink-0" />
                 <span className="text-xs font-medium">My progress</span>
+              </button>
+            </div>
+
+            {/* Workshops (X.3): admin-authored guided paths through the
+                curriculum. Available to everyone (no role gate). */}
+            <div className="px-3 pb-2">
+              <button
+                onClick={() => onViewChange('workshops')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all
+                  ${activeView === 'workshops'
+                    ? 'bg-nava-mint text-nava-green border-l-4 border-nava-green shadow-sm font-bold'
+                    : 'hover:bg-gray-50 text-gray-600'
+                  }`}
+              >
+                <Layers className="w-4 h-4 shrink-0" />
+                <span className="text-xs font-medium">Workshops</span>
               </button>
             </div>
 

@@ -6,6 +6,7 @@ import { useAuth } from './lib/auth';
 import { useProgress } from './lib/useProgress';
 import { useRole } from './lib/useRole';
 import { useCurriculum } from './lib/useCurriculum';
+import { useWorkshops } from './lib/useWorkshops';
 import { stage1aProgress, isModuleLocked, firstIncompleteStage1aId } from './lib/gating';
 import Login from './components/Login';
 import ModuleRenderer from './components/ModuleRenderer';
@@ -14,6 +15,8 @@ import Playground from './components/Playground';
 import RoleGuard from './components/RoleGuard';
 import StaffArea from './components/StaffArea';
 import LearnerDashboard from './components/LearnerDashboard';
+import WorkshopList from './components/WorkshopList';
+import WorkshopRunner from './components/WorkshopRunner';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import ContentContainer from './components/layout/ContentContainer';
@@ -120,6 +123,8 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
   const { role, loading: roleLoading, isStaff } = useRole();
 
   const [view, setView] = useState<View>('learning');
+  // X.3: which workshop the learner is walking in the runner (null = the list).
+  const [activeWorkshopId, setActiveWorkshopId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<AIPersona>('default');
@@ -187,7 +192,32 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
 
   const handleViewChange = (next: View) => {
     if (next !== view) navIntentRef.current = true;
+    // Leaving the workshops view (or re-entering it) returns to the list, so the
+    // runner never lingers behind another view.
+    if (next !== 'workshops') setActiveWorkshopId(null);
     setView(next);
+  };
+
+  // X.3 workshop runner wiring. The runner reuses ModuleRenderer verbatim, so it
+  // needs the same module resolution + gating + completion path as the standalone
+  // learning view — it writes no new progress (R5/R6).
+  const { getWorkshop } = useWorkshops();
+  const activeWorkshop = activeWorkshopId ? getWorkshop(activeWorkshopId) : undefined;
+  const resolveWorkshopModule = useCallback(
+    (cellId: string) => moduleById.get(cellId),
+    [moduleById],
+  );
+  const isWorkshopStepLocked = useCallback(
+    (module: (typeof allModules)[number]) => isModuleLocked(module, stage1a.done),
+    [stage1a.done],
+  );
+  const handleLaunchWorkshop = (id: string) => {
+    navIntentRef.current = true;
+    setActiveWorkshopId(id);
+  };
+  const handleExitWorkshop = () => {
+    navIntentRef.current = true;
+    setActiveWorkshopId(null);
   };
 
   const overallProgress = Math.round((progress.completedModuleIds.length / allModules.length) * 100);
@@ -244,7 +274,9 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
                 ? 'Staff tools'
                 : view === 'progress'
                   ? 'Your progress'
-                  : currentModuleLocked
+                  : view === 'workshops'
+                    ? 'Workshops'
+                    : currentModuleLocked
                     ? 'Section locked'
                     : currentModule.title
           }
@@ -267,6 +299,30 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
           {view === 'progress' && (
             <ContentContainer wide>
               <LearnerDashboard userId={userId} />
+            </ContentContainer>
+          )}
+          {/* Workshops (X.3): the list, or the guided runner once one is launched.
+              Conditionally mounted (not hidden) so the derived progress reflects a
+              just-completed step. The runner reuses ModuleRenderer verbatim and
+              routes completion through completeModule — no new writes (R5/R6). */}
+          {view === 'workshops' && (
+            <ContentContainer wide>
+              {activeWorkshop ? (
+                <WorkshopRunner
+                  workshop={activeWorkshop}
+                  moduleById={resolveWorkshopModule}
+                  isStepLocked={isWorkshopStepLocked}
+                  completedModuleIds={progress.completedModuleIds}
+                  selectedPersona={selectedPersona}
+                  onCompleteModule={handleComplete}
+                  onExit={handleExitWorkshop}
+                />
+              ) : (
+                <WorkshopList
+                  completedModuleIds={progress.completedModuleIds}
+                  onLaunch={handleLaunchWorkshop}
+                />
+              )}
             </ContentContainer>
           )}
           <ContentContainer active={view === 'learning'}>
