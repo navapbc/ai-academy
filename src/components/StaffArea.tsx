@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardList, Users, ChevronRight, FileText, Activity } from 'lucide-react';
+import { ClipboardList, Users, ChevronRight, FileText, Activity, Route } from 'lucide-react';
 import type { Role } from '../types';
 import type { LearnerRosterEntry } from '../lib/learnerDetail';
 import CohortDashboard from './staff/CohortDashboard';
@@ -7,6 +7,7 @@ import LearnerDetail from './staff/LearnerDetail';
 import CohortManagement from './staff/CohortManagement';
 import ReviewQueue from './staff/ReviewQueue';
 import UsageMonitoring from './staff/UsageMonitoring';
+import WorkshopManagement from './staff/WorkshopManagement';
 import CmsHome from './cms/CmsHome';
 
 // Staff landing reached via the role-gated `staff` view (P5.1d). The cohort
@@ -22,6 +23,7 @@ export default function StaffArea({ role }: { role: Role }) {
   const [showReviewQueue, setShowReviewQueue] = useState(false);
   const [showCms, setShowCms] = useState(false);
   const [showUsage, setShowUsage] = useState(false);
+  const [showWorkshops, setShowWorkshops] = useState(false);
   const isAdmin = role === 'admin';
 
   if (selected) {
@@ -60,6 +62,14 @@ export default function StaffArea({ role }: { role: Role }) {
     return (
       <div className="max-w-5xl mx-auto">
         <UsageMonitoring onBack={() => setShowUsage(false)} />
+      </div>
+    );
+  }
+
+  if (showWorkshops && isAdmin) {
+    return (
+      <div className="max-w-5xl mx-auto">
+        <WorkshopManagement onBack={() => setShowWorkshops(false)} />
       </div>
     );
   }
@@ -126,6 +136,30 @@ export default function StaffArea({ role }: { role: Role }) {
             title="Content management"
             detail="Browse and edit lessons across the matrix."
             slice="P5.4 · admin"
+          />
+        )}
+
+        {/* Workshop management (X.3): admin-only. Champions see it as upcoming. */}
+        {isAdmin ? (
+          <button
+            onClick={() => setShowWorkshops(true)}
+            className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
+          >
+            <Route className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <h2 className="font-semibold text-gray-900">Workshop management</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Build workshops — an ordered path through existing published modules.
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" aria-hidden="true" />
+          </button>
+        ) : (
+          <ComingSoon
+            icon={Route}
+            title="Workshop management"
+            detail="Build workshops — an ordered path through existing published modules."
+            slice="X.3 · admin"
           />
         )}
 
