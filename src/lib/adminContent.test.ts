@@ -68,6 +68,41 @@ describe('invokeAdminContent — happy path', () => {
     expect(JSON.parse(callAt(fetchMock, 0)[1].body)).toEqual({ action: 'publish', cellId: '2.9' });
   });
 
+  test('publishLesson omits `note` when none is given (X.2)', async () => {
+    const { publishLesson } = await loadModule();
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true, action: 'publish', version: 4 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await publishLesson('2.9');
+    const body = JSON.parse(callAt(fetchMock, 0)[1].body);
+    expect(body).toEqual({ action: 'publish', cellId: '2.9' });
+    expect('note' in body).toBe(false);
+  });
+
+  test('publishLesson omits `note` for a whitespace-only note (X.2)', async () => {
+    const { publishLesson } = await loadModule();
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true, action: 'publish', version: 4 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await publishLesson('2.9', '   ');
+    const body = JSON.parse(callAt(fetchMock, 0)[1].body);
+    expect(body).toEqual({ action: 'publish', cellId: '2.9' });
+    expect('note' in body).toBe(false);
+  });
+
+  test('publishLesson includes a trimmed `note` when one is given (X.2)', async () => {
+    const { publishLesson } = await loadModule();
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true, action: 'publish', version: 4 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await publishLesson('2.9', '  a note  ');
+    expect(JSON.parse(callAt(fetchMock, 0)[1].body)).toEqual({
+      action: 'publish',
+      cellId: '2.9',
+      note: 'a note',
+    });
+  });
+
   test('archive + restore post their actions', async () => {
     const { archiveLesson, restoreLesson } = await loadModule();
     const fetchMock = vi.fn(async () => jsonResponse({ ok: true, action: 'archive' }));

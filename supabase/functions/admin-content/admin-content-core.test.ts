@@ -8,6 +8,9 @@ import {
   validateSorterConfigJson,
   validateDraft,
   buildPublishUpdate,
+  buildContentVersionRow,
+  normalizePublishNote,
+  NOTE_MAX,
   buildCustomInsert,
   slugify,
   customCellId,
@@ -275,6 +278,28 @@ describe('parseContentAction', () => {
     expect(parseContentAction({ action: 'publish' }).ok).toBe(false);
   });
 
+  test('publish threads an optional note (absent → null, trimmed, over-cap rejected)', () => {
+    // absent note → null
+    expect(parseContentAction({ action: 'publish', cellId: '2.9' })).toEqual({
+      ok: true,
+      value: { action: 'publish', cellId: '2.9', note: null },
+    });
+    // valid note is trimmed
+    expect(parseContentAction({ action: 'publish', cellId: '2.9', note: '  fixed typo  ' })).toEqual({
+      ok: true,
+      value: { action: 'publish', cellId: '2.9', note: 'fixed typo' },
+    });
+    // whitespace-only note → null
+    expect(parseContentAction({ action: 'publish', cellId: '2.9', note: '   ' })).toEqual({
+      ok: true,
+      value: { action: 'publish', cellId: '2.9', note: null },
+    });
+    // over-cap note is rejected
+    expect(parseContentAction({ action: 'publish', cellId: '2.9', note: 'x'.repeat(NOTE_MAX + 1) }).ok).toBe(false);
+    // non-string note is rejected
+    expect(parseContentAction({ action: 'publish', cellId: '2.9', note: 123 }).ok).toBe(false);
+  });
+
   test('rejects unknown action / non-object body', () => {
     expect(parseContentAction({ action: 'delete-everything', cellId: '2.9' }).ok).toBe(false);
     expect(parseContentAction(null).ok).toBe(false);
@@ -366,6 +391,72 @@ describe('buildPublishUpdate', () => {
     const update = buildPublishUpdate({ quiz_json: [{ q: 1 }] }, 1);
     expect(update).toMatchObject({ quiz_json: [{ q: 1 }], status: 'published', version: 2, draft: null });
     expect('body_md' in update).toBe(false);
+  });
+});
+
+describe('normalizePublishNote', () => {
+  test('absent/null/empty/whitespace → null', () => {
+    expect(normalizePublishNote(undefined)).toEqual({ ok: true, value: null });
+    expect(normalizePublishNote(null)).toEqual({ ok: true, value: null });
+    expect(normalizePublishNote('')).toEqual({ ok: true, value: null });
+    expect(normalizePublishNote('   ')).toEqual({ ok: true, value: null });
+  });
+
+  test('trims a valid note', () => {
+    expect(normalizePublishNote('  reworded intro  ')).toEqual({ ok: true, value: 'reworded intro' });
+  });
+
+  test('rejects an over-cap note and a non-string', () => {
+    expect(normalizePublishNote('x'.repeat(NOTE_MAX + 1)).ok).toBe(false);
+    expect(normalizePublishNote('x'.repeat(NOTE_MAX)).ok).toBe(true); // at the cap is allowed
+    expect(normalizePublishNote(42).ok).toBe(false);
+  });
+});
+
+describe('buildContentVersionRow', () => {
+  test('builds the append-only snapshot insert payload (happy path)', () => {
+    const row = buildContentVersionRow({
+      cellId: '2.9',
+      version: 4,
+      snapshot: { title: 'New', body_md: 'new body' },
+      authorId: 'admin-uuid',
+      note: 'fixed typo',
+    });
+    expect(row).toEqual({
+      cell_id: '2.9',
+      version: 4,
+      snapshot_json: { title: 'New', body_md: 'new body' },
+      author_id: 'admin-uuid',
+      note: 'fixed typo',
+    });
+  });
+
+  test('passes through a null note (no note supplied on publish)', () => {
+    const row = buildContentVersionRow({
+      cellId: '2.9',
+      version: 2,
+      snapshot: { quiz_json: [{ q: 1 }] },
+      authorId: 'a',
+      note: null,
+    });
+    expect(row.note).toBeNull();
+    expect(row.snapshot_json).toEqual({ quiz_json: [{ q: 1 }] });
+  });
+
+  test('snapshot equals the promoted content of buildPublishUpdate (minus status/version/draft)', () => {
+    // The index.ts publish path derives the snapshot from DRAFT_COLUMN_KEYS of
+    // the publish update, so snapshot ≡ what was published. Prove the shape here.
+    const update = buildPublishUpdate({ body_md: 'b', title: 'T', quiz_json: goodQuiz }, 1);
+    const promotedContent = { body_md: update.body_md, title: update.title, quiz_json: update.quiz_json };
+    const row = buildContentVersionRow({
+      cellId: '2.9',
+      version: update.version as number,
+      snapshot: promotedContent,
+      authorId: 'a',
+      note: null,
+    });
+    expect(row.snapshot_json).toEqual({ body_md: 'b', title: 'T', quiz_json: goodQuiz });
+    expect(row.version).toBe(2);
   });
 });
 

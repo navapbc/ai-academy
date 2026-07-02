@@ -86,9 +86,16 @@ export function validateQuizQuestions(
   return { ok: true };
 }
 
+/**
+ * Max length of the optional publish change-note (X.2). Mirrors the server cap
+ * (admin-content-core `normalizePublishNote`, ≤500 chars) for a light client-side hint —
+ * the Edge Function re-validates and is authoritative.
+ */
+export const NOTE_MAX_LENGTH = 500;
+
 export type ContentAction =
   | { action: 'save-draft'; cellId: string; draft: DraftFields }
-  | { action: 'publish'; cellId: string }
+  | { action: 'publish'; cellId: string; note?: string }
   | { action: 'archive'; cellId: string }
   | { action: 'restore'; cellId: string }
   | { action: 'create-custom'; title: string; type: string };
@@ -140,7 +147,17 @@ export async function invokeAdminContent(action: ContentAction): Promise<Content
 // Thin typed creators (keep call sites readable).
 export const saveDraft = (cellId: string, draft: DraftFields) =>
   invokeAdminContent({ action: 'save-draft', cellId, draft });
-export const publishLesson = (cellId: string) => invokeAdminContent({ action: 'publish', cellId });
+/**
+ * Publishes a lesson. `note` is the optional "what changed?" change-note (X.2);
+ * blank/whitespace is omitted so the server persists null. The server trims and
+ * length-caps it (≤500) authoritatively.
+ */
+export const publishLesson = (cellId: string, note?: string) => {
+  const trimmed = note?.trim();
+  return invokeAdminContent(
+    trimmed ? { action: 'publish', cellId, note: trimmed } : { action: 'publish', cellId },
+  );
+};
 export const archiveLesson = (cellId: string) => invokeAdminContent({ action: 'archive', cellId });
 export const restoreLesson = (cellId: string) => invokeAdminContent({ action: 'restore', cellId });
 /** Creates a free-form custom lesson; resolves with the generated `custom-<slug>` id. */

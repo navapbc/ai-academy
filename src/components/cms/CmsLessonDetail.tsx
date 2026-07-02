@@ -9,11 +9,13 @@ import {
   FlaskConical,
   Archive,
   RotateCcw,
+  History,
   Loader2,
   AlertCircle,
 } from 'lucide-react';
 import type { CmsLessonDetailData } from '../../lib/cmsContent';
 import { archiveLesson, restoreLesson } from '../../lib/adminContent';
+import { useContentVersions } from '../../lib/useContentVersions';
 import { StatusBadge } from './StatusBadge';
 
 // Read-only lesson detail for the admin CMS (P5.4-2). Shows the current LIVE
@@ -39,6 +41,59 @@ function Field({
         {label}
       </div>
       {children}
+    </div>
+  );
+}
+
+/**
+ * Read-only publish history for a lesson (X.2 Unit 3). Reads content_versions
+ * under the admin RLS policy via useContentVersions; lists each snapshot
+ * newest-first (version #, note or "—", author, timestamp). No restore — rollback
+ * is deferred.
+ */
+function VersionHistory({ cellId }: { cellId: string }) {
+  const { versions, loading, error } = useContentVersions(cellId);
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+      <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-gray-500">
+        <History className="w-4 h-4 text-nava-green" aria-hidden="true" />
+        Version history
+      </div>
+
+      {loading && (
+        <div className="flex items-center gap-2 py-4 text-sm text-gray-500" role="status">
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+          <span>Loading version history…</span>
+        </div>
+      )}
+
+      {error && !loading && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex gap-2" role="alert">
+          <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" aria-hidden="true" />
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && versions.length === 0 && (
+        <p className="text-sm text-gray-400">No published versions yet.</p>
+      )}
+
+      {!loading && !error && versions.length > 0 && (
+        <ul className="divide-y divide-gray-100">
+          {versions.map((v) => (
+            <li key={v.id} className="py-3 first:pt-0 last:pb-0">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <span className="text-sm font-bold text-gray-900">v{v.version}</span>
+                <span className="text-xs text-gray-500">
+                  {v.authorName} · {new Date(v.createdAt).toLocaleString()}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-gray-700">{v.note ?? '—'}</p>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -232,6 +287,8 @@ export default function CmsLessonDetail({
           </div>
         </div>
       </div>
+
+      <VersionHistory cellId={lesson.cellId} />
     </div>
   );
 }
