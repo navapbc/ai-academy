@@ -5,7 +5,7 @@
 -- (step_cell_ids) over the content-as-data curriculum; it stores no completion
 -- state (learner progress is derived from module_progress). Writes are
 -- server-authoritative: the only writer is the service_role client inside the
--- future admin-workshops Edge Function (service_role bypasses RLS). Learners
+-- admin-workshops Edge Function (service_role bypasses RLS). Learners
 -- read workshops via a simple authenticated SELECT — workshops are
 -- non-sensitive (titles/intros/step ordering), same posture as public.cohorts /
 -- public.modules. NO client insert/update/delete policy exists on purpose.

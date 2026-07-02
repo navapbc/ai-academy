@@ -100,6 +100,42 @@ describe('WorkshopManagement (X.3 Unit 3)', () => {
     expect(admin.updateWorkshop).toHaveBeenCalledWith('w1', 'Prompting basics', ['1.4', '1.1'], null);
   });
 
+  test('reorder (move down) changes the saved step order', async () => {
+    render(<WorkshopManagement onBack={() => {}} />);
+    await screen.findByText('Prompting basics');
+
+    // Edit the existing workshop (steps: 1.1, 1.4).
+    await userEvent.click(screen.getByRole('button', { name: /edit prompting basics/i }));
+
+    // Move the first step (1.1) down so order becomes 1.4, 1.1.
+    await userEvent.click(screen.getByRole('button', { name: /move 1\.1 down/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+    expect(admin.updateWorkshop).toHaveBeenCalledWith('w1', 'Prompting basics', ['1.4', '1.1'], null);
+  });
+
+  test('remove step excludes it from the saved stepCellIds', async () => {
+    render(<WorkshopManagement onBack={() => {}} />);
+    await screen.findByText('Prompting basics');
+
+    // Edit the existing workshop (steps: 1.1, 1.4) and remove 1.4.
+    await userEvent.click(screen.getByRole('button', { name: /edit prompting basics/i }));
+    await userEvent.click(screen.getByRole('button', { name: /remove 1\.4/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+    expect(admin.updateWorkshop).toHaveBeenCalledWith('w1', 'Prompting basics', ['1.1'], null);
+  });
+
+  test('delete does nothing when the confirm is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<WorkshopManagement onBack={() => {}} />);
+    await screen.findByText('Prompting basics');
+
+    await userEvent.click(screen.getByRole('button', { name: /delete prompting basics/i }));
+    expect(admin.deleteWorkshop).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
   test('empty title blocks the save (button disabled)', async () => {
     render(<WorkshopManagement onBack={() => {}} />);
     await screen.findByText('Prompting basics');

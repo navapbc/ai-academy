@@ -309,6 +309,7 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
             <ContentContainer wide>
               {activeWorkshop ? (
                 <WorkshopRunner
+                  key={activeWorkshop.id}
                   workshop={activeWorkshop}
                   moduleById={resolveWorkshopModule}
                   isStepLocked={isWorkshopStepLocked}
