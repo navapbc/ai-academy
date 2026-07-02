@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import {
+  accumulateUsage,
   ANTHROPIC_API,
   buildCorsHeaders,
   buildSystemBlocks,
@@ -7,11 +8,13 @@ import {
   DEFAULT_MAX_TOKENS,
   emailDomainAllowed,
   FALLBACK_MODEL,
+  finalizeUsage,
   fixedWindowAllow,
   isModelAllowed,
   isStop,
   MAX_MESSAGES,
   MAX_TOKENS_CEILING,
+  newUsageAccumulator,
   parseEvent,
   resolveDefaultModel,
   validateChatRequest,
@@ -185,6 +188,50 @@ describe('resolveDefaultModel (P6.1)', () => {
   });
   test('FALLBACK_MODEL is itself allow-listed', () => {
     expect(isModelAllowed(FALLBACK_MODEL)).toBe(true);
+  });
+});
+
+describe('usage accumulator (P6.2)', () => {
+  test('message_start (input) + final message_delta (output) → correct pair', () => {
+    const acc = newUsageAccumulator();
+    accumulateUsage(acc, {
+      type: 'message_start',
+      message: { usage: { input_tokens: 120, output_tokens: 1 } },
+    });
+    accumulateUsage(acc, { type: 'content_block_delta', delta: { type: 'text_delta', text: 'hi' } });
+    accumulateUsage(acc, { type: 'message_delta', usage: { output_tokens: 57 } });
+    // message_delta's output_tokens wins over message_start's partial (1).
+    expect(finalizeUsage(acc)).toEqual({ input_tokens: 120, output_tokens: 57 });
+  });
+
+  test('no usage events (only text deltas) → finalizer returns null', () => {
+    const acc = newUsageAccumulator();
+    accumulateUsage(acc, { type: 'content_block_delta', delta: { type: 'text_delta', text: 'hi' } });
+    accumulateUsage(acc, { type: 'content_block_stop' });
+    expect(finalizeUsage(acc)).toBeNull();
+  });
+
+  test('early error before any usage → finalizer returns null', () => {
+    const acc = newUsageAccumulator();
+    accumulateUsage(acc, { type: 'error', error: { message: 'overloaded' } });
+    expect(finalizeUsage(acc)).toBeNull();
+  });
+
+  test('input seen but no output → output defaults to 0', () => {
+    const acc = newUsageAccumulator();
+    accumulateUsage(acc, { type: 'message_start', message: { usage: { input_tokens: 42 } } });
+    expect(finalizeUsage(acc)).toEqual({ input_tokens: 42, output_tokens: 0 });
+  });
+
+  test('tolerates non-object / malformed events without throwing', () => {
+    const acc = newUsageAccumulator();
+    expect(() => {
+      accumulateUsage(acc, null);
+      accumulateUsage(acc, 'garbage');
+      accumulateUsage(acc, { type: 'message_start' });
+      accumulateUsage(acc, { type: 'message_delta', usage: 'nope' });
+    }).not.toThrow();
+    expect(finalizeUsage(acc)).toBeNull();
   });
 });
 

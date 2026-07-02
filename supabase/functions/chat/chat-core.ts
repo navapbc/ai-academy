@@ -240,6 +240,69 @@ export function isStop(event: string): boolean {
   return false;
 }
 
+// --- Usage capture (P6.2) ---------------------------------------------------
+// Best-effort accumulation of Anthropic token usage out of the SSE stream, so
+// the Edge Function can record one claude_usage row when the stream closes —
+// never inline with token delivery, never affecting the client stream.
+//
+// Anthropic carries usage in two events: `message_start` has the input_tokens
+// (and a partial output_tokens), and the final `message_delta` has the final
+// output_tokens. We take input_tokens from message_start and prefer the latest
+// output_tokens seen (message_delta wins over message_start's partial). Pure +
+// Deno-agnostic so it's unit-tested under vitest.
+export interface UsageTotals {
+  input_tokens: number;
+  output_tokens: number;
+}
+
+export interface UsageAccumulator {
+  input_tokens: number | null;
+  output_tokens: number | null;
+}
+
+/** A fresh accumulator with nothing seen yet. */
+export function newUsageAccumulator(): UsageAccumulator {
+  return { input_tokens: null, output_tokens: null };
+}
+
+/**
+ * Feeds one already-parsed SSE JSON event object into the accumulator, updating
+ * the running input/output token counts. Tolerates missing/partial usage and
+ * never throws — an event without usage is simply ignored.
+ */
+export function accumulateUsage(acc: UsageAccumulator, event: unknown): void {
+  if (typeof event !== 'object' || event === null) return;
+  const e = event as { type?: unknown; message?: unknown; usage?: unknown };
+
+  if (e.type === 'message_start') {
+    const usage = (e.message as { usage?: unknown } | undefined)?.usage as
+      | { input_tokens?: unknown; output_tokens?: unknown }
+      | undefined;
+    if (typeof usage?.input_tokens === 'number') acc.input_tokens = usage.input_tokens;
+    if (typeof usage?.output_tokens === 'number') acc.output_tokens = usage.output_tokens;
+    return;
+  }
+
+  if (e.type === 'message_delta') {
+    const usage = e.usage as { output_tokens?: unknown; input_tokens?: unknown } | undefined;
+    if (typeof usage?.output_tokens === 'number') acc.output_tokens = usage.output_tokens;
+    if (typeof usage?.input_tokens === 'number') acc.input_tokens = usage.input_tokens;
+  }
+}
+
+/**
+ * Finalizes an accumulator into a concrete usage pair, or null if no usage was
+ * ever seen (e.g. an early upstream error). Missing halves default to 0 so a
+ * partially-seen usage still records something useful.
+ */
+export function finalizeUsage(acc: UsageAccumulator): UsageTotals | null {
+  if (acc.input_tokens === null && acc.output_tokens === null) return null;
+  return {
+    input_tokens: acc.input_tokens ?? 0,
+    output_tokens: acc.output_tokens ?? 0,
+  };
+}
+
 // --- Rate limiting (LLM-01) -------------------------------------------------
 export interface RateLimitState {
   count: number;
