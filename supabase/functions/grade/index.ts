@@ -6,8 +6,8 @@
 // tested under vitest). Auth/CORS mirror `chat`; helpers are inlined so this
 // function bundles independently.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { GRADE_SYSTEM_PROMPT, buildGradeUserMessage, parseVerdict, ANTHROPIC_API, resolveDefaultModel } from './verdict.ts';
-import type { GradingRubric, GradeSubmission } from './verdict.ts';
+import { GRADE_SYSTEM_PROMPT, buildGradeUserMessage, parseVerdict, extractUsage, ANTHROPIC_API, resolveDefaultModel } from './verdict.ts';
+import type { GradingRubric, GradeSubmission, UsageTotals } from './verdict.ts';
 
 const DEFAULT_MODEL = resolveDefaultModel(Deno.env.get('ANTHROPIC_MODEL'));
 const ALLOWED_EMAIL_DOMAIN = 'navapbc.com';
@@ -51,6 +51,18 @@ function emailDomainAllowed(email: string | undefined): boolean {
   return !!email && email.split('@')[1]?.toLowerCase() === ALLOWED_EMAIL_DOMAIN;
 }
 
+/**
+ * Run a promise as background work that never blocks/delays the response. On
+ * Supabase Edge (Deno) `EdgeRuntime.waitUntil` keeps the isolate alive until the
+ * promise settles AFTER the Response is returned; elsewhere we just drop the
+ * awaited reference (recordUsage swallows its own errors, so this is safe).
+ */
+function fireAndForget(p: Promise<unknown>): void {
+  const er = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
+  if (er?.waitUntil) er.waitUntil(p);
+  else void p;
+}
+
 function isRubric(v: unknown): v is GradingRubric {
   const r = v as { anchors?: unknown };
   return (
@@ -76,6 +88,44 @@ function isSubmission(v: unknown): v is GradeSubmission {
       return typeof o.label === 'string' && typeof o.text === 'string';
     })
   );
+}
+
+/**
+ * Records one claude_usage row, best-effort (P6.2). Writes via a service_role
+ * client (the table has no client-write RLS — mirrors admin-content). Any
+ * failure is logged and swallowed so it never affects the grade response (R2/R5).
+ */
+async function recordUsage(userId: string, model: string, usage: UsageTotals): Promise<void> {
+  try {
+    const alertThreshold = Number(Deno.env.get('USAGE_ALERT_TOKENS_PER_CALL'));
+    if (
+      Number.isFinite(alertThreshold) &&
+      alertThreshold > 0 &&
+      usage.input_tokens + usage.output_tokens > alertThreshold
+    ) {
+      console.warn(
+        `claude_usage alert: single grade call ${usage.input_tokens + usage.output_tokens} tokens ` +
+          `(> ${alertThreshold}) user=${userId} model=${model}`,
+      );
+    }
+
+    const url = Deno.env.get('SUPABASE_URL');
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!url || !serviceKey) return;
+    const admin = createClient(url, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { error } = await admin.from('claude_usage').insert({
+      user_id: userId,
+      source: 'grade',
+      model,
+      input_tokens: usage.input_tokens,
+      output_tokens: usage.output_tokens,
+    });
+    if (error) console.warn('claude_usage insert failed', error);
+  } catch (err) {
+    console.warn('claude_usage insert failed', err);
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -151,8 +201,14 @@ Deno.serve(async (req: Request) => {
   }
 
   const data = (await upstream.json().catch(() => null)) as
-    | { content?: { type: string; text?: string }[] }
+    | { content?: { type: string; text?: string }[]; usage?: unknown }
     | null;
+
+  // Best-effort usage capture (P6.2): record the token counts fire-and-forget so
+  // the DB write never adds latency to (or hangs) the verdict response (R2/R5).
+  const usage = extractUsage(data);
+  if (usage) fireAndForget(recordUsage(user.id, DEFAULT_MODEL, usage));
+
   const text = data?.content?.find((b) => b.type === 'text')?.text ?? '';
   const verdict = parseVerdict(text, rubric);
   if (!verdict.ok) {

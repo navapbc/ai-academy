@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { parseVerdict, buildGradeUserMessage, type GradingRubric } from './verdict';
+import { parseVerdict, buildGradeUserMessage, extractUsage, type GradingRubric } from './verdict';
 import {
   MODEL_ALLOWLIST as CHAT_ALLOWLIST,
   ANTHROPIC_API as CHAT_API,
@@ -90,6 +90,31 @@ describe('buildGradeUserMessage', () => {
     // brief precedes the artifact, which precedes the critique.
     expect(msg.indexOf('Critique this.')).toBeLessThan(msg.indexOf('A polished summary.'));
     expect(msg.indexOf('A polished summary.')).toBeLessThan(msg.indexOf('It cites an unverifiable date.'));
+  });
+});
+
+describe('extractUsage (P6.2)', () => {
+  test('response with usage → returns the token pair', () => {
+    const res = { content: [{ type: 'text', text: '{}' }], usage: { input_tokens: 88, output_tokens: 12 } };
+    expect(extractUsage(res)).toEqual({ input_tokens: 88, output_tokens: 12 });
+  });
+
+  test('response missing usage → returns null (no throw)', () => {
+    expect(extractUsage({ content: [] })).toBeNull();
+  });
+
+  test('usage not an object → returns null (no throw)', () => {
+    expect(extractUsage({ usage: 'nope' })).toBeNull();
+    expect(extractUsage({ usage: null })).toBeNull();
+  });
+
+  test('null / non-object response → returns null (no throw)', () => {
+    expect(extractUsage(null)).toBeNull();
+    expect(extractUsage('garbage')).toBeNull();
+  });
+
+  test('partial usage (only input_tokens) → other half defaults to 0', () => {
+    expect(extractUsage({ usage: { input_tokens: 5 } })).toEqual({ input_tokens: 5, output_tokens: 0 });
   });
 });
 

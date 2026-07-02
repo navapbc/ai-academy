@@ -72,6 +72,31 @@ export function buildGradeUserMessage(rubric: GradingRubric, submission: GradeSu
   ].join('\n');
 }
 
+// --- Usage capture (P6.2) ---------------------------------------------------
+// `grade` is non-streaming: the Anthropic response JSON carries a top-level
+// `usage: { input_tokens, output_tokens }`. Pull it out best-effort so the Edge
+// Function can record one claude_usage row. Never throws — returns null when
+// usage is absent or malformed.
+export interface UsageTotals {
+  input_tokens: number;
+  output_tokens: number;
+}
+
+export function extractUsage(responseJson: unknown): UsageTotals | null {
+  if (typeof responseJson !== 'object' || responseJson === null) return null;
+  const usage = (responseJson as { usage?: unknown }).usage;
+  if (typeof usage !== 'object' || usage === null) return null;
+  const { input_tokens, output_tokens } = usage as {
+    input_tokens?: unknown;
+    output_tokens?: unknown;
+  };
+  if (typeof input_tokens !== 'number' && typeof output_tokens !== 'number') return null;
+  return {
+    input_tokens: typeof input_tokens === 'number' ? input_tokens : 0,
+    output_tokens: typeof output_tokens === 'number' ? output_tokens : 0,
+  };
+}
+
 type ParseResult = { ok: true; value: Verdict } | { ok: false; error: string };
 
 export function parseVerdict(modelText: string, rubric: GradingRubric): ParseResult {

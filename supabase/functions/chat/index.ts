@@ -18,16 +18,20 @@
 // Pure logic lives in ./chat-core.ts (unit-tested under vitest).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import {
+  accumulateUsage,
   ANTHROPIC_API,
   buildCorsHeaders,
   buildSystemBlocks,
   emailDomainAllowed,
+  finalizeUsage,
   fixedWindowAllow,
   isStop,
+  newUsageAccumulator,
   parseEvent,
   resolveDefaultModel,
   validateChatRequest,
   type RateLimitState,
+  type UsageTotals,
 } from './chat-core.ts';
 
 const DEFAULT_MODEL = resolveDefaultModel(Deno.env.get('ANTHROPIC_MODEL'));
@@ -47,6 +51,62 @@ const ALLOWED_ORIGINS = [
 const RATE_LIMIT = 30; // requests
 const RATE_WINDOW_MS = 60_000; // per minute
 const rateStore = new Map<string, RateLimitState>();
+
+/**
+ * Run a promise as background work that never blocks/delays the response/stream.
+ * On Supabase Edge (Deno) `EdgeRuntime.waitUntil` keeps the isolate alive until
+ * the promise settles AFTER the stream is closed; elsewhere we just drop the
+ * awaited reference (recordUsage swallows its own errors, so this is safe).
+ */
+function fireAndForget(p: Promise<unknown>): void {
+  const er = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
+  if (er?.waitUntil) er.waitUntil(p);
+  else void p;
+}
+
+/**
+ * Records one claude_usage row, best-effort (P6.2). Writes with a service_role
+ * client (the table has no client-write RLS — mirrors admin-content). CRITICAL:
+ * this is fire-and-forget from the stream's close path — any failure is logged
+ * and swallowed so it can never affect or delay the already-delivered stream.
+ */
+async function recordUsage(
+  userId: string,
+  model: string,
+  usage: UsageTotals,
+): Promise<void> {
+  try {
+    // Optional, trivial operator signal: warn if a single call is unusually large.
+    const alertThreshold = Number(Deno.env.get('USAGE_ALERT_TOKENS_PER_CALL'));
+    if (
+      Number.isFinite(alertThreshold) &&
+      alertThreshold > 0 &&
+      usage.input_tokens + usage.output_tokens > alertThreshold
+    ) {
+      console.warn(
+        `claude_usage alert: single chat call ${usage.input_tokens + usage.output_tokens} tokens ` +
+          `(> ${alertThreshold}) user=${userId} model=${model}`,
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !serviceKey) return;
+    const admin = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { error } = await admin.from('claude_usage').insert({
+      user_id: userId,
+      source: 'chat',
+      model,
+      input_tokens: usage.input_tokens,
+      output_tokens: usage.output_tokens,
+    });
+    if (error) console.warn('claude_usage insert failed', error);
+  } catch (err) {
+    console.warn('claude_usage insert failed', err);
+  }
+}
 
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get('Origin');
@@ -151,6 +211,19 @@ Deno.serve(async (req: Request) => {
       const decoder = new TextDecoder();
       const encoder = new TextEncoder();
       let buffer = '';
+      // Accumulate token usage out-of-band while re-streaming text (P6.2). Never
+      // touches the enqueued bytes; the DB write happens only after close.
+      const usageAcc = newUsageAccumulator();
+
+      // Single close-and-record call site (consolidated): closes the stream and
+      // fires the usage write exactly once, regardless of which path ends the
+      // stream (`message_stop` event vs. reader-done fallback). The DB write is
+      // fire-and-forget so a slow DB can never delay/extend the stream close.
+      const closeAndRecord = () => {
+        controller.close();
+        const usage = finalizeUsage(usageAcc);
+        if (usage) fireAndForget(recordUsage(user.id, model, usage));
+      };
 
       try {
         while (true) {
@@ -162,6 +235,19 @@ Deno.serve(async (req: Request) => {
           buffer = events.pop() ?? '';
 
           for (const event of events) {
+            // Best-effort usage capture: parse the event's JSON separately for
+            // token counts. Failures are ignored — they never affect the stream.
+            for (const line of event.split('\n')) {
+              if (!line.startsWith('data:')) continue;
+              const raw = line.slice(5).trim();
+              if (!raw || raw === '[DONE]') continue;
+              try {
+                accumulateUsage(usageAcc, JSON.parse(raw));
+              } catch {
+                // non-JSON / partial data line — ignore
+              }
+            }
+
             const parsed = parseEvent(event);
             if (parsed?.type === 'text' && parsed.text) {
               controller.enqueue(encoder.encode(parsed.text));
@@ -172,8 +258,8 @@ Deno.serve(async (req: Request) => {
               return;
             }
             if (isStop(event)) {
-              controller.close();
               await reader.cancel().catch(() => {});
+              closeAndRecord();
               return;
             }
           }
@@ -185,7 +271,9 @@ Deno.serve(async (req: Request) => {
         reader.releaseLock();
       }
 
-      controller.close();
+      // Fallback: the reader reported done without a `message_stop` event. Close
+      // and record through the same single call site (R2/R5).
+      closeAndRecord();
     },
   });
 
