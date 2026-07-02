@@ -104,13 +104,31 @@ describe('LessonEditor (P5.4-3)', () => {
     });
   });
 
-  test('Publish saves the working copy then promotes it live', async () => {
+  test('Publish saves the working copy then promotes it live (no note by default)', async () => {
     render(<LessonEditor lesson={lesson()} onBack={() => {}} onSaved={() => {}} />);
     await userEvent.click(screen.getByRole('button', { name: /publish/i }));
 
     expect(h.saveDraft).toHaveBeenCalledTimes(1);
-    expect(h.publishLesson).toHaveBeenCalledWith('2.9');
+    // Empty change-note → passed as '' to the creator, which omits it server-side (X.2).
+    expect(h.publishLesson).toHaveBeenCalledWith('2.9', '');
     expect(await screen.findByRole('status')).toHaveTextContent(/published/i);
+  });
+
+  test('Publish threads the optional change-note through to publishLesson (X.2)', async () => {
+    render(<LessonEditor lesson={lesson()} onBack={() => {}} onSaved={() => {}} />);
+    await userEvent.type(screen.getByLabelText(/what changed/i), 'Fixed the reflection prompt');
+    await userEvent.click(screen.getByRole('button', { name: /publish/i }));
+
+    expect(h.publishLesson).toHaveBeenCalledWith('2.9', 'Fixed the reflection prompt');
+  });
+
+  test('an over-long change-note blocks Publish with an inline hint (X.2)', async () => {
+    render(<LessonEditor lesson={lesson()} onBack={() => {}} onSaved={() => {}} />);
+    await userEvent.type(screen.getByLabelText(/what changed/i), 'x'.repeat(501));
+
+    expect(screen.getByText(/characters or fewer/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /publish/i })).toBeDisabled();
+    expect(h.publishLesson).not.toHaveBeenCalled();
   });
 
   test('a failed save surfaces an error and does not drop the edits', async () => {

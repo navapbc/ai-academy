@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { ArrowLeft, Loader2, AlertTriangle, CheckCircle2, Save, Send } from 'lucide-react';
 import type { CmsLessonDetailData } from '../../lib/cmsContent';
-import { saveDraft, publishLesson, isValidVideoUrl, type DraftFields } from '../../lib/adminContent';
+import {
+  saveDraft,
+  publishLesson,
+  isValidVideoUrl,
+  NOTE_MAX_LENGTH,
+  type DraftFields,
+} from '../../lib/adminContent';
 import LessonMarkdown from '../LessonMarkdown';
 import { StatusBadge } from './StatusBadge';
 
@@ -38,12 +44,14 @@ export default function LessonEditor({
   const [bodyMd, setBodyMd] = useState(seed.bodyMd);
   const [videoUrl, setVideoUrl] = useState(seed.videoUrl);
   const [tutorRef, setTutorRef] = useState(seed.tutorRef);
+  const [note, setNote] = useState('');
   const [busy, setBusy] = useState<'save' | 'publish' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const videoOk = isValidVideoUrl(videoUrl);
   const bodyEmpty = bodyMd.trim() === '';
+  const noteTooLong = note.trim().length > NOTE_MAX_LENGTH;
 
   // The working copy posted to the function. save-draft REPLACES the whole `draft`
   // column (admin-content index.ts), so we merge over any existing draft to
@@ -78,15 +86,17 @@ export default function LessonEditor({
   }
 
   async function handlePublish() {
-    if (!videoOk) return;
+    if (!videoOk || noteTooLong) return;
     setBusy('publish');
     setError(null);
     setNotice(null);
     try {
       // Persist the latest edits first so what's on screen is exactly what goes
       // live, then promote draft → live in the function (single server step).
+      // The optional change-note rides on the publish call (X.2) → content_versions.
       await saveDraft(lesson.cellId, buildDraft());
-      await publishLesson(lesson.cellId);
+      await publishLesson(lesson.cellId, note);
+      setNote('');
       setNotice('Published. Learners now see this version — no redeploy needed.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not publish the lesson.');
@@ -221,6 +231,35 @@ export default function LessonEditor({
         </div>
       </div>
 
+      <div className="space-y-1.5">
+        <label
+          htmlFor="cms-change-note"
+          className="block text-[11px] font-bold uppercase tracking-widest text-gray-500"
+        >
+          What changed? (optional)
+        </label>
+        <p className="text-xs text-gray-500">
+          A short note saved with this publish for the version history. Optional.
+        </p>
+        <input
+          id="cms-change-note"
+          type="text"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          maxLength={NOTE_MAX_LENGTH + 100}
+          placeholder="e.g. Fixed the reflection prompt wording"
+          aria-invalid={noteTooLong}
+          className={`w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-nava-green focus:outline-none ${
+            noteTooLong ? 'border-red-400' : 'border-gray-300'
+          }`}
+        />
+        {noteTooLong && (
+          <p className="text-xs text-red-600" role="alert">
+            Keep the note to {NOTE_MAX_LENGTH} characters or fewer ({note.trim().length} now).
+          </p>
+        )}
+      </div>
+
       <div className="flex items-center gap-3">
         <button
           onClick={handleSave}
@@ -236,7 +275,7 @@ export default function LessonEditor({
         </button>
         <button
           onClick={handlePublish}
-          disabled={busy !== null || !videoOk}
+          disabled={busy !== null || !videoOk || noteTooLong}
           className="inline-flex items-center gap-2 rounded-xl bg-nava-green px-5 py-2 text-sm font-bold text-white hover:bg-nava-plum disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {busy === 'publish' ? (
