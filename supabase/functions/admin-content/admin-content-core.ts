@@ -51,7 +51,7 @@ export const DRAFT_COLUMN_KEYS = [
 
 export type ContentAction =
   | { action: 'save-draft'; cellId: string; draft: DraftFields }
-  | { action: 'publish'; cellId: string }
+  | { action: 'publish'; cellId: string; note: string | null }
   | { action: 'archive'; cellId: string }
   | { action: 'restore'; cellId: string }
   | { action: 'create-custom'; title: string; type: string };
@@ -71,6 +71,9 @@ const CELL_ID_RE = /^[a-z0-9][a-z0-9.\-]*$/i;
 const CELL_ID_MAX = 80;
 const TITLE_MAX = 300;
 const TYPE_MAX = 40;
+// The optional publish "what changed?" note is admin-only free text; cap it so a
+// pasted document can't bloat the append-only content_versions history (X.2).
+export const NOTE_MAX = 500;
 
 export function isValidCellId(v: unknown): v is string {
   return typeof v === 'string' && v.length <= CELL_ID_MAX && CELL_ID_RE.test(v);
@@ -739,8 +742,10 @@ export function parseContentAction(body: unknown): ParseResult {
       const d = validateDraft(b.draft);
       return d.ok ? ok({ action, cellId, draft: d.value }) : d;
     }
-    case 'publish':
-      return ok({ action, cellId });
+    case 'publish': {
+      const n = normalizePublishNote(b.note);
+      return n.ok ? ok({ action, cellId, note: n.value }) : n;
+    }
     case 'archive':
       return ok({ action, cellId });
     case 'restore':
@@ -766,6 +771,45 @@ export function buildPublishUpdate(
   update.version = currentVersion + 1;
   update.draft = null;
   return update;
+}
+
+/**
+ * Normalizes the optional publish note (X.2): trims it, maps an
+ * empty/absent/whitespace-only value to `null`, and REJECTS an over-cap note
+ * (> NOTE_MAX chars) via the Result pattern so parseContentAction 400s a huge
+ * note rather than silently truncating history. A non-string (other than
+ * undefined/null) is rejected too.
+ */
+export function normalizePublishNote(v: unknown): Result<string | null> {
+  if (v === undefined || v === null) return ok(null);
+  if (typeof v !== 'string') return err('`note` must be a string.');
+  const trimmed = v.trim();
+  if (trimmed === '') return ok(null);
+  if (trimmed.length > NOTE_MAX) return err(`\`note\` must be at most ${NOTE_MAX} characters.`);
+  return ok(trimmed);
+}
+
+/**
+ * Builds the append-only content_versions insert payload written best-effort
+ * after a successful publish (X.2 R1/R2). `snapshot` is the promoted live content
+ * — the caller passes the same field set buildPublishUpdate copies draft→live, so
+ * the snapshot equals exactly what was published. `note` is the already-normalized
+ * optional note (trim/empty→null handled by normalizePublishNote / parse).
+ */
+export function buildContentVersionRow(input: {
+  cellId: string;
+  version: number;
+  snapshot: Record<string, unknown>;
+  authorId: string;
+  note: string | null;
+}): Record<string, unknown> {
+  return {
+    cell_id: input.cellId,
+    version: input.version,
+    snapshot_json: input.snapshot,
+    author_id: input.authorId,
+    note: input.note,
+  };
 }
 
 /**

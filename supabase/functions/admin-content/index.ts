@@ -12,9 +12,11 @@
 // bumps version absolutely (DATA-05), and nulls draft — one atomic UPDATE.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import {
+  buildContentVersionRow,
   buildCorsHeaders,
   buildCustomInsert,
   buildPublishUpdate,
+  DRAFT_COLUMN_KEYS,
   emailDomainAllowed,
   fixedWindowAllow,
   isAllowlistedAdmin,
@@ -92,7 +94,33 @@ async function applyAction(
         .from('modules')
         .update({ ...update, ...stamp })
         .eq('cell_id', action.cellId);
-      return error ? { error: error.message } : { error: null, detail: { version: update.version } };
+      if (error) return { error: error.message };
+
+      // The publish UPDATE succeeded (version bumped, draft nulled). Now write a
+      // best-effort content_versions snapshot (X.2 R1/R2). The snapshot is the
+      // promoted live content — the SAME field set buildPublishUpdate copies
+      // draft→live (DRAFT_COLUMN_KEYS) — so it equals exactly what was published.
+      // This MUST NEVER fail the publish (the version bump already landed), so it
+      // mirrors the content_changes audit below: try/catch → console.warn only.
+      try {
+        const snapshot: Record<string, unknown> = {};
+        for (const key of DRAFT_COLUMN_KEYS) {
+          if (key in update) snapshot[key] = update[key];
+        }
+        const versionRow = buildContentVersionRow({
+          cellId: action.cellId,
+          version: update.version as number,
+          snapshot,
+          authorId: callerId,
+          note: action.note,
+        });
+        const { error: snapErr } = await admin.from('content_versions').insert(versionRow);
+        if (snapErr) console.warn('content_versions snapshot insert failed:', snapErr.message);
+      } catch (e) {
+        console.warn('content_versions snapshot insert threw:', e);
+      }
+
+      return { error: null, detail: { version: update.version } };
     }
     case 'archive': {
       const { error } = await admin
