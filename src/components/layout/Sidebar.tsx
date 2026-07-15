@@ -114,7 +114,11 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
             <div className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-nava-green/20" />
           )}
         </div>
-        <span className="flex-shrink-0 text-[10px] font-bold tabular-nums text-gray-500 w-7">{module.id}</span>
+        {/* Matrix cell ids ("1.4") are meaningful learner-facing shorthand; course/custom
+            ids are internal slugs and stay out of titles (origin doc naming rule). */}
+        {module.origin === 'matrix' && (
+          <span className="flex-shrink-0 text-[10px] font-bold tabular-nums text-gray-500 w-7">{module.id}</span>
+        )}
         <span className={`flex-1 min-w-0 text-xs font-medium truncate ${isActive ? 'font-bold' : ''}`}>
           {module.title}
         </span>
