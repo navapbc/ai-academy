@@ -146,7 +146,17 @@ export async function fetchQuiz(page: Page, cellId: string): Promise<QuizQ[]> {
 export async function openModule(page: Page, cellId: string) {
   // Cell ids contain dots (e.g. "1.4"), so use an attribute selector rather
   // than a CSS #id selector (where the dot would be read as a class).
-  await page.locator(`[id="module-${cellId}"]`).click();
+  const row = page.locator(`[id="module-${cellId}"]`);
+  // Sidebar sections start collapsed unless they contain the current module
+  // (U2 UX), and post-U8 the cursor can start inside a course week — so the
+  // target row may not be in the DOM yet. Expand collapsed sections (week /
+  // supplemental / resources headers are the only aria-expanded buttons in
+  // the sidebar) until the row exists; expansion never collapses others.
+  const collapsed = page.locator('#sidebar [aria-expanded="false"]');
+  while ((await row.count()) === 0 && (await collapsed.count()) > 0) {
+    await collapsed.first().click();
+  }
+  await row.click();
 }
 
 /**

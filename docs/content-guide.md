@@ -82,6 +82,14 @@ There are **two authoring paths**, and which one is authoritative depends on the
   `LabConfig` member.
 - **Re-running:** seed migrations are written to be safe under `supabase db reset`
   (`on conflict do nothing` for inserts, `update … by cell_id` for content).
+- **Course 1 content (separate pipeline, U8):** the Course-1 Week 0–4 lessons
+  (`origin='course'`, e.g. `c1-w1-same-prompt-3x`) live in
+  `supabase/seed-data/course1-content.json`; `node scripts/generate-course1-seed.mjs`
+  regenerates `supabase/migrations/20260715040000_seed_course1_content.sql` (INSERT …
+  `on conflict (cell_id) do nothing`, plus `course_week_modules` membership by the fixed
+  week uuids). **Do not hand-edit the generated SQL**, and never fold course content into
+  the matrix pipeline above. The generator also enforces the Week 0/1 pre-reveal copy rule
+  ("Claude", never "LLM").
 
 ## Authoring conventions
 

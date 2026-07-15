@@ -8,14 +8,13 @@ import { signInAsDemo, openModule, stubClaude } from './helpers';
 // pane 2's, etc. An `{ status, body }` entry fails exactly one call, driving
 // the pane-local error + Retry path. Ungraded — no grade stub needed.
 //
-// TODO('enable in U8 when c1-w1 modules are seeded'): there is no seeded
-// chat-compare module yet (Course 1 content lands in U8) and the e2e helpers
-// have no service-role seeding pattern to create one per-spec. When U8 lands,
-// point CELL_ID at the seeded 3-pane Week-1 module and flip each `test.skip`
-// to `test` — the bodies below are complete and ready.
-const CELL_ID = 'c1-w1-break-claude';
+// Live since U8: CELL_ID is the seeded 3-pane Week-1 module ("Experiment 1:
+// Same Prompt, Different Answers", migration 20260715040000). The demo user is
+// ENROLLED (supabase/seed.sql), so this program-visibility module reaches its
+// sidebar; openModule expands the collapsed Week 1 section on its way in.
+const CELL_ID = 'c1-w1-same-prompt-3x';
 
-test.skip('the chat-compare lab streams all panes from one shared prompt and each pane keeps its own reply', async ({ page }) => {
+test('the chat-compare lab streams all panes from one shared prompt and each pane keeps its own reply', async ({ page }) => {
   await stubClaude(page, [
     'Pane one says the policy allows 10 days.',
     'Pane two says the policy allows 30 days, guaranteed.',
@@ -43,7 +42,7 @@ test.skip('the chat-compare lab streams all panes from one shared prompt and eac
   await expect(lab.getByRole('button', { name: /Ask again/i })).toBeVisible();
 });
 
-test.skip('a failed pane shows a local Retry that re-runs only that pane while siblings keep their output', async ({ page }) => {
+test('a failed pane shows a local Retry that re-runs only that pane while siblings keep their output', async ({ page }) => {
   await stubClaude(page, [
     'Pane one answer.',
     { status: 500, body: JSON.stringify({ error: 'chat function unavailable' }) },
@@ -73,7 +72,7 @@ test.skip('a failed pane shows a local Retry that re-runs only that pane while s
   await expect(lab.getByText(/chat function unavailable/i)).not.toBeVisible();
 });
 
-test.skip('a suggested-prompt chip fills the input without submitting', async ({ page }) => {
+test('a suggested-prompt chip fills the input without submitting', async ({ page }) => {
   await stubClaude(page, 'Should never be requested by a chip click.');
 
   await signInAsDemo(page);

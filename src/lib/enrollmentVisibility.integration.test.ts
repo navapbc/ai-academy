@@ -190,6 +190,20 @@ describe.skipIf(!RUN)('enrollment-based modules visibility (U4)', () => {
     expect(seeded.data?.[0]?.visibility).toBe('public');
   });
 
+  test('U8 seed: an unenrolled learner reads the public Week-0 module but not a program Week-1 module', async () => {
+    const { client } = await newUser('u8-unenrolled');
+
+    // The literal U8-seeded rows (not fixtures): Week 0 is the public
+    // getting-started exemption (R8); the Week-1 rigged experiment is
+    // program-visibility and must never reach an unenrolled wire.
+    const res = await client
+      .from('modules')
+      .select('cell_id')
+      .in('cell_id', ['c1-w0-claude-setup', 'c1-w1-same-prompt-3x']);
+    expect(res.error).toBeNull();
+    expect(res.data?.map((r) => r.cell_id)).toEqual(['c1-w0-claude-setup']);
+  });
+
   test('an enrolled learner receives program rows (has_program_access)', async () => {
     const { client, uid } = await newUser('u4-enrolled');
     const cohortId = await newCohort('U4 Visibility Cohort');

@@ -127,7 +127,7 @@ async function buildFixture() {
 }
 
 describe.skipIf(!RUN)('course structure schema + seed (U1)', () => {
-  test('Course 1 is seeded with its seven week groups, in order, with empty membership', async () => {
+  test('Course 1 is seeded with its seven week groups, in order, with the U8 content assigned', async () => {
     const svc = serviceClient();
     const { data: course, error } = await svc
       .from('courses')
@@ -155,13 +155,27 @@ describe.skipIf(!RUN)('course structure schema + seed (U1)', () => {
     // Later weeks are authored via the CMS (R1) — empty shells for now.
     expect(weeks?.[4].subtitle).toBeNull();
 
-    // Membership ships EMPTY: no seeded module is assigned to a week in U1 (U8
-    // assigns real Course 1 content).
+    // U8 assigns the authored Course 1 content: Week 0 (public set-up), the
+    // two Week-1 experiments, Week 2, and the four Weeks-3–4 pod activities.
+    // Weeks 5+ stay empty shells (authored later via the CMS).
     const { data: members } = await svc
       .from('course_week_modules')
-      .select('cell_id')
+      .select('week_id, cell_id')
       .in('week_id', weeks!.map((w) => w.id));
-    expect(members ?? []).toHaveLength(0);
+    const byWeek = new Map(weeks!.map((w) => [w.id, w.title]));
+    const assigned = (members ?? []).map((m) => `${byWeek.get(m.week_id)}:${m.cell_id}`).sort();
+    expect(assigned).toEqual(
+      [
+        'Week 0:c1-w0-claude-setup',
+        'Week 1:c1-w1-same-prompt-3x',
+        'Week 1:c1-w1-confidently-wrong',
+        'Week 2:c1-w2-ground-and-scope',
+        'Weeks 3–4:c1-w34-pod-kickoff',
+        'Weeks 3–4:c1-w34-walk-the-workflow-delivery',
+        'Weeks 3–4:c1-w34-walk-the-workflow-general',
+        'Weeks 3–4:c1-w34-scavenger-hunt',
+      ].sort(),
+    );
   });
 
   test("every pre-existing module defaulted to visibility='public' (no behavior change)", async () => {
@@ -221,11 +235,12 @@ describe.skipIf(!RUN)('course structure RLS (U1 — final policies)', () => {
     expect(course.error).toBeNull();
     expect(course.data).toHaveLength(1);
 
-    // Seeded Course 1 has EMPTY membership in U1, so it is invisible to an
-    // unenrolled non-staff user until a public module is assigned (U8).
+    // Seeded Course 1 now holds the PUBLIC Week-0 module (U8), so the course
+    // row is visible even to an unenrolled non-staff user — the R8 mechanism
+    // that renders Week 0 inside Course 1 as getting-started content.
     const course1 = await client.from('courses').select('slug').eq('slug', 'course-1');
     expect(course1.error).toBeNull();
-    expect(course1.data ?? []).toHaveLength(0);
+    expect(course1.data ?? []).toHaveLength(1);
   });
 
   test('an enrolled learner reads all structure rows (has_program_access)', async () => {
