@@ -43,6 +43,7 @@ const base: Module = {
   id: '1.x',
   cellId: '1.x',
   origin: 'matrix',
+  visibility: 'public',
   title: 'T',
   type: 'content',
   content: '',

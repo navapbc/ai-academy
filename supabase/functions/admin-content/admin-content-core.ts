@@ -79,6 +79,19 @@ export function isValidCellId(v: unknown): v is string {
   return typeof v === 'string' && v.length <= CELL_ID_MAX && CELL_ID_RE.test(v);
 }
 
+// --- Module origin (cohort-restructure U1) -----------------------------------
+// Mirrors the DB `modules_origin_check` constraint and the ModuleOrigin union in
+// src/types.ts — keep all three in lockstep. 'matrix' = one of the 28 fixed
+// cells (has a stage); 'custom' and 'course' are stage-less (stage = null,
+// enforced by modules_origin_stage_check). Wherever this function validates an
+// origin (U3 adds the create-course variant), this is the allow-list.
+export const MODULE_ORIGINS = ['matrix', 'custom', 'course'] as const;
+export type ModuleOrigin = (typeof MODULE_ORIGINS)[number];
+
+export function isValidOrigin(v: unknown): v is ModuleOrigin {
+  return typeof v === 'string' && (MODULE_ORIGINS as readonly string[]).includes(v);
+}
+
 // --- Custom (free-form) lessons (P5.4-6) -------------------------------------
 // A custom lesson is created with a server-generated cell_id `custom-<slug>`.
 // The slug is derived deterministically from the title and collision-guarded

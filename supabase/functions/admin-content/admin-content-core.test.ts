@@ -15,6 +15,8 @@ import {
   slugify,
   customCellId,
   CUSTOM_ID_PREFIX,
+  MODULE_ORIGINS,
+  isValidOrigin,
   isAllowlistedAdmin,
   emailDomainAllowed,
   buildCorsHeaders,
@@ -40,6 +42,27 @@ describe('isValidCellId', () => {
     expect(isValidCellId('has space')).toBe(false);
     expect(isValidCellId('x'.repeat(81))).toBe(false);
     expect(isValidCellId(123)).toBe(false);
+  });
+
+  test('accepts Course-1 seeded and CMS-minted course ids (U1/U3 shapes)', () => {
+    expect(isValidCellId('c1-w1-break-claude')).toBe(true);
+    expect(isValidCellId('course-prompting-basics')).toBe(true);
+  });
+});
+
+describe('module origin enum (restructure U1)', () => {
+  test("MODULE_ORIGINS mirrors the DB modules_origin_check: matrix, custom, course", () => {
+    expect(MODULE_ORIGINS).toEqual(['matrix', 'custom', 'course']);
+  });
+
+  test("isValidOrigin accepts 'course' alongside the existing origins, rejects junk", () => {
+    expect(isValidOrigin('matrix')).toBe(true);
+    expect(isValidOrigin('custom')).toBe(true);
+    expect(isValidOrigin('course')).toBe(true);
+    expect(isValidOrigin('workshop')).toBe(false);
+    expect(isValidOrigin('')).toBe(false);
+    expect(isValidOrigin(null)).toBe(false);
+    expect(isValidOrigin(42)).toBe(false);
   });
 });
 

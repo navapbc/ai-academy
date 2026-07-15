@@ -28,11 +28,21 @@ export type Stage = '1a' | '1b' | '2';
 export type ModuleStatus = 'draft' | 'in_review' | 'published';
 
 /**
- * Where a lesson comes from (mirrors modules.origin, P5.4-1). `matrix` is one of
- * the 28 fixed cells (gated, has a stage); `custom` is a free-form lesson created
- * in the admin CMS (ungated, stage = null, shown in the "Additional lessons" group).
+ * Where a lesson comes from (mirrors modules.origin, P5.4-1 / cohort-restructure
+ * U1). `matrix` is one of the 28 fixed cells (has a stage); `custom` is a
+ * free-form lesson created in the admin CMS (stage = null, shown in the
+ * "Additional lessons" group); `course` is a Course-1+ program lesson (stage =
+ * null — stage-less like custom), rendered under its assigned course week (U2).
  */
-export type ModuleOrigin = 'matrix' | 'custom';
+export type ModuleOrigin = 'matrix' | 'custom' | 'course';
+
+/**
+ * Who may see a module (mirrors modules.visibility, cohort-restructure U1).
+ * `public` = every signed-in Nava user (matrix/supplemental/custom/Week 0);
+ * `program` = enrolled learners + staff only, enforced by RLS (U4). Assigning a
+ * module to a week never changes its visibility.
+ */
+export type ModuleVisibility = 'public' | 'program';
 
 /**
  * A user's access role (mirrors the `profiles.role` CHECK constraint).
@@ -57,10 +67,12 @@ export interface Module {
   tutorReference?: string; // extra tutor grounding for this cell, from modules.tutor_reference_md (P5.4-1)
   resources?: { title: string; url: string }[];
   // --- Matrix metadata (P3.1) ---
-  cellId: string; // matrix cell id (== id for matrix cells, e.g. '1.4'); 'custom-<slug>' for custom lessons
-  origin: ModuleOrigin; // 'matrix' (one of the 28 cells) | 'custom' (free-form lesson) — P5.4-1
-  // Matrix cells have a stage; custom lessons are ungated and carry stage = null.
+  cellId: string; // matrix cell id (== id for matrix cells, e.g. '1.4'); 'custom-<slug>' / 'c1-…'/'course-<slug>' otherwise
+  origin: ModuleOrigin; // 'matrix' | 'custom' | 'course' — P5.4-1 / restructure U1
+  // Matrix cells have a stage; custom and course lessons carry stage = null.
   stage: Stage | null;
+  // Who may see this module (RLS-enforced from U4). 'public' | 'program' — U1.
+  visibility: ModuleVisibility;
   // Editorial state from modules.status (W3-2 / D10). Until SME accuracy review
   // flips a row to 'published', learners see it with a "draft — under review"
   // badge — content stays testable but is clearly marked (closes audit D-08).

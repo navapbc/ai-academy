@@ -25,6 +25,7 @@ function makeModule(id: string): Module {
     id,
     cellId: id,
     origin: 'matrix',
+    visibility: 'public',
     title: `Module ${id}`,
     type: 'content',
     content: '# body',

@@ -16,6 +16,7 @@ const mod = (over: Partial<Module>): Module =>
     content: '',
     phaseId: 'stage-1a',
     origin: 'matrix',
+    visibility: 'public',
     stage: '1a',
     status: 'published',
     dimension: [],

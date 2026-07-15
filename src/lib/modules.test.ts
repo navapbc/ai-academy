@@ -9,6 +9,7 @@ const baseRow = {
   stage: '1a',
   status: 'published',
   origin: 'matrix',
+  visibility: 'public',
   title: 'Recognizing when AI is appropriate',
   type: 'sorter',
   dimension: ['Delegation'],
@@ -52,6 +53,7 @@ describe('mapRowToModule — P5.4-1 fields', () => {
     expect(m.origin).toBe('matrix');
     expect(m.phaseId).toBe('stage-1a');
     expect(m.stage).toBe('1a');
+    expect(m.visibility).toBe('public'); // U1: mapped through from the row
   });
 
   test('a custom lesson (stage=null) maps into the Additional-lessons phase', () => {
@@ -108,5 +110,25 @@ describe('assertModuleRow — P5.4-1 origin/stage guard', () => {
     expect(() => assertModuleRow({ ...baseRow, origin: 'weird' })).toThrow(/origin/);
     expect(() => assertModuleRow({ ...baseRow, stage: 'Z9' })).toThrow(/stage/);
     expect(() => assertModuleRow({ ...baseRow, origin: 'custom', stage: '1a' })).toThrow(/custom/);
+  });
+});
+
+describe('assertModuleRow — restructure U1 course origin + visibility guard', () => {
+  test('accepts a stage-less course row, in both visibility classes', () => {
+    expect(() =>
+      assertModuleRow({ ...baseRow, cell_id: 'c1-w1-break-claude', origin: 'course', stage: null, visibility: 'program' }),
+    ).not.toThrow();
+    expect(() =>
+      assertModuleRow({ ...baseRow, cell_id: 'c1-w0-claude-setup', origin: 'course', stage: null, visibility: 'public' }),
+    ).not.toThrow();
+  });
+
+  test('throws on a course row with a stage (stage-less, like custom)', () => {
+    expect(() => assertModuleRow({ ...baseRow, origin: 'course', stage: '2' })).toThrow(/course/);
+  });
+
+  test('throws on a missing or unknown visibility (schema lockstep)', () => {
+    expect(() => assertModuleRow({ ...baseRow, visibility: undefined })).toThrow(/visibility/);
+    expect(() => assertModuleRow({ ...baseRow, visibility: 'secret' })).toThrow(/visibility/);
   });
 });

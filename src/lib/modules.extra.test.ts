@@ -11,6 +11,7 @@ const row = (over: Record<string, unknown> = {}) => ({
   stage: '1a' as Stage,
   status: 'published',
   origin: 'matrix',
+  visibility: 'public',
   title: 'Data classification',
   type: 'content',
   dimension: ['Diligence'],

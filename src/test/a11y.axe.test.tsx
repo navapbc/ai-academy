@@ -100,6 +100,7 @@ const baseModule: Module = {
   id: '1.1',
   cellId: '1.1',
   origin: 'matrix',
+  visibility: 'public',
   title: 'What is AI literacy?',
   type: 'content',
   content: '# What is AI literacy?\n\nA short lesson with a [link](https://example.gov) and a list:\n\n- one\n- two',

@@ -6,6 +6,7 @@ import type {
   ModuleOrigin,
   ModuleStatus,
   ModuleType,
+  ModuleVisibility,
   Phase,
   QuizQuestion,
   SelfReportValidity,
@@ -62,10 +63,11 @@ const CUSTOM_PHASE_META: Pick<Phase, 'id' | 'week' | 'title' | 'description'> = 
 /** A row from the `modules` table (only the columns the runtime curriculum needs). */
 interface ModuleRow {
   cell_id: string;
-  // Custom lessons are ungated and carry stage = null (P5.4-1).
+  // Custom and course lessons are stage-less (stage = null) — P5.4-1 / U1.
   stage: Stage | null;
   status: ModuleStatus;
   origin: ModuleOrigin;
+  visibility: ModuleVisibility;
   title: string;
   type: ModuleType;
   dimension: Dimension[];
@@ -87,7 +89,7 @@ interface ModuleRow {
 // content, never an in-progress draft (R3, W2-2). The CMS read path (Chunk 2)
 // selects `draft` separately for admins.
 const MODULE_COLUMNS =
-  'cell_id, stage, status, origin, title, type, dimension, evidence_type, self_report_validity, body_md, video_url, tutor_reference_md, archived_at, mastery_anchor, emergent_anchor, quiz_json, lab_config_json, sorter_config_json';
+  'cell_id, stage, status, origin, visibility, title, type, dimension, evidence_type, self_report_validity, body_md, video_url, tutor_reference_md, archived_at, mastery_anchor, emergent_anchor, quiz_json, lab_config_json, sorter_config_json';
 
 /**
  * Runtime guard for a `modules` row (TYPE-03). The Supabase client returns
@@ -111,18 +113,23 @@ export function assertModuleRow(row: unknown): asserts row is ModuleRow {
   requireString('title');
   requireString('type');
   requireString('origin');
+  requireString('visibility');
   if (!['draft', 'in_review', 'published'].includes(r.status as string)) {
     throw new Error(`modules row has unknown status "${String(r.status)}" — schema drift?`);
   }
-  if (!['matrix', 'custom'].includes(r.origin as string)) {
+  if (!['matrix', 'custom', 'course'].includes(r.origin as string)) {
     throw new Error(`modules row has unknown origin "${String(r.origin)}" — schema drift?`);
   }
-  // Matrix cells carry a valid stage; custom lessons are ungated (stage = null).
-  // The draft working copy is admin-only and re-validated on write, so the read
-  // side only needs to guard the live stage discriminator here (P5.4-1).
-  if (r.origin === 'custom') {
+  if (!['public', 'program'].includes(r.visibility as string)) {
+    throw new Error(`modules row has unknown visibility "${String(r.visibility)}" — schema drift?`);
+  }
+  // Matrix cells carry a valid stage; custom and course lessons are stage-less
+  // (stage = null) — U1. The draft working copy is admin-only and re-validated
+  // on write, so the read side only needs to guard the live stage discriminator
+  // here (P5.4-1).
+  if (r.origin === 'custom' || r.origin === 'course') {
     if (r.stage !== null && r.stage !== undefined) {
-      throw new Error(`custom module has a non-null stage "${String(r.stage)}" — schema drift?`);
+      throw new Error(`${r.origin} module has a non-null stage "${String(r.stage)}" — schema drift?`);
     }
   } else if (!((r.stage as string) in STAGE_META)) {
     throw new Error(`modules row has unknown stage "${String(r.stage)}" — schema drift?`);
@@ -149,6 +156,7 @@ export function mapRowToModule(row: ModuleRow): Module {
     phaseId,
     origin,
     stage: row.stage,
+    visibility: row.visibility,
     status: row.status,
     dimension: row.dimension,
     evidenceType: row.evidence_type,

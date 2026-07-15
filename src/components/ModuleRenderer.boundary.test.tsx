@@ -29,6 +29,7 @@ const base: Module = {
   id: '2.15',
   cellId: '2.15',
   origin: 'matrix',
+  visibility: 'public',
   title: 'T',
   type: 'content',
   content: '# Lesson body text',
