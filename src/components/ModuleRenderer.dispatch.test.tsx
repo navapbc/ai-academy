@@ -52,11 +52,12 @@ const base: Module = {
   dimension: ['Diligence'],
   evidenceType: 'quiz',
   selfReportValidity: 'medium',
+  progressResetAt: null,
 };
 
 function renderModule(
   over: Partial<Module>,
-  opts: { isCompleted?: boolean; onComplete?: (via: string) => void } = {},
+  opts: { isCompleted?: boolean; onComplete?: (via: string) => void; wasReset?: boolean } = {},
 ) {
   return render(
     <ModuleRenderer
@@ -64,6 +65,7 @@ function renderModule(
       selectedPersona="default"
       isCompleted={opts.isCompleted ?? false}
       onComplete={opts.onComplete ?? (() => {})}
+      wasReset={opts.wasReset}
     />,
   );
 }
@@ -192,5 +194,93 @@ describe('editorial-status badge (W3-2 / D10 / audit D-08)', () => {
   test('a published module shows no draft badge', () => {
     renderModule({ type: 'content', content: '# Lesson', status: 'published' });
     expect(screen.queryByText(/Draft — under review/i)).not.toBeInTheDocument();
+  });
+});
+
+// U10: the reset notice — shown when this session dropped a cached completion
+// for the module (wasReset), above the content / below the draft badge.
+// Dismissal is in-memory and re-arms on module change, so it reappears on
+// revisit until the module is re-completed (intended v1 behavior).
+describe('reset notice (U10)', () => {
+  test('renders the dated notice when wasReset is set', () => {
+    renderModule(
+      { type: 'content', content: '# Lesson', progressResetAt: '2026-07-15T12:00:00+00:00' },
+      { wasReset: true },
+    );
+    const expectedDate = new Date('2026-07-15T12:00:00+00:00').toLocaleDateString();
+    expect(
+      screen.getByText(new RegExp(`updated on ${expectedDate}.*progress was reset`, 'i')),
+    ).toBeInTheDocument();
+  });
+
+  test('renders no notice when wasReset is absent — even on a previously reset module', () => {
+    renderModule(
+      { type: 'content', content: '# Lesson', progressResetAt: '2026-07-15T12:00:00+00:00' },
+      {},
+    );
+    expect(screen.queryByText(/progress was reset/i)).not.toBeInTheDocument();
+  });
+
+  test('Dismiss hides the notice for the current view (in-memory only)', async () => {
+    const user = userEvent.setup();
+    renderModule(
+      { type: 'content', content: '# Lesson', progressResetAt: '2026-07-15T12:00:00+00:00' },
+      { wasReset: true },
+    );
+    await user.click(screen.getByRole('button', { name: /dismiss/i }));
+    expect(screen.queryByText(/progress was reset/i)).not.toBeInTheDocument();
+  });
+
+  test('the dismissal re-arms when the rendered module changes (reappears on revisit)', async () => {
+    const user = userEvent.setup();
+    const view = renderModule(
+      { id: 'a1', type: 'content', content: '# Lesson', progressResetAt: '2026-07-15T12:00:00+00:00' },
+      { wasReset: true },
+    );
+    await user.click(screen.getByRole('button', { name: /dismiss/i }));
+    expect(screen.queryByText(/progress was reset/i)).not.toBeInTheDocument();
+
+    // Navigate away and back (module prop changes) — the notice returns.
+    view.rerender(
+      <ModuleRenderer
+        module={{ ...base, id: 'b2', type: 'content', content: '# Other' }}
+        selectedPersona="default"
+        isCompleted={false}
+        onComplete={() => {}}
+      />,
+    );
+    view.rerender(
+      <ModuleRenderer
+        module={{
+          ...base,
+          id: 'a1',
+          type: 'content',
+          content: '# Lesson',
+          progressResetAt: '2026-07-15T12:00:00+00:00',
+        }}
+        selectedPersona="default"
+        isCompleted={false}
+        onComplete={() => {}}
+        wasReset
+      />,
+    );
+    expect(screen.getByText(/progress was reset/i)).toBeInTheDocument();
+  });
+
+  test('renders below the draft badge and above the lesson content (UX decision)', () => {
+    renderModule(
+      {
+        type: 'content',
+        content: '# Lesson body here',
+        status: 'in_review',
+        progressResetAt: '2026-07-15T12:00:00+00:00',
+      },
+      { wasReset: true },
+    );
+    const badge = screen.getByText(/Draft — under review/i);
+    const notice = screen.getByText(/progress was reset/i);
+    const body = screen.getByRole('heading', { name: /lesson body here/i });
+    expect(badge.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(notice.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

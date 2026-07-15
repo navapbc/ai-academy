@@ -35,6 +35,7 @@ function makeModule(id: string): Module {
     dimension: ['Diligence'],
     evidenceType: 'quiz',
     selfReportValidity: 'medium',
+    progressResetAt: null,
   };
 }
 

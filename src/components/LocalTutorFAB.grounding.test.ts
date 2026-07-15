@@ -22,6 +22,7 @@ const mod = (over: Partial<Module>): Module =>
     dimension: [],
     evidenceType: 'quiz',
     selfReportValidity: 'na',
+    progressResetAt: null,
     ...over,
   }) as Module;
 

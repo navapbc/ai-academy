@@ -110,6 +110,7 @@ const baseModule: Module = {
   dimension: ['Diligence'],
   evidenceType: 'quiz',
   selfReportValidity: 'medium',
+  progressResetAt: null,
 };
 
 const quizModule: Module = {

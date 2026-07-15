@@ -73,6 +73,9 @@ interface ModuleRow {
   video_url: string | null;
   tutor_reference_md: string | null;
   archived_at: string | null;
+  // U10: when an admin last published-with-reset (null = never). Captured by
+  // the client at completion time and echoed with completion writes.
+  progress_reset_at: string | null;
   mastery_anchor: string | null;
   emergent_anchor: string | null;
   quiz_json: QuizQuestion[] | null;
@@ -85,7 +88,7 @@ interface ModuleRow {
 // content, never an in-progress draft (R3, W2-2). The CMS read path (Chunk 2)
 // selects `draft` separately for admins.
 const MODULE_COLUMNS =
-  'cell_id, stage, status, origin, visibility, title, type, dimension, evidence_type, self_report_validity, body_md, video_url, tutor_reference_md, archived_at, mastery_anchor, emergent_anchor, quiz_json, lab_config_json, sorter_config_json';
+  'cell_id, stage, status, origin, visibility, title, type, dimension, evidence_type, self_report_validity, body_md, video_url, tutor_reference_md, archived_at, progress_reset_at, mastery_anchor, emergent_anchor, quiz_json, lab_config_json, sorter_config_json';
 
 /**
  * Runtime guard for a `modules` row (TYPE-03). The Supabase client returns
@@ -133,6 +136,15 @@ export function assertModuleRow(row: unknown): asserts row is ModuleRow {
   if (!Array.isArray(r.dimension)) {
     throw new Error('modules row field "dimension" is not an array — schema drift?');
   }
+  // U10: progress_reset_at is a nullable timestamptz — a present non-string,
+  // non-null value means the column changed shape under us.
+  if (
+    r.progress_reset_at !== null &&
+    r.progress_reset_at !== undefined &&
+    typeof r.progress_reset_at !== 'string'
+  ) {
+    throw new Error('modules row field "progress_reset_at" is not a string or null — schema drift?');
+  }
 }
 
 /**
@@ -156,6 +168,7 @@ export function mapRowToModule(row: ModuleRow): Module {
     stage: row.stage,
     visibility: row.visibility,
     status: row.status,
+    progressResetAt: row.progress_reset_at ?? null,
     dimension: row.dimension,
     evidenceType: row.evidence_type,
     selfReportValidity: row.self_report_validity,

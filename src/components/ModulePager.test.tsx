@@ -22,6 +22,7 @@ const mod = (id: string, title: string): Module => ({
   dimension: ['Diligence'],
   evidenceType: 'quiz',
   selfReportValidity: 'medium',
+  progressResetAt: null,
 });
 
 const MODULES = [mod('1.1', 'First lesson'), mod('1.2', 'Middle lesson'), mod('1.3', 'Last lesson')];

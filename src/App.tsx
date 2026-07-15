@@ -103,14 +103,20 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
   const allModuleIds = useMemo(() => allModules.map(m => m.id), [allModules]);
   const moduleById = useMemo(() => new Map(allModules.map(m => [m.id, m])), [allModules]);
 
-  // Gating is behaviorally OFF (restructure U2, R14): no isLocked predicate is
-  // passed, so useProgress treats every module as unlocked and the completion
-  // cursor advances straight through the flattened visible order. The gating
-  // machinery files are deleted in U11.
-  const { progress, completeModule, selectModule, error, dismissError } = useProgress(
-    userId,
-    allModuleIds,
+  // U10: the reset-epoch lookup — the module's progress_reset_at from the
+  // in-memory curriculum fetch. useProgress captures it AT COMPLETION TIME and
+  // uses it at reconcile to detect completions a publish-time reset deleted.
+  const getResetEpoch = useCallback(
+    (moduleId: string) => moduleById.get(moduleId)?.progressResetAt ?? null,
+    [moduleById],
   );
+
+  // Gating is behaviorally OFF (restructure U2, R14): no isLocked predicate is
+  // passed (undefined — the parameter itself is deleted in U11), so useProgress
+  // treats every module as unlocked and the completion cursor advances straight
+  // through the flattened visible order.
+  const { progress, completeModule, selectModule, resetModuleIds, error, dismissError } =
+    useProgress(userId, allModuleIds, undefined, getResetEpoch);
 
   // Role drives which views are reachable (P5.1d). Resolved here, inside the
   // `key={session.user.id}` subtree, so it resets cleanly on a user switch and
@@ -313,6 +319,7 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
               selectedPersona={selectedPersona}
               isCompleted={progress.completedModuleIds.includes(currentModule.id)}
               onComplete={(via) => handleComplete(currentModule.id, via)}
+              wasReset={resetModuleIds.has(currentModule.id)}
             />
             {/* Week flow (U2/R4): Next/Previous over the flattened visible order.
                 Pure navigation — completion semantics are untouched (U9). */}

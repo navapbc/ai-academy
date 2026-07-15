@@ -103,7 +103,10 @@ export type CreatableOrigin = 'custom' | 'course';
 
 export type ContentAction =
   | { action: 'save-draft'; cellId: string; draft: DraftFields }
-  | { action: 'publish'; cellId: string; note?: string }
+  // resetProgress (restructure U10): publish may additionally clear every
+  // learner's progress for the module (server sets the reset epoch, then
+  // deletes the rows). Omitted when false so pre-U10 bodies are unchanged.
+  | { action: 'publish'; cellId: string; note?: string; resetProgress?: boolean }
   | { action: 'archive'; cellId: string }
   | { action: 'restore'; cellId: string }
   | { action: 'create-custom'; title: string; type: string; origin?: CreatableOrigin };
@@ -158,13 +161,16 @@ export const saveDraft = (cellId: string, draft: DraftFields) =>
 /**
  * Publishes a lesson. `note` is the optional "what changed?" change-note (X.2);
  * blank/whitespace is omitted so the server persists null. The server trims and
- * length-caps it (≤500) authoritatively.
+ * length-caps it (≤500) authoritatively. `resetProgress` (U10) additionally
+ * clears every learner's progress for the module — omitted from the body when
+ * false so pre-U10 request bodies are byte-identical.
  */
-export const publishLesson = (cellId: string, note?: string) => {
+export const publishLesson = (cellId: string, note?: string, resetProgress?: boolean) => {
   const trimmed = note?.trim();
-  return invokeAdminContent(
-    trimmed ? { action: 'publish', cellId, note: trimmed } : { action: 'publish', cellId },
-  );
+  const action: Extract<ContentAction, { action: 'publish' }> = { action: 'publish', cellId };
+  if (trimmed) action.note = trimmed;
+  if (resetProgress) action.resetProgress = true;
+  return invokeAdminContent(action);
 };
 export const archiveLesson = (cellId: string) => invokeAdminContent({ action: 'archive', cellId });
 export const restoreLesson = (cellId: string) => invokeAdminContent({ action: 'restore', cellId });

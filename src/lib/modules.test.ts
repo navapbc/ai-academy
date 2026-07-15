@@ -19,6 +19,7 @@ const baseRow = {
   video_url: null,
   tutor_reference_md: null,
   archived_at: null,
+  progress_reset_at: null,
   mastery_anchor: null,
   emergent_anchor: null,
   quiz_json: null,
@@ -72,6 +73,19 @@ describe('mapRowToModule — P5.4-1 fields', () => {
     const m = mapRow({ cell_id: 'custom-foo', origin: 'custom', stage: null });
     expect(m.origin).toBe('custom');
     expect(m.stage).toBeNull();
+  });
+
+  // U10: progress_reset_at rides the curriculum fetch so the client can capture
+  // the module's reset epoch at completion time.
+  test('maps progress_reset_at to progressResetAt (null and value)', () => {
+    expect(mapRow({}).progressResetAt).toBeNull();
+    expect(mapRow({ progress_reset_at: '2026-07-15T12:00:00+00:00' }).progressResetAt).toBe(
+      '2026-07-15T12:00:00+00:00',
+    );
+    // An absent column (pre-migration row shape) degrades to null, not undefined.
+    const withoutColumn: Record<string, unknown> = { ...baseRow };
+    delete withoutColumn.progress_reset_at;
+    expect(mapRowToModule(withoutColumn as never).progressResetAt).toBeNull();
   });
 
   test('null video_url / tutor_reference_md become undefined', () => {
@@ -221,5 +235,23 @@ describe('assertModuleRow — restructure U1 course origin + visibility guard', 
   test('throws on a missing or unknown visibility (schema lockstep)', () => {
     expect(() => assertModuleRow({ ...baseRow, visibility: undefined })).toThrow(/visibility/);
     expect(() => assertModuleRow({ ...baseRow, visibility: 'secret' })).toThrow(/visibility/);
+  });
+});
+
+describe('assertModuleRow — U10 progress_reset_at guard', () => {
+  test('accepts null, a timestamp string, and an absent column', () => {
+    expect(() => assertModuleRow({ ...baseRow, progress_reset_at: null })).not.toThrow();
+    expect(() =>
+      assertModuleRow({ ...baseRow, progress_reset_at: '2026-07-15T12:00:00+00:00' }),
+    ).not.toThrow();
+    const withoutColumn: Record<string, unknown> = { ...baseRow };
+    delete withoutColumn.progress_reset_at;
+    expect(() => assertModuleRow(withoutColumn)).not.toThrow();
+  });
+
+  test('throws on a non-string, non-null value (schema lockstep)', () => {
+    expect(() => assertModuleRow({ ...baseRow, progress_reset_at: 1234567 })).toThrow(
+      /progress_reset_at/,
+    );
   });
 });

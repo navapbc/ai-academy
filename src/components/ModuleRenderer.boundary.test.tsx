@@ -39,6 +39,7 @@ const base: Module = {
   dimension: ['Diligence'],
   evidenceType: 'performance-task',
   selfReportValidity: 'medium',
+  progressResetAt: null,
 };
 
 function renderModule(over: Partial<Module>) {

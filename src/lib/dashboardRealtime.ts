@@ -9,6 +9,10 @@ import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient';
 // a subscriber only receives events for rows it can read (P5.1c/P5.2a).
 
 /** The base tables behind the P5.2a views — a change in any one moves the dashboard. */
+// U10 note: a publish-with-reset bulk-DELETEs module_progress rows, emitting one
+// event per deleted row. The trailing debounce below coalesces the whole burst
+// into a single view refetch, and payloads are never read — so the reset needs
+// no special handling here (verified during U10; nothing to change).
 const DASHBOARD_TABLES = [
   'module_progress',
   'quiz_attempts',

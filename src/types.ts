@@ -77,6 +77,12 @@ export interface Module {
   // flips a row to 'published', learners see it with a "draft — under review"
   // badge — content stays testable but is clearly marked (closes audit D-08).
   status: ModuleStatus;
+  // The module's progress-reset epoch (modules.progress_reset_at, U10): the
+  // moment an admin last published-with-reset, or null if never reset. The
+  // client CAPTURES this value at completion time and echoes it with the
+  // completion write — the DB trigger rejects completions carrying an older
+  // epoch, so offline caches can't resurrect reset progress.
+  progressResetAt: string | null;
   dimension: Dimension[]; // 4D tag(s)
   evidenceType: EvidenceType; // matrix "primary evidence"
   selfReportValidity: SelfReportValidity;
@@ -754,6 +760,16 @@ export type LabConfig =
 export interface UserProgress {
   completedModuleIds: string[];
   currentModuleId: string;
+  /**
+   * U10: per-completion reset epochs — for each completed module id, the
+   * module's `progress_reset_at` as captured AT COMPLETION TIME (null =
+   * module never reset, or unknown for server-hydrated/legacy completions).
+   * Reconcile compares these to the fetched module's current epoch to decide
+   * whether a locally cached completion was reset by a publish (dropped, not
+   * unioned). Optional so pre-U10 shapes remain constructible; the progress
+   * cache bumped CACHE_VERSION over this change.
+   */
+  completionEpochs?: Record<string, string | null>;
 }
 
 export type AIPersona = 'analyst' | 'empathy' | 'technical' | 'default';

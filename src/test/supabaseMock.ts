@@ -38,6 +38,7 @@ const CHAIN_METHODS = [
 export function createSupabaseMock() {
   const state = {
     result: { data: null, error: null } as QueryResult,
+    resultQueue: [] as QueryResult[],
     fromCalls: [] as string[],
     ops: [] as RecordedOp[],
     getSessionResult: { data: { session: null }, error: null } as unknown,
@@ -52,10 +53,12 @@ export function createSupabaseMock() {
       });
     }
     // PostgREST builders are thenables — awaiting the tail resolves the query.
+    // A queued result (queueResults) is consumed once per awaited query, in
+    // FIFO order; when the queue is empty the sticky `result` is used.
     (builder as { then: unknown }).then = (
       resolve: (v: QueryResult) => unknown,
       reject?: (e: unknown) => unknown,
-    ) => Promise.resolve(state.result).then(resolve, reject);
+    ) => Promise.resolve(state.resultQueue.shift() ?? state.result).then(resolve, reject);
     return builder;
   };
 
@@ -75,6 +78,14 @@ export function createSupabaseMock() {
     setResult(result: QueryResult) {
       state.result = result;
     },
+    /**
+     * Enqueue results consumed one per awaited query (FIFO), for flows that
+     * run several sequential queries in one call (e.g. submitCompletion's
+     * write → epoch refetch → resubmit). Falls back to setResult's value.
+     */
+    queueResults(...results: QueryResult[]) {
+      state.resultQueue.push(...results);
+    },
     /** Configure what auth.getSession resolves to. */
     setSession(result: unknown) {
       state.getSessionResult = result;
@@ -93,6 +104,7 @@ export function createSupabaseMock() {
     },
     reset() {
       state.result = { data: null, error: null };
+      state.resultQueue = [];
       state.fromCalls = [];
       state.ops = [];
       state.getSessionResult = { data: { session: null }, error: null };

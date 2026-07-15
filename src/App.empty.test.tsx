@@ -39,6 +39,7 @@ const module14: Module = {
   dimension: ['Diligence'],
   evidenceType: 'quiz',
   selfReportValidity: 'medium',
+  progressResetAt: null,
 };
 
 const supplementalOnly: CurriculumSection[] = [
@@ -74,6 +75,7 @@ beforeEach(() => {
     progress: { completedModuleIds: [], currentModuleId: '1.4' },
     completeModule: vi.fn(),
     selectModule: vi.fn(),
+    resetModuleIds: new Set<string>(),
     error: null,
     dismissError: vi.fn(),
   });

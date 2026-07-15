@@ -121,7 +121,54 @@ async function applyAction(
         console.warn('content_versions snapshot insert threw:', e);
       }
 
-      return { error: null, detail: { version: update.version } };
+      const detail: Record<string, unknown> = { version: update.version };
+
+      // Progress reset (restructure U10, R17) — NOT best-effort (unlike the
+      // snapshot above): a failure is reported so the admin retries. STRICTLY
+      // ORDERED, each PostgREST call its own transaction:
+      //   1. Commit modules.progress_reset_at FIRST — the commit point. From
+      //      this instant the DB trigger (enforce_progress_reset_epoch)
+      //      rejects any completion write carrying an older epoch, so nothing
+      //      step 2 deletes can be resurrected by a stale cache/outbox.
+      //   2. THEN delete the module's module_progress rows (counted for audit).
+      // The epoch is minted here, never derived from the snapshot write — the
+      // snapshot is best-effort and is NOT the epoch source.
+      if (action.resetProgress) {
+        const epoch = new Date().toISOString();
+        const { error: epochErr } = await admin
+          .from('modules')
+          .update({ progress_reset_at: epoch })
+          .eq('cell_id', action.cellId);
+        if (epochErr) {
+          return {
+            error:
+              'The lesson was published, but resetting learner progress failed. ' +
+              'Publish with reset again to retry.',
+            status: 409,
+          };
+        }
+        const { count, error: delErr } = await admin
+          .from('module_progress')
+          .delete({ count: 'exact' })
+          .eq('module_id', action.cellId);
+        if (delErr) {
+          // The epoch committed, so stale re-writes are already blocked, but the
+          // pre-reset rows survive — the admin must retry to clear them.
+          return {
+            error:
+              'The lesson was published and the reset epoch was set, but clearing ' +
+              'existing learner progress failed. Publish with reset again to retry.',
+            status: 409,
+          };
+        }
+        // Rides the content_changes audit insert below (action='publish'):
+        // detail carries the deleted-row count + the new epoch (U10 audit).
+        detail.resetProgress = true;
+        detail.resetEpoch = epoch;
+        detail.deletedProgressRows = count ?? 0;
+      }
+
+      return { error: null, detail };
     }
     case 'archive': {
       // Referential guard (restructure U3): a lesson assigned to a course week

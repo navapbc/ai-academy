@@ -440,7 +440,7 @@ Empty weeks hidden from learners.
 **Verification:** Browser smoke as seeded learner: free-jump everywhere, no locks
 anywhere, denominators sane, week Next/Previous works.
 
-- [ ] **Unit 3: Course authoring in the CMS**
+- [x] **Unit 3: Course authoring in the CMS** ✓ committed fe2867d
 
 **Goal:** Admins create/rename/reorder weeks and assign/unassign/reorder published
 modules; referential guards both directions; course lessons creatable via CMS.
@@ -682,7 +682,7 @@ unenrolled walkthrough sees exactly Week 0.
 
 ### Phase 5 — Completion semantics & progress reset
 
-- [ ] **Unit 9: Hybrid participation completion**
+- [x] **Unit 9: Hybrid participation completion** ✓ committed f5f55eb (data-layer seam; quiz gates removed entirely)
 
 **Goal:** Participation events auto-complete; universal one-way "Mark as explored";
 quizzes never gate; `completed_via` stamped.

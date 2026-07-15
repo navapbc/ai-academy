@@ -109,8 +109,9 @@ describe('LessonEditor (P5.4-3)', () => {
     await userEvent.click(screen.getByRole('button', { name: /publish/i }));
 
     expect(h.saveDraft).toHaveBeenCalledTimes(1);
-    // Empty change-note → passed as '' to the creator, which omits it server-side (X.2).
-    expect(h.publishLesson).toHaveBeenCalledWith('2.9', '');
+    // Empty change-note → passed as '' to the creator, which omits it server-side
+    // (X.2); reset unchecked → false (U10).
+    expect(h.publishLesson).toHaveBeenCalledWith('2.9', '', false);
     expect(await screen.findByRole('status')).toHaveTextContent(/published/i);
   });
 
@@ -119,7 +120,7 @@ describe('LessonEditor (P5.4-3)', () => {
     await userEvent.type(screen.getByLabelText(/what changed/i), 'Fixed the reflection prompt');
     await userEvent.click(screen.getByRole('button', { name: /publish/i }));
 
-    expect(h.publishLesson).toHaveBeenCalledWith('2.9', 'Fixed the reflection prompt');
+    expect(h.publishLesson).toHaveBeenCalledWith('2.9', 'Fixed the reflection prompt', false);
   });
 
   test('clears the change-note field after a successful publish (X.2)', async () => {
@@ -167,5 +168,65 @@ describe('LessonEditor (P5.4-3)', () => {
     render(<LessonEditor lesson={lesson({ bodyMd: '' })} onBack={() => {}} onSaved={() => {}} />);
     expect(screen.getByText(/body is empty/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save draft/i })).toBeEnabled();
+  });
+});
+
+// U10: publish-time progress reset — checkbox (default off) + explicit confirm
+// step. The reset is destructive, so nothing reaches publishLesson until the
+// admin confirms; cancelling backs out with no call.
+describe('LessonEditor — reset learner progress (U10)', () => {
+  test('the reset checkbox renders unchecked by default and a plain publish sends resetProgress: false', async () => {
+    render(<LessonEditor lesson={lesson()} onBack={() => {}} onSaved={() => {}} />);
+    const checkbox = screen.getByRole('checkbox', { name: /reset learner progress/i });
+    expect(checkbox).not.toBeChecked();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+    expect(h.publishLesson).toHaveBeenCalledWith('2.9', '', false);
+  });
+
+  test('a reset-flagged publish shows the confirm step FIRST — no network call yet', async () => {
+    render(<LessonEditor lesson={lesson()} onBack={() => {}} onSaved={() => {}} />);
+    await userEvent.click(screen.getByRole('checkbox', { name: /reset learner progress/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+
+    expect(screen.getByRole('alertdialog', { name: /confirm progress reset/i })).toBeInTheDocument();
+    expect(h.saveDraft).not.toHaveBeenCalled();
+    expect(h.publishLesson).not.toHaveBeenCalled();
+  });
+
+  test('confirming publishes with resetProgress: true and reports the reset', async () => {
+    render(<LessonEditor lesson={lesson()} onBack={() => {}} onSaved={() => {}} />);
+    await userEvent.click(screen.getByRole('checkbox', { name: /reset learner progress/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+    await userEvent.click(screen.getByRole('button', { name: /publish and reset progress/i }));
+
+    expect(h.saveDraft).toHaveBeenCalledTimes(1);
+    expect(h.publishLesson).toHaveBeenCalledWith('2.9', '', true);
+    expect(await screen.findByRole('status')).toHaveTextContent(/progress .* was reset/i);
+    // The destructive flag does not linger armed for the next publish.
+    expect(screen.getByRole('checkbox', { name: /reset learner progress/i })).not.toBeChecked();
+  });
+
+  test('cancelling the confirm step backs out without publishing', async () => {
+    render(<LessonEditor lesson={lesson()} onBack={() => {}} onSaved={() => {}} />);
+    await userEvent.click(screen.getByRole('checkbox', { name: /reset learner progress/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+    await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(h.publishLesson).not.toHaveBeenCalled();
+    // The checkbox stays checked — the admin can re-attempt deliberately.
+    expect(screen.getByRole('checkbox', { name: /reset learner progress/i })).toBeChecked();
+  });
+
+  test('unchecking the box dismisses a pending confirm step', async () => {
+    render(<LessonEditor lesson={lesson()} onBack={() => {}} onSaved={() => {}} />);
+    const checkbox = screen.getByRole('checkbox', { name: /reset learner progress/i });
+    await userEvent.click(checkbox);
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+
+    await userEvent.click(checkbox);
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 });

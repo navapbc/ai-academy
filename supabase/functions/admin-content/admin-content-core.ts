@@ -51,7 +51,10 @@ export const DRAFT_COLUMN_KEYS = [
 
 export type ContentAction =
   | { action: 'save-draft'; cellId: string; draft: DraftFields }
-  | { action: 'publish'; cellId: string; note: string | null }
+  // resetProgress (restructure U10): publish may additionally clear every
+  // learner's progress for the module — the core parses/validates the flag,
+  // index.ts executes the strictly-ordered epoch-then-delete sequence.
+  | { action: 'publish'; cellId: string; note: string | null; resetProgress: boolean }
   | { action: 'archive'; cellId: string }
   | { action: 'restore'; cellId: string }
   // origin (restructure U3): 'custom' (default — a public standalone lesson) or
@@ -853,7 +856,14 @@ export function parseContentAction(body: unknown): ParseResult {
     }
     case 'publish': {
       const n = normalizePublishNote(b.note);
-      return n.ok ? ok({ action, cellId, note: n.value }) : n;
+      if (!n.ok) return n;
+      // Optional resetProgress (U10): absent/null → false (the pre-U10 contract,
+      // unchanged); anything but a real boolean is rejected — a truthy string
+      // must never silently wipe learner progress.
+      if (b.resetProgress !== undefined && b.resetProgress !== null && typeof b.resetProgress !== 'boolean') {
+        return err('`resetProgress` must be a boolean.');
+      }
+      return ok({ action, cellId, note: n.value, resetProgress: b.resetProgress === true });
     }
     case 'archive':
       return ok({ action, cellId });

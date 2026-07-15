@@ -50,6 +50,14 @@ interface Props {
    * seam that fires on their recorded submission/attempt.
    */
   onComplete: (via: CompletedVia) => void;
+  /**
+   * U10: whether THIS SESSION dropped a cached completion for this module
+   * because an admin published-with-reset — shows the dismissible reset notice.
+   * Dismissal is in-memory only; the notice reappears on revisit until the
+   * module is re-completed (intended v1 behavior). Optional so other callers
+   * (WorkshopRunner) need no change.
+   */
+  wasReset?: boolean;
 }
 
 function toYouTubeEmbed(url: string): string {
@@ -57,8 +65,22 @@ function toYouTubeEmbed(url: string): string {
   return match ? `https://www.youtube.com/embed/${match[1]}` : url;
 }
 
-export default function ModuleRenderer({ module, selectedPersona, isCompleted, onComplete }: Props) {
+export default function ModuleRenderer({
+  module,
+  selectedPersona,
+  isCompleted,
+  onComplete,
+  wasReset = false,
+}: Props) {
   const { user } = useAuth();
+
+  // U10 reset notice dismissal: in-memory only, and it re-arms whenever the
+  // rendered module changes, so the notice reappears on every revisit until
+  // the learner re-completes the module (documented intended v1 behavior).
+  const [resetNoticeDismissed, setResetNoticeDismissed] = useState(false);
+  useEffect(() => {
+    setResetNoticeDismissed(false);
+  }, [module.id]);
   // A content/lesson module can carry a scored quiz. When it does, the quiz
   // renders after the lesson as ungated practice (U9: quizzes never gate —
   // finishing one at any score auto-completes via the participation seam).
@@ -264,6 +286,30 @@ export default function ModuleRenderer({ module, selectedPersona, isCompleted, o
         >
           <FileClock className="w-3.5 h-3.5" aria-hidden="true" />
           Draft — under review
+        </div>
+      )}
+
+      {/* U10 reset notice: rendered above the module content, below the draft
+          badge (UX decision). Shown when this session dropped a cached
+          completion for this module after a publish-with-reset. */}
+      {wasReset && !resetNoticeDismissed && (
+        <div
+          role="status"
+          className="-mb-4 flex items-start justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3"
+        >
+          <p className="text-sm text-blue-900">
+            This activity was updated on{' '}
+            {module.progressResetAt
+              ? new Date(module.progressResetAt).toLocaleDateString()
+              : 'a recent date'}{' '}
+            and progress was reset.
+          </p>
+          <button
+            onClick={() => setResetNoticeDismissed(true)}
+            className="text-sm font-bold text-blue-700 hover:text-blue-900 shrink-0"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 

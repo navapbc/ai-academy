@@ -119,12 +119,20 @@ export async function fetchModuleProgress(userId: string): Promise<ModuleProgres
  * column is OMITTED from the payload — we never guess, and an upsert-update
  * then leaves any existing value untouched. `in_progress` writes clear it,
  * mirroring `completed_at`.
+ *
+ * `epoch` (U10) is the module's `progress_reset_at` AS CAPTURED WHEN THE
+ * COMPLETION HAPPENED (null = the module had never been reset / legacy entry),
+ * written into `reset_epoch`. The DB trigger rejects a completion whose epoch
+ * predates the module's current reset with a STALE_RESET_EPOCH error —
+ * callers classify that via `submitCompletion` below. `in_progress` writes
+ * clear it (the trigger ignores them anyway).
  */
 export async function setModuleStatus(
   userId: string,
   moduleId: string,
   status: ModuleStatus,
   via?: CompletedVia | null,
+  epoch?: string | null,
 ): Promise<void> {
   const now = new Date().toISOString();
   const row: Record<string, unknown> = {
@@ -136,14 +144,127 @@ export async function setModuleStatus(
   };
   if (status === 'completed') {
     if (via) row.completed_via = via;
+    row.reset_epoch = epoch ?? null;
   } else {
     row.completed_via = null;
+    row.reset_epoch = null;
   }
   const { error } = await getSupabaseClient()
     .from('module_progress')
     .upsert(row, { onConflict: 'user_id,module_id' });
 
   if (error) throw error;
+}
+
+// --- Progress-reset epoch protocol (U10) ------------------------------------
+
+/**
+ * The DB trigger's dedicated error contract (see migration
+ * 20260715050000_progress_reset_epoch.sql): a rejected stale-epoch completion
+ * raises `STALE_RESET_EPOCH: …` — the message PREFIX is the contract. This is
+ * the ONLY terminal completion-write error; everything else keeps the
+ * park-and-retry semantics (DATA-02).
+ */
+export function isStaleResetEpochError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const message = (error as { message?: unknown }).message;
+  return typeof message === 'string' && message.includes('STALE_RESET_EPOCH');
+}
+
+/**
+ * Reads the module's CURRENT `progress_reset_at` (used only by the
+ * stale-session refinement in `submitCompletion`). A module the caller cannot
+ * see (RLS — e.g. an unenrolled learner and a program module) resolves to
+ * null, which the refinement treats as "cannot verify → drop" (fail-closed).
+ */
+export async function fetchModuleResetEpoch(moduleId: string): Promise<string | null> {
+  const { data, error } = await getSupabaseClient()
+    .from('modules')
+    .select('progress_reset_at')
+    .eq('cell_id', moduleId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.progress_reset_at as string | null) ?? null;
+}
+
+/**
+ * Whether a locally captured completion epoch is still current against the
+ * module's reset epoch: true when the module was never reset, or the captured
+ * epoch is at (or after) the reset. Timestamps are compared as instants —
+ * never as strings, because the client's `toISOString()` ('…Z') and
+ * PostgREST's ('…+00:00') formats do not sort lexicographically.
+ */
+export function isEpochCurrent(
+  capturedEpoch: string | null,
+  moduleResetAt: string | null,
+): boolean {
+  if (moduleResetAt === null) return true;
+  if (capturedEpoch === null) return false;
+  return new Date(capturedEpoch).getTime() >= new Date(moduleResetAt).getTime();
+}
+
+/** True when work done at `eventAt` is genuinely NEWER than the reset itself. */
+export function shouldResubmitAfterReset(
+  eventAt: string | null,
+  currentResetAt: string | null,
+): boolean {
+  if (eventAt === null || currentResetAt === null) return false;
+  return new Date(eventAt).getTime() > new Date(currentResetAt).getTime();
+}
+
+/**
+ * How a completion write resolved (U10 classification):
+ *  - 'ok'    — the row is on the server; drop any outbox entry.
+ *  - 'retry' — transient failure (offline, 5xx, …): park in the outbox and
+ *              replay on the next reconcile (today's DATA-02 semantics).
+ *  - 'reset' — TERMINAL: the module was reset after this work happened. Drop
+ *              the entry, purge the local completion, show the reset notice.
+ */
+export type CompletionSyncOutcome = 'ok' | 'retry' | 'reset';
+
+/**
+ * Performs one completion write with the U10 classification. `epoch` and
+ * `eventAt` are the values CAPTURED WHEN THE COMPLETION HAPPENED — callers
+ * (useProgress, its outbox replay) must pass the stored values and never
+ * re-derive them from freshly fetched curriculum, which would resurrect resets.
+ *
+ * STALE_RESET_EPOCH refinement (never wrongly drop genuinely new work): when
+ * the stored `eventAt` is AFTER the module's current `progress_reset_at` — the
+ * learner did the work in a stale session AFTER the reset — refetch the epoch
+ * once and resubmit with it. Otherwise the rejection is terminal ('reset').
+ * A transient failure of the refetch/resubmit itself returns 'retry' (the
+ * entry stays parked; the server re-adjudicates on every replay, so nothing
+ * can be resurrected by retrying).
+ */
+export async function submitCompletion(
+  userId: string,
+  moduleId: string,
+  via: CompletedVia | null,
+  epoch: string | null,
+  eventAt: string | null,
+): Promise<CompletionSyncOutcome> {
+  try {
+    await setModuleStatus(userId, moduleId, 'completed', via, epoch);
+    return 'ok';
+  } catch (error) {
+    if (!isStaleResetEpochError(error)) return 'retry';
+  }
+
+  // STALE_RESET_EPOCH — the one refinement before declaring it terminal.
+  let currentResetAt: string | null;
+  try {
+    currentResetAt = await fetchModuleResetEpoch(moduleId);
+  } catch {
+    return 'retry'; // transient read failure — the trigger re-adjudicates next replay
+  }
+  if (!shouldResubmitAfterReset(eventAt, currentResetAt)) return 'reset';
+  try {
+    await setModuleStatus(userId, moduleId, 'completed', via, currentResetAt);
+    return 'ok';
+  } catch (retryError) {
+    // Stale again (another reset raced us) → terminal; anything else → parked.
+    return isStaleResetEpochError(retryError) ? 'reset' : 'retry';
+  }
 }
 
 /**

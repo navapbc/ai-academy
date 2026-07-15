@@ -19,8 +19,10 @@ const LEGACY_CACHE_KEY = 'sprint_progress';
 // wrong-shaped object. Supabase is the source of truth, so discarding just
 // triggers a reconcile. v2: the cohort-restructure deploy (U2) — same shape,
 // but pre-restructure caches are dropped once so nothing stale paints across
-// the curriculum re-grouping.
-const CACHE_VERSION = 2;
+// the curriculum re-grouping. v3: per-completion reset epochs
+// (`completionEpochs`, U10) — v2 caches carry completions with no captured
+// epoch, so they are dropped once and Supabase re-hydrates the truth.
+const CACHE_VERSION = 3;
 
 interface CacheEnvelope {
   v: number;
@@ -43,10 +45,19 @@ function getStorage(): Storage | null {
 function isUserProgress(value: unknown): value is UserProgress {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
+  // U10: completionEpochs is optional; when present it must be a plain record
+  // of string-or-null epochs — anything else is a corrupt/foreign shape.
+  const epochsOk =
+    v.completionEpochs === undefined ||
+    (typeof v.completionEpochs === 'object' &&
+      v.completionEpochs !== null &&
+      !Array.isArray(v.completionEpochs) &&
+      Object.values(v.completionEpochs).every((e) => e === null || typeof e === 'string'));
   return (
     Array.isArray(v.completedModuleIds) &&
     v.completedModuleIds.every((id) => typeof id === 'string') &&
-    typeof v.currentModuleId === 'string'
+    typeof v.currentModuleId === 'string' &&
+    epochsOk
   );
 }
 

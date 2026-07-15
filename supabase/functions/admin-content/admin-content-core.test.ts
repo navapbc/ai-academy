@@ -428,22 +428,46 @@ describe('parseContentAction', () => {
     // absent note → null
     expect(parseContentAction({ action: 'publish', cellId: '2.9' })).toEqual({
       ok: true,
-      value: { action: 'publish', cellId: '2.9', note: null },
+      value: { action: 'publish', cellId: '2.9', note: null, resetProgress: false },
     });
     // valid note is trimmed
     expect(parseContentAction({ action: 'publish', cellId: '2.9', note: '  fixed typo  ' })).toEqual({
       ok: true,
-      value: { action: 'publish', cellId: '2.9', note: 'fixed typo' },
+      value: { action: 'publish', cellId: '2.9', note: 'fixed typo', resetProgress: false },
     });
     // whitespace-only note → null
     expect(parseContentAction({ action: 'publish', cellId: '2.9', note: '   ' })).toEqual({
       ok: true,
-      value: { action: 'publish', cellId: '2.9', note: null },
+      value: { action: 'publish', cellId: '2.9', note: null, resetProgress: false },
     });
     // over-cap note is rejected
     expect(parseContentAction({ action: 'publish', cellId: '2.9', note: 'x'.repeat(NOTE_MAX + 1) }).ok).toBe(false);
     // non-string note is rejected
     expect(parseContentAction({ action: 'publish', cellId: '2.9', note: 123 }).ok).toBe(false);
+  });
+
+  // U10: the optional resetProgress flag — absent/null → false (pre-U10
+  // contract), true → true, anything non-boolean rejected (a truthy string
+  // must never silently wipe learner progress).
+  test('publish parses the optional resetProgress flag (absent → false, boolean only)', () => {
+    expect(parseContentAction({ action: 'publish', cellId: '2.9' })).toEqual({
+      ok: true,
+      value: { action: 'publish', cellId: '2.9', note: null, resetProgress: false },
+    });
+    expect(parseContentAction({ action: 'publish', cellId: '2.9', resetProgress: true })).toEqual({
+      ok: true,
+      value: { action: 'publish', cellId: '2.9', note: null, resetProgress: true },
+    });
+    expect(parseContentAction({ action: 'publish', cellId: '2.9', resetProgress: false })).toEqual({
+      ok: true,
+      value: { action: 'publish', cellId: '2.9', note: null, resetProgress: false },
+    });
+    expect(parseContentAction({ action: 'publish', cellId: '2.9', resetProgress: null })).toEqual({
+      ok: true,
+      value: { action: 'publish', cellId: '2.9', note: null, resetProgress: false },
+    });
+    expect(parseContentAction({ action: 'publish', cellId: '2.9', resetProgress: 'yes' }).ok).toBe(false);
+    expect(parseContentAction({ action: 'publish', cellId: '2.9', resetProgress: 1 }).ok).toBe(false);
   });
 
   test('rejects unknown action / non-object body', () => {
