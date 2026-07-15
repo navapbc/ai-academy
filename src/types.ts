@@ -606,6 +606,48 @@ export interface FailureLogConfig {
 }
 
 /**
+ * One pane of the chat-compare exercise (cohort-restructure U6). All fields are
+ * optional: a bare pane is plain Claude; `systemPromptMd` makes it a "rigged"
+ * pane (hidden per-pane system prompt, sent via StreamOptions.system);
+ * `sourceMd` makes it a "grounded" pane (the source is prepended to the
+ * learner's message content). `label` is the visible pane heading (falls back
+ * to "Response N").
+ */
+export interface ChatComparePane {
+  label?: string;
+  /** Hidden per-pane system prompt — passed to streamChat as StreamOptions.system. */
+  systemPromptMd?: string;
+  /** Grounding source markdown — prepended to the learner's user message. */
+  sourceMd?: string;
+}
+
+/**
+ * chat-compare (cohort-restructure U6): 1–4 side-by-side live Claude panes
+ * answering ONE shared learner prompt, each with its own hidden system prompt
+ * and/or grounding source. One parameterized kind powers Course 1 Week 1
+ * (3-pane rigged; 1-pane confidently-wrong) and Week 2 (bare-vs-grounded).
+ * UNGRADED: every submit records a lab_submissions row
+ * (`transcript.kind:'chat-compare'`, including partial pane failures) but it
+ * never gates completion (participation completion lands in U9), so the
+ * component takes no onComplete prop. `suggestedPrompts` render as chips that
+ * FILL the input (never auto-submit); `reflectionMd` renders as static
+ * discussion copy below the panes (not captured).
+ */
+export interface ChatCompareConfig {
+  kind: 'chat-compare';
+  title?: string; // exercise header; generic fallback if absent
+  subtitle?: string;
+  /** Optional markdown intro rendered above the prompt input. */
+  introMd?: string;
+  /** 1–4 panes, each answering the same shared prompt. */
+  panes: ChatComparePane[];
+  /** Clickable chips that fill the prompt input (never auto-submit). */
+  suggestedPrompts?: string[];
+  /** Discussion prompts rendered below the panes (static, not captured). */
+  reflectionMd?: string;
+}
+
+/**
  * GLAT objective gate (cell 2.14, P4.10). An auto-graded exit-credential exam:
  * Section A is 5 diagnostic self-report scales (captured, NOT scored); Sections
  * B+C are 35 objective questions (scored). ≥`passThreshold` of the scored set
@@ -652,6 +694,7 @@ export type LabConfig =
   | DashboardCritiqueConfig
   | UseCasePortfolioConfig
   | FailureLogConfig
+  | ChatCompareConfig
   | GlatConfig;
 
 export interface UserProgress {

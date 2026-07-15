@@ -31,6 +31,7 @@ import PairedCalibration from './exercises/PairedCalibration';
 import DashboardCritique from './exercises/DashboardCritique';
 import UseCasePortfolio from './exercises/UseCasePortfolio';
 import FailureLog from './exercises/FailureLog';
+import ChatCompare from './exercises/ChatCompare';
 import GlatExam from './exercises/GlatExam';
 
 interface Props {
@@ -175,6 +176,11 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         // (not LLM-graded) above the quiz, which remains the completion gate; no
         // onComplete (see FailureLogConfig).
         return <FailureLog config={module.labConfig} labId={module.cellId} />;
+      case 'chat-compare':
+        // Ungraded live comparison (restructure U6) — 1–4 panes answer one
+        // shared prompt; records a submission but never gates completion
+        // (participation completion is U9); no onComplete (see ChatCompareConfig).
+        return <ChatCompare config={module.labConfig} labId={module.cellId} />;
       case 'glat':
         // GLAT objective gate (P4.10) — this lab GATES cell 2.14: ≥80% records a
         // passing quiz_attempts row and calls onComplete. 2.14 has no inline quiz.

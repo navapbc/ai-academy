@@ -59,6 +59,24 @@ describe('validateLabConfig — per kind', () => {
     expect(validateLabConfig({ ...good, rubric: { anchors: [] } }).ok).toBe(false);
   });
 
+  test('chat-compare requires 1–4 panes of optional string fields', () => {
+    const good = {
+      kind: 'chat-compare',
+      panes: [
+        { label: 'Plain Claude' },
+        { label: 'Rigged', systemPromptMd: 'Answer confidently.' },
+        { label: 'Grounded', sourceMd: '# Policy' },
+      ],
+      suggestedPrompts: ['What does the policy say?'],
+    };
+    expect(validateLabConfig(good).ok).toBe(true);
+    expect(validateLabConfig({ kind: 'chat-compare', panes: [{}] }).ok).toBe(true);
+    expect(validateLabConfig({ kind: 'chat-compare', panes: [] }).ok).toBe(false);
+    expect(validateLabConfig({ kind: 'chat-compare', panes: [{}, {}, {}, {}, {}] }).ok).toBe(false);
+    expect(validateLabConfig({ kind: 'chat-compare', panes: [{ label: 1 }] }).ok).toBe(false);
+    expect(validateLabConfig({ ...good, suggestedPrompts: 'nope' }).ok).toBe(false);
+  });
+
   test('glat threshold + sections', () => {
     const good = {
       kind: 'glat',

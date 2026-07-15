@@ -209,6 +209,7 @@ export const LAB_KINDS = [
   'dashboard-critique',
   'use-case-portfolio',
   'failure-log',
+  'chat-compare',
   'glat',
 ] as const;
 
@@ -582,6 +583,29 @@ const LAB_VALIDATORS: Record<string, (c: Obj) => string | null> = {
         ? null
         : '`targetEntries` must be an integer ≥ 1.',
     ),
+
+  // chat-compare (restructure U6): 1–4 panes of all-optional string fields —
+  // a bare pane is plain Claude; systemPromptMd rigs it; sourceMd grounds it.
+  'chat-compare': (c) => {
+    if (!Array.isArray(c.panes) || c.panes.length < 1 || c.panes.length > 4) {
+      return '`panes` must be an array of 1–4 panes.';
+    }
+    for (let i = 0; i < c.panes.length; i++) {
+      const pane = c.panes[i];
+      if (!isObj(pane)) return `\`panes[${i}]\` must be an object.`;
+      for (const f of ['label', 'systemPromptMd', 'sourceMd'] as const) {
+        if (f in pane && pane[f] !== undefined && typeof pane[f] !== 'string') {
+          return `\`panes[${i}].${f}\` must be a string.`;
+        }
+      }
+    }
+    if ('suggestedPrompts' in c && c.suggestedPrompts !== undefined) {
+      if (!Array.isArray(c.suggestedPrompts) || !c.suggestedPrompts.every((s) => typeof s === 'string')) {
+        return '`suggestedPrompts` must be an array of strings.';
+      }
+    }
+    return null;
+  },
 
   glat: (c) => {
     // Number.isFinite rejects NaN/Infinity/non-numbers (a bare `typeof === number`

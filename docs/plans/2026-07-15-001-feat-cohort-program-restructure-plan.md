@@ -394,7 +394,7 @@ the era-marker column lands; deploy.yml stops shipping clients before migrations
 **Verification:** `supabase db reset` clean; existing suites green; no learner-visible
 behavior change yet.
 
-- [ ] **Unit 2: Client curriculum read path, navigation, gating neutralized**
+- [x] **Unit 2: Client curriculum read path, navigation, gating neutralized** ✓ committed 1ef124b (825/825 live-DB; e2e 21/21 on fresh reset)
 
 **Goal:** Learner UI renders Course → Week groups + supplemental + resources, **fully
 unlocked in behavior** (gating wiring neutralized here; dead files deleted in U11).
