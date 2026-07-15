@@ -155,7 +155,8 @@ export default function GlatExam({
       <header className="space-y-1">
         <h3 className="text-xl font-bold text-gray-900">GLAT — objective gate</h3>
         <p className="text-sm text-gray-600">
-          A {config.sectionBC.length}-question objective check across Stage 1–2. Score{' '}
+          {/* U13: learner copy speaks curriculum, not matrix stages (GLAT itself stays pending D12). */}
+          A {config.sectionBC.length}-question objective check across the AI-literacy curriculum. Score{' '}
           {Math.round(config.passThreshold * 100)}% or higher to pass. The first few questions are a
           quick self-check and aren&apos;t scored.
         </p>

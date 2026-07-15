@@ -15,7 +15,7 @@ Each row is one matrix cell. The columns that drive a lesson:
 | --- | --- |
 | `cell_id` | Primary key, e.g. `1.4` for matrix cells, `custom-<slug>` for custom lessons. Matches `module_progress.module_id`. |
 | `stage` | `1a` \| `1b` \| `2` — drives nav grouping + Stage-2 gating. **null** for custom (free-form) lessons, which are ungated. |
-| `origin` | `matrix` (one of the 28 fixed cells) \| `custom` (free-form lesson created in the CMS, shown in the ungated "Additional lessons" group). |
+| `origin` | `matrix` (one of the 28 fixed cells, "Supplemental coursework") \| `custom` (free-form lesson, "Resources & additional lessons") \| `course` (Course-week lesson, rendered under its assigned week). |
 | `title`, `type` | Display title and module type (see below). |
 | `dimension[]`, `evidence_type`, `self_report_validity` | Matrix metadata (the 4D tags, primary evidence, self-report trust). |
 | `body_md` | The lesson markdown. |
@@ -63,12 +63,27 @@ There are **two authoring paths**, and which one is authoritative depends on the
     — the server generates `custom-<slug>` from the title (collision-guarded, length-capped),
     `origin='custom'`, `stage=null`, and `status='draft'`, so it is **hidden from learners until
     published**. Add body/quiz/lab via the same editors as matrix cells, then Publish; it then
-    appears in the ungated **"Additional lessons"** group (never the matrix or its Stage-2 gate).
+    appears in the ungated **"Resources & additional lessons"** group (never the matrix).
     **Archive** soft-deletes any lesson (matrix or custom) — hidden from learners, never
     hard-deleted — and **Restore** brings it back. Custom lessons are not seeded, so a
     `supabase db reset` removes them (they live only in the cloud/local DB, not in a migration).
 - **Migrations / seed** — the path below seeds the initial 28 matrix cells and is what a fresh
   `supabase db reset` reloads. Use it for the baseline curriculum and bulk/programmatic changes.
+
+### Course authoring (cohort restructure, U3)
+
+- **Weeks & assignment:** Staff → CMS → **Course management** manages a course's weeks
+  (create/rename/reorder/delete) and assigns lessons to a week (**published lessons only** can
+  be assigned; a week appears to learners once it has at least one published member). Assigning
+  a matrix or custom lesson to a week moves it out of its Supplemental/Resources group and
+  renders it under that week.
+- **Course lessons:** the CMS **"New lesson"** modal offers **Course lesson** alongside the
+  default custom lesson — it creates a `course-<slug>` row (`origin='course'`,
+  `visibility='program'`, hidden from learners until published *and* assigned to a week via
+  Course management). Body/quiz/lab are edited with the same editors as every other lesson.
+- **Publish with reset (R17):** the publish dialog's "Reset learner progress" checkbox durably
+  clears every learner's completion of that lesson (epoch protocol — stale caches/outboxes
+  cannot resurrect it); learners see a dismissible "progress was reset" notice.
 
 ### Migration / seed path
 

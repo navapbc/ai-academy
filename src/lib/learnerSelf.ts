@@ -5,7 +5,9 @@ import type { LearnerDetailData } from './learnerDetail';
 // the owner-RLS path for one's own id). Computed client-side from the detail — no
 // dependency on the P5.2a aggregation views — so the cards are self-consistent
 // with the published-module table the learner sees, and the slice stays
-// independent of the staff aggregation layer.
+// independent of the staff aggregation layer. INVARIANT (U13): keep it that way —
+// learner surfaces never read `learner_progress_summary` (staff denominator
+// semantics differ by design); asserted by learnerDetail.test.ts.
 
 // The GLAT exit-credential cell (P4.10 / D7). Same canonical id the P5.2a view and
 // the GLAT lab use; a pass here is the program completion marker.

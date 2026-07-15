@@ -13,9 +13,11 @@ import LearnerPortfolio from './progress/LearnerPortfolio';
 // lab submission statuses in one place. Reuses the P5.2c per-learner data-access
 // (fetchLearnerDetail) at the owner-RLS path — userId is the signed-in user, so the
 // existing owner policies already permit every read; no new policy or migration.
+// INVARIANT (U13): this learner surface never reads the staff aggregation views
+// (learner_progress_summary etc.) — their viewer-independent denominators are
+// staff semantics by design. Asserted by learnerDetail.test.ts.
 // Summary cards are derived locally (summarizeOwnProgress) so they stay consistent
-// with the published-module table below. Read-only: records nothing, no onComplete,
-// no effect on gating.
+// with the published-module table below. Read-only: records nothing, no onComplete.
 
 export default function LearnerDashboard({ userId }: { userId: string }) {
   const { detail, loading, error, reload } = useLearnerDetail(userId);

@@ -12,12 +12,6 @@ export function formatPct(n: number | null): string {
   return n === null ? '—' : `${Math.round(n * 100)}%`;
 }
 
-export const STAGE_LABELS: Record<string, string> = {
-  '1a': 'Stage 1a',
-  '1b': 'Stage 1b',
-  '2': 'Stage 2',
-};
-
 export function StatCard({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -85,7 +79,11 @@ function ModuleRowItem({ row }: { row: LearnerModuleRow }) {
   );
 }
 
-/** Best-per-module rollup table, grouped by stage. */
+/**
+ * Best-per-module rollup table, grouped by curriculum section (U13): course
+ * lessons → Supplemental coursework → Resources — the same sections the
+ * learner nav renders (rows arrive pre-ordered from buildLearnerModuleRows).
+ */
 export function ModuleProgressTable({ modules }: { modules: LearnerModuleRow[] }) {
   return (
     <table className="w-full text-sm">
@@ -99,16 +97,16 @@ export function ModuleProgressTable({ modules }: { modules: LearnerModuleRow[] }
       <tbody>
         {modules.map((row, i) => {
           const prev = modules[i - 1];
-          const showStage = !prev || prev.stage !== row.stage;
+          const showSection = !prev || prev.section !== row.section;
           return (
             <Fragment key={row.cellId}>
-              {showStage && (
+              {showSection && (
                 <tr>
                   <td
                     colSpan={3}
                     className="pt-4 pb-1 text-[11px] font-bold uppercase tracking-widest text-nava-green"
                   >
-                    {STAGE_LABELS[row.stage] ?? row.stage}
+                    {row.section}
                   </td>
                 </tr>
               )}

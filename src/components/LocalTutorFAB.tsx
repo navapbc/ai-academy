@@ -18,7 +18,7 @@ interface Props {
 
 /**
  * Builds the grounding corpus from the loaded curriculum: for every PUBLISHED
- * module a header line ("[Stage …] Cell {id} — {title}") followed by its authored
+ * module a header line ("[Section …] Cell {id} — {title}") followed by its authored
  * `content` and, when present, its `tutorReference` (R7) — concatenated into one
  * string handed to Claude as the cached system context. The corpus only changes
  * when the curriculum changes.
@@ -36,7 +36,9 @@ export function buildGroundingContext(phases: Phase[]): string {
           const reference = m.tutorReference
             ? `\n\n[Tutor reference for Cell ${m.id}]\n${m.tutorReference}`
             : '';
-          return `[Stage ${phase.title}] Cell ${m.id} — ${m.title}\n${m.content}${reference}`;
+          // U13: the grouping label is a curriculum SECTION (course week /
+          // Supplemental coursework / Resources) since the restructure.
+          return `[Section ${phase.title}] Cell ${m.id} — ${m.title}\n${m.content}${reference}`;
         }),
     )
     .join('\n\n');

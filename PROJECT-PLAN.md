@@ -48,6 +48,56 @@ This Cowork session is the **product + project manager**. Per task: (1) PM prese
 Phase 0 ▣▣▣▣ · Phase 1 ▣▣▣▣▣ · Phase 2 ▣▣▣▣ ✓ · **— GATE A ✓ PASSED —** · Phase 3 ▣▣▣▣▣▣▣▣▣▣▣ ✓ *(all merged incl. P3.5, P3.9, P3.11)* · Phase 4 ▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣ *(P4.1–4.10 all built; P4.10 GLAT gate done — only P4.11 SME accuracy review remaining)* · Phase 5 ▣▣▣▣▣▣ ✓ *(P5.1a–d + P5.2a–d + P5.3a/b + **P5.5a/b/c all merged** (#85/#86/#87) — **P5.5 cohorts+review complete**; **P5.4 CMS complete** (re-planned as 6 chunks P5.4-1..6 per `docs/plans/2026-06-18-001-feat-admin-cms-plan.md`, superseding the old P5.4a–e; **P5.4-1 foundation merged #88** — schema + service_role write path + draft→publish, access-control/schema human-reviewed; **P5.4-2 CMS shell merged #90** — admin-only read-only lesson list (all statuses + archived + draft) with archived filter + read-only detail in `StaffArea`; **P5.4-3 lesson editor merged #92** — text/video/tutor-ref draft→preview→publish (shared `LessonMarkdown` so preview ≡ live, R9); **P5.4-4 quiz editor merged #94** — structured `quiz_json` CRUD (text/4 options/correct-answer radio/explanation, add/remove/reorder) + finalized the `quiz_json` validator (≥2→exactly-4 options, R8/W2-7/D-16); **P5.4-5 lab editor merged #96** — kind-aware `lab_config_json` editor (forms for the 3 scalar kinds + validated JSON fallback for the other 19) + finalized per-kind lab validators (R8/W2-7/D-16) with a migration seed-guard test; **P5.4-6 free-form lessons done** — `create-custom` (deterministic length-capped slug + collision guard, hidden draft, ungated `stage=null`) + `CreateLessonModal`/"New lesson" + Archive/Restore reusing the existing actions (R2/R6), browser-smoked); **P5.6a/b/c exports all merged (#100/#101/#102)** → Phase 5 complete)* · Phase 6 ▣▣▣▣▢▣ *(P6.1 #103, P6.2 #106, P6.3 #107, P6.4 automated-a11y #108, P6.6 privacy #109 done — manual 508 verification still human; only P6.5 SME review remains, human)* · Phase 7 ▢▣▣▢▢ *(deployed on **AWS S3 + CloudFront + hosted Supabase**, not Vercel — **staging live** via `deploy.yml` #99; prod + `*.navapbc.com` subdomain still open)* · Phase 8 ▣▣▢▢▢▢▢ *(Cornerstone integration — spike+plan done; paused pending L&D scope call + prod access; see Phase 8 §)* · Cross-cutting ▣▣▣▣ *(X.1 ✓, X.2 #110 ✓, X.3 workshop-mode v1 #111 ✓ (live mode B deferred), X.4 ✓)*
 (▣ = Done, ▢ = Not started.)
 
+---
+
+## Cohort Program Restructure — 2026-07-15
+
+**What shipped** (branch `feat/cohort-program-restructure`, 13 units per
+`docs/plans/2026-07-15-001-feat-cohort-program-restructure-plan.md`; origin requirements:
+`docs/brainstorms/cohort-program-restructure-requirements.md`): the app is restructured from a
+stage-gated skills-matrix walkthrough into a **champion-led cohort course program** — Course 1
+("Understanding & Deciding When to Use AI", Weeks 0–4) plus ungated "Supplemental coursework"
+(the matrix cells) and "Resources & additional lessons" (custom lessons).
+
+- **U1** `0848d79` — course/week structure substrate (`courses`/`course_weeks`/`course_week_modules`),
+  `is_staff()`/`has_program_access()` RLS helpers, deploy-ordering fix.
+- **U2** `1ef124b` — client course/week read path (`groupCurriculum` replaces the 3-stage grouping),
+  course-tree nav, stage gating behaviorally neutralized, 02-stage-gating e2e removed.
+- **U3** `fe2867d` — CMS course authoring: weeks CRUD, published-only assignment, course lessons.
+- **U4** `8007ba4` — enrollment-based module visibility RLS (`visibility` column) +
+  viewer-independent staff denominators (`published_modules_total()`).
+- **U5** `9c4ae07` — multi-row enrollment, archive-not-delete, cohort-row-scoped champion reads.
+- **U6** `85c08c4` — `chat-compare` exercise kind (N-pane live Claude comparison).
+- **U7** `e428846` — `decision-scenario` exercise kind (Walk the Workflow checkpoints).
+- **U8** `aded56c` — Course 1 seed: Weeks 0–4 activities from the program outline.
+- **U9** `f5f55eb` — hybrid participation completion + universal "Mark as explored" (quizzes no longer gate).
+- **U10** `b6b2342` — durable publish-time progress reset (R17): epoch protocol
+  (`progress_reset_at` + `enforce_progress_reset_epoch` trigger + outbox epoch capture).
+- **U11+U12** `733caa4` — gating machinery deleted, workshops retired (X.3 superseded), dead-code sweep.
+- **U13** (this commit) — staff/learner rollups regrouped by curriculum section (course lessons /
+  Supplemental coursework / Resources) instead of stage; learner-surface/staff-view separation
+  asserted; R17 reset e2e (`e2e/22-progress-reset.spec.ts`); docs re-baselined (this section,
+  CLAUDE.md, content-guide). **Views finding:** the P5.2a aggregation views
+  (`learner_progress_summary` / `cohort_progress_summary` / `cohort_score_distribution`, as last
+  re-created in `20260715010000_enrollment_visibility.sql`) were inspected and are already
+  stage-agnostic — no stage grouping or labels exist in view SQL — so **no views migration was
+  needed**; `glat_passed` / `glat_pass_rate` and the `'2.14'` literal are preserved unchanged
+  (D12-gated tranche, below).
+
+**What this supersedes:** stage gating (Stage 1a → Stage 2 unlock — deleted; navigation is fully
+unlocked, visibility comes from enrollment RLS), quiz-as-completion-gate (D8's 2.1 inversion
+included — completion is now participation-based via the `progress.ts` seam or explicit
+"Mark as explored"), and **X.3 workshop mode** (retired in U12; the guided-sequence need is served
+by course weeks — see the X.3 row annotation below). **GLAT-as-exit-credential is NOT retired
+here:** the exam kind, the 2.14 seed, the `glat_passed`/`glat_pass_rate` view columns, and the
+GLAT dashboard cards all remain, and their retirement is a pre-scoped follow-up tranche that
+executes **only after D12 (Cornerstone feed granularity) resolves** — see the plan's
+"Deferred to Separate Tasks".
+
+**Re-scoped statuses:** the SME accuracy backlog (**W3-1 / P6.5**) now reviews *supplemental*
+(non-required) content, so it is re-scoped to supplemental priority — still human, no longer on
+the pilot critical path. **D12** additionally now gates the GLAT retirement tranche.
+
 > **Live Claude tests UNBLOCKED:** the org `ANTHROPIC_API_KEY` is now available. Store it ONLY in the gitignored `supabase/functions/.env` — never in `.env.example` or client code. The previously-deferred live smoke tests — **P1.2** (Claude proxy), **X.1** (tutor), **P2.3** (lab 2.1) — can now run; do them as each lands.
 
 > **Full audit — 2026-06-02, `main` @ `6e63446` (through PR #22).** Reconciled against the live repo: `npm ci`/lint/build pass; vitest = 8 passed / 4 skipped (integration tests skip when unconfigured). Findings folded into the tables below: (1) the `progress.test.ts` cleanup is **DONE (#18)**; (2) **vitest is still not wired into CI** — workflow runs ci/lint/build only; (3) a redundant migration `20260602141611_stage_1b_content.sql` (PR #21) is **superseded by the #22 curriculum load** — #22 is canonical for the six Stage-1b cells; #21 is harmless dead weight (optional cleanup); (4) X.1 tutor still a placeholder. Phases 0–2 + GATE A, P3.1, P3.2 (all substeps), and the P3.3/P3.4/P4.11 lesson+quiz content are all confirmed merged and live.
@@ -269,7 +319,7 @@ Phase 0 ▣▣▣▣ · Phase 1 ▣▣▣▣▣ · Phase 2 ▣▣▣▣ ✓ · *
 |---|---|---|---|---|---|
 | X.1 | RAG tutor → Claude long-context grounding | Rework `LocalTutorFAB` to drop the vector index/embeddings and ground answers by sending relevant curriculum text into Claude's context (prompt-cached). Per **D6 = Option 1**; sequence right after P1.2 | P1.2 | Code | **Done & merged (#14)** ✓ audit-verified 2026-06-09 incl. live smoke: grounds from DB curriculum, prompt-cached, zero embedding/vector code; answered correctly in-browser. Cold TTFB ~14s (audit D-32, W6-4) |
 | X.2 | Content versioning discipline | `modules.version` + content changelog as the matrix evolves (v2 →) | P3.2 | PM | **Done (#110)** ✓ activated the dormant `content_versions` table: best-effort **snapshot-on-publish** writer in `admin-content` (author from JWT; snapshot ≡ promoted live content; never fails publish), optional "what changed" **note** (server-validated ≤500), admin-only `is_admin()` read policy, and a read-only **version-history view** in the CMS lesson detail. **Rollback deferred** (needs re-validation of restored JSON). Plan `docs/plans/2026-07-02-005-feat-content-versioning-plan.md`. |
-| X.3 | Workshop mode | Multi-step guided/facilitated lab flow (optionally cohort-paced) | P4.1 | Design → Code | **v1 Done (#111)** ✓ **direction A (bounded guided sequence)**: `workshops` table + `admin-workshops` service_role Edge Function (create/update/delete, server-authoritative published-step check), admin authoring UI (ordered step picker) in StaffArea, and a learner Workshops nav → list → **guided stepper reusing `ModuleRenderer`** with progress derived from `module_progress` (no new writes; gating never bypassed — R6). **Deferred: the full facilitator-led/cohort-synchronized LIVE mode (direction B) → the live-sessions effort; plus cohort scoping/pacing.** Advisory follow-ups (accepted for v1): concurrent-edit last-write-wins, fetch-once staleness, admin step-health indicator. Plan `docs/plans/2026-07-02-006-feat-workshop-mode-plan.md`. |
+| X.3 | Workshop mode | Multi-step guided/facilitated lab flow (optionally cohort-paced) | P4.1 | Design → Code | **SUPERSEDED by the Cohort Program Restructure (2026-07-15, §above):** workshop mode was retired in restructure U12 (tables/function/UI removed; `20260715060000_retire_workshops.sql`) — admin-authored guided sequences are now **course weeks** (U1/U3), and the facilitator-led LIVE mode (direction B) remains deferred to the live-sessions effort. Historical record of what v1 shipped: **v1 Done (#111)** ✓ **direction A (bounded guided sequence)**: `workshops` table + `admin-workshops` service_role Edge Function (create/update/delete, server-authoritative published-step check), admin authoring UI (ordered step picker) in StaffArea, and a learner Workshops nav → list → **guided stepper reusing `ModuleRenderer`** with progress derived from `module_progress` (no new writes; gating never bypassed — R6). **Deferred: the full facilitator-led/cohort-synchronized LIVE mode (direction B) → the live-sessions effort; plus cohort scoping/pacing.** Advisory follow-ups (accepted for v1): concurrent-edit last-write-wins, fetch-once staleness, admin step-health indicator. Plan `docs/plans/2026-07-02-006-feat-workshop-mode-plan.md`. |
 | X.4 | **Hardening pass: full test suite + debt audit** | vitest unit/component + Playwright E2E + CI test step + 6-lens read-only audit → `docs/DEBT-REPORT.md` (67 findings, severity-ranked). | main | Code (+ subagents) | **Done (#30)** ✓ audit shipped no-fix; **all 67 findings since resolved/accepted across 13 fix PRs (#31–#46)** — lint/build/test green on `main` |
 
 ---

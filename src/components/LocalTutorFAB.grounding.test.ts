@@ -28,8 +28,8 @@ const mod = (over: Partial<Module>): Module =>
 
 const phases: Phase[] = [
   {
-    id: 'stage-1a',
-    title: 'Stage 1a',
+    id: 'supplemental',
+    title: 'Supplemental coursework',
     description: '',
     week: '',
     modules: [

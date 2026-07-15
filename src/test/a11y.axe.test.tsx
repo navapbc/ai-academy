@@ -175,8 +175,8 @@ const sorterConfig: SorterConfig = {
 
 const learnerDetail: LearnerDetailData = {
   modules: [
-    { cellId: '1.1', title: 'Intro to AI literacy', stage: '1a', completed: true, bestQuizPct: 1, quizPassed: true },
-    { cellId: '2.1', title: 'Prompt construction', stage: '2', completed: false, bestQuizPct: null, quizPassed: null },
+    { cellId: '1.1', title: 'Intro to AI literacy', section: 'Supplemental coursework', completed: true, bestQuizPct: 1, quizPassed: true },
+    { cellId: '2.1', title: 'Prompt construction', section: 'Supplemental coursework', completed: false, bestQuizPct: null, quizPassed: null },
   ],
   labs: [{ id: 'lab-a', labId: 'lab-2.1', status: 'reviewable', createdAt: '2026-01-01T00:00:00Z' }],
 };

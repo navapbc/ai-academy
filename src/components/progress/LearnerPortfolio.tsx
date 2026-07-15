@@ -212,7 +212,7 @@ export default function LearnerPortfolio({ userId }: { userId: string }) {
     <section className="space-y-4">
       <h2 className="text-lg font-bold text-gray-900">Your portfolio &amp; calibration</h2>
       <p className="text-sm text-gray-600">
-        The artifacts you build in the Stage 2 practice labs — your calibration numbers and
+        The artifacts you build in the practice labs — your calibration numbers and
         portfolio. These are yours to keep and reuse.
       </p>
 
