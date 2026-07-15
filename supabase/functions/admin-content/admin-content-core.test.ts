@@ -14,7 +14,10 @@ import {
   buildCustomInsert,
   slugify,
   customCellId,
+  courseCellId,
+  archiveBlockedReason,
   CUSTOM_ID_PREFIX,
+  COURSE_ID_PREFIX,
   MODULE_ORIGINS,
   isValidOrigin,
   isAllowlistedAdmin,
@@ -451,7 +454,11 @@ describe('parseContentAction', () => {
 
   test('create-custom requires title + type and ignores cellId (server generates it)', () => {
     const r = parseContentAction({ action: 'create-custom', title: '  My Lesson  ', type: 'content' });
-    expect(r).toEqual({ ok: true, value: { action: 'create-custom', title: 'My Lesson', type: 'content' } });
+    // absent origin defaults to 'custom' (the pre-U3 contract, unchanged)
+    expect(r).toEqual({
+      ok: true,
+      value: { action: 'create-custom', title: 'My Lesson', type: 'content', origin: 'custom' },
+    });
     // no cellId required for create-custom
     expect(parseContentAction({ action: 'create-custom', title: 'X', type: 'lab' }).ok).toBe(true);
     // missing/blank title or type is rejected
@@ -459,6 +466,25 @@ describe('parseContentAction', () => {
     expect(parseContentAction({ action: 'create-custom', title: 'X' }).ok).toBe(false);
     expect(parseContentAction({ action: 'create-custom', title: 'X', type: '' }).ok).toBe(false);
     expect(parseContentAction({ action: 'create-custom', title: 'x'.repeat(301), type: 'content' }).ok).toBe(false);
+  });
+
+  test("create-custom accepts origin 'course' and rejects any other origin (U3)", () => {
+    expect(
+      parseContentAction({ action: 'create-custom', title: 'Week 5 Lab', type: 'lab', origin: 'course' }),
+    ).toEqual({
+      ok: true,
+      value: { action: 'create-custom', title: 'Week 5 Lab', type: 'lab', origin: 'course' },
+    });
+    expect(
+      parseContentAction({ action: 'create-custom', title: 'X', type: 'content', origin: 'custom' }).ok,
+    ).toBe(true);
+    // 'matrix' (and junk) is NOT creatable via the CMS — matrix cells are fixed.
+    expect(
+      parseContentAction({ action: 'create-custom', title: 'X', type: 'content', origin: 'matrix' }).ok,
+    ).toBe(false);
+    expect(
+      parseContentAction({ action: 'create-custom', title: 'X', type: 'content', origin: 42 }).ok,
+    ).toBe(false);
   });
 });
 
@@ -493,6 +519,23 @@ describe('customCellId', () => {
   });
 });
 
+describe('courseCellId (U3 — same slug machinery, course- prefix)', () => {
+  test('generates course-<slug>; collision-guards with -N; falls back for empty slug', () => {
+    expect(courseCellId('Prompt Basics', [])).toBe('course-prompt-basics');
+    expect(courseCellId('Prompt Basics', ['course-prompt-basics'])).toBe('course-prompt-basics-2');
+    expect(courseCellId('!!!', [])).toBe('course-lesson');
+    // custom- ids never collide with course- ids (distinct prefixes)
+    expect(courseCellId('Prompt Basics', ['custom-prompt-basics'])).toBe('course-prompt-basics');
+  });
+
+  test('caps length so course-<slug> always passes isValidCellId', () => {
+    const id = courseCellId('x'.repeat(300), []);
+    expect(id.length).toBeLessThanOrEqual(80);
+    expect(id.startsWith(COURSE_ID_PREFIX)).toBe(true);
+    expect(isValidCellId(id)).toBe(true);
+  });
+});
+
 describe('buildCustomInsert', () => {
   test('builds a hidden draft custom row outside the matrix, sort_order after the max', () => {
     const row = buildCustomInsert('My Lesson', 'content', ['custom-other'], 42, 'admin-uuid', '2026-06-22T00:00:00Z');
@@ -515,6 +558,39 @@ describe('buildCustomInsert', () => {
   test('avoids colliding with an existing custom id', () => {
     const row = buildCustomInsert('My Lesson', 'lab', ['custom-my-lesson'], 0, 'a', 'now');
     expect(row.cell_id).toBe('custom-my-lesson-2');
+  });
+
+  test("custom rows stay public (explicit visibility, matching the DB default)", () => {
+    const row = buildCustomInsert('My Lesson', 'content', [], 0, 'a', 'now');
+    expect(row.visibility).toBe('public');
+  });
+
+  test("origin='course' mints course-<slug>, program visibility, hidden stage-less draft (U3)", () => {
+    const row = buildCustomInsert('Week 5 Lab', 'lab', [], 42, 'admin-uuid', 'now', 'course');
+    expect(row).toMatchObject({
+      cell_id: 'course-week-5-lab',
+      origin: 'course',
+      stage: null,               // modules_origin_stage_check: course is stage-less
+      status: 'draft',           // hidden until publish (R3)
+      visibility: 'program',     // enrolled + staff only (U4 policy)
+      title: 'Week 5 Lab',
+      type: 'lab',
+      sort_order: 43,
+    });
+    expect(isValidCellId(row.cell_id as string)).toBe(true);
+  });
+});
+
+describe('archiveBlockedReason (U3 — archive refuses while week-assigned)', () => {
+  test('unassigned lesson archives freely', () => {
+    expect(archiveBlockedReason(null)).toBeNull();
+    expect(archiveBlockedReason(undefined)).toBeNull();
+  });
+
+  test('week-assigned lesson is blocked with the week named', () => {
+    const msg = archiveBlockedReason('Week 1');
+    expect(msg).toMatch(/assigned to Week 1/);
+    expect(msg).toMatch(/Unassign it from Week 1 first/);
   });
 });
 

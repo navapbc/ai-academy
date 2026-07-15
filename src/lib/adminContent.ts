@@ -93,12 +93,20 @@ export function validateQuizQuestions(
  */
 export const NOTE_MAX_LENGTH = 500;
 
+/**
+ * The origins the CMS can create (restructure U3): 'custom' (default — a public
+ * standalone lesson, `custom-<slug>`) or 'course' (a program-visible Course
+ * lesson, `course-<slug>`; assigned to a week separately via admin-courses).
+ * The server validates and is authoritative; ids are always server-minted.
+ */
+export type CreatableOrigin = 'custom' | 'course';
+
 export type ContentAction =
   | { action: 'save-draft'; cellId: string; draft: DraftFields }
   | { action: 'publish'; cellId: string; note?: string }
   | { action: 'archive'; cellId: string }
   | { action: 'restore'; cellId: string }
-  | { action: 'create-custom'; title: string; type: string };
+  | { action: 'create-custom'; title: string; type: string; origin?: CreatableOrigin };
 
 export interface ContentActionResult {
   ok: true;
@@ -160,6 +168,12 @@ export const publishLesson = (cellId: string, note?: string) => {
 };
 export const archiveLesson = (cellId: string) => invokeAdminContent({ action: 'archive', cellId });
 export const restoreLesson = (cellId: string) => invokeAdminContent({ action: 'restore', cellId });
-/** Creates a free-form custom lesson; resolves with the generated `custom-<slug>` id. */
-export const createCustomLesson = (title: string, type: string) =>
-  invokeAdminContent({ action: 'create-custom', title, type });
+/**
+ * Creates a free-form lesson; resolves with the server-generated id
+ * (`custom-<slug>`, or `course-<slug>` when `origin: 'course'` is passed — U3).
+ * Omitting `origin` keeps the pre-U3 custom behavior byte-identical.
+ */
+export const createCustomLesson = (title: string, type: string, origin?: CreatableOrigin) =>
+  invokeAdminContent(
+    origin ? { action: 'create-custom', title, type, origin } : { action: 'create-custom', title, type },
+  );

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardList, Users, ChevronRight, FileText, Activity, Route } from 'lucide-react';
+import { ClipboardList, Users, ChevronRight, FileText, Activity, Route, BookOpen } from 'lucide-react';
 import type { Role } from '../types';
 import type { LearnerRosterEntry } from '../lib/learnerDetail';
 import CohortDashboard from './staff/CohortDashboard';
@@ -9,6 +9,7 @@ import ReviewQueue from './staff/ReviewQueue';
 import UsageMonitoring from './staff/UsageMonitoring';
 import WorkshopManagement from './staff/WorkshopManagement';
 import CmsHome from './cms/CmsHome';
+import CourseManagement from './cms/CourseManagement';
 
 // Staff landing reached via the role-gated `staff` view (P5.1d). The cohort
 // dashboard (P5.2b) is live at the top; selecting a learner drills into their
@@ -24,6 +25,7 @@ export default function StaffArea({ role }: { role: Role }) {
   const [showCms, setShowCms] = useState(false);
   const [showUsage, setShowUsage] = useState(false);
   const [showWorkshops, setShowWorkshops] = useState(false);
+  const [showCourses, setShowCourses] = useState(false);
   const isAdmin = role === 'admin';
 
   if (selected) {
@@ -70,6 +72,14 @@ export default function StaffArea({ role }: { role: Role }) {
     return (
       <div className="max-w-5xl mx-auto">
         <WorkshopManagement onBack={() => setShowWorkshops(false)} />
+      </div>
+    );
+  }
+
+  if (showCourses && isAdmin) {
+    return (
+      <div className="max-w-5xl mx-auto">
+        <CourseManagement onBack={() => setShowCourses(false)} />
       </div>
     );
   }
@@ -136,6 +146,30 @@ export default function StaffArea({ role }: { role: Role }) {
             title="Content management"
             detail="Browse and edit lessons across the matrix."
             slice="P5.4 · admin"
+          />
+        )}
+
+        {/* Course management (restructure U3): admin-only. Champions see it as upcoming. */}
+        {isAdmin ? (
+          <button
+            onClick={() => setShowCourses(true)}
+            className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
+          >
+            <BookOpen className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <h2 className="font-semibold text-gray-900">Course management</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Author course weeks and assign published modules.
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" aria-hidden="true" />
+          </button>
+        ) : (
+          <ComingSoon
+            icon={BookOpen}
+            title="Course management"
+            detail="Author course weeks and assign published modules."
+            slice="U3 · admin"
           />
         )}
 

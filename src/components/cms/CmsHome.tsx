@@ -197,7 +197,8 @@ function LessonRow({
           <p className="font-semibold text-gray-900 truncate">{lesson.title}</p>
           <p className="mt-0.5 text-xs text-gray-500">
             {lesson.type}
-            {lesson.origin === 'custom' && ' · custom'}
+            {/* Non-matrix lessons are labeled by origin ('custom' / 'course' — U3). */}
+            {lesson.origin !== 'matrix' && ` · ${lesson.origin}`}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">

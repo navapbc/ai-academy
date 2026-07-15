@@ -54,7 +54,10 @@ export type ContentAction =
   | { action: 'publish'; cellId: string; note: string | null }
   | { action: 'archive'; cellId: string }
   | { action: 'restore'; cellId: string }
-  | { action: 'create-custom'; title: string; type: string };
+  // origin (restructure U3): 'custom' (default — a public standalone lesson) or
+  // 'course' (a program-visible Course lesson, assigned to a week separately via
+  // the admin-courses function).
+  | { action: 'create-custom'; title: string; type: string; origin: CreatableOrigin };
 
 export type ParseResult =
   | { ok: true; value: ContentAction }
@@ -92,17 +95,21 @@ export function isValidOrigin(v: unknown): v is ModuleOrigin {
   return typeof v === 'string' && (MODULE_ORIGINS as readonly string[]).includes(v);
 }
 
-// --- Custom (free-form) lessons (P5.4-6) -------------------------------------
-// A custom lesson is created with a server-generated cell_id `custom-<slug>`.
-// The slug is derived deterministically from the title and collision-guarded
+// --- Custom / course (free-form) lessons (P5.4-6 / restructure U3) -----------
+// A CMS-created lesson gets a server-generated cell_id `<prefix><slug>`. The
+// slug is derived deterministically from the title and collision-guarded
 // against existing ids, so creating "Prompt basics" twice yields distinct ids.
+// The same machinery mints both `custom-<slug>` (P5.4-6) and `course-<slug>`
+// (U3) ids — the client never mints non-custom ids (Key Decisions).
 
 /** The fixed prefix every custom lesson's cell_id carries. */
 export const CUSTOM_ID_PREFIX = 'custom-';
-// The slug must leave room for the prefix within the cell_id length cap, so the
-// generated id always passes isValidCellId — otherwise the new lesson would 400
-// on its first save-draft (which re-validates the cell_id).
-const CUSTOM_SLUG_MAX = CELL_ID_MAX - CUSTOM_ID_PREFIX.length;
+/** The fixed prefix every CMS-created course lesson's cell_id carries (U3). */
+export const COURSE_ID_PREFIX = 'course-';
+
+/** The origins the create-custom action can mint (mirrors ContentAction). */
+export const CREATABLE_ORIGINS = ['custom', 'course'] as const;
+export type CreatableOrigin = (typeof CREATABLE_ORIGINS)[number];
 
 /** lower-cases, collapses non-alphanumerics to single hyphens, trims hyphens. */
 export function slugify(title: string): string {
@@ -113,22 +120,36 @@ export function slugify(title: string): string {
 }
 
 /**
- * Deterministic, collision-free `custom-<slug>` cell_id for a new lesson. The
- * slug is truncated so `custom-<slug>` always fits CELL_ID_MAX (incl. room for a
- * disambiguating `-N` suffix); an all-punctuation/empty title falls back to
- * `custom-lesson`. On collision with an existing id, appends `-2`, `-3`, …
+ * Deterministic, collision-free `<prefix><slug>` cell_id for a new lesson. The
+ * slug is truncated so the id always fits CELL_ID_MAX (incl. room for a
+ * disambiguating `-N` suffix) and passes isValidCellId — otherwise the new
+ * lesson would 400 on its first save-draft (which re-validates the cell_id).
+ * An all-punctuation/empty title falls back to `<prefix>lesson`. On collision
+ * with an existing id, appends `-2`, `-3`, …
  */
-export function customCellId(title: string, existingIds: readonly string[]): string {
+function mintCellId(prefix: string, title: string, existingIds: readonly string[]): string {
+  // The slug must leave room for the prefix within the cell_id length cap.
+  const slugMax = CELL_ID_MAX - prefix.length;
   const taken = new Set(existingIds);
   const base = slugify(title);
   for (let n = 1; ; n++) {
     const suffix = n === 1 ? '' : `-${n}`;
-    const room = CUSTOM_SLUG_MAX - suffix.length;
+    const room = slugMax - suffix.length;
     const trimmed = base.slice(0, room).replace(/-+$/g, '');
     const slug = trimmed === '' ? 'lesson' : trimmed;
-    const id = `${CUSTOM_ID_PREFIX}${slug}${suffix}`;
+    const id = `${prefix}${slug}${suffix}`;
     if (!taken.has(id)) return id;
   }
+}
+
+/** `custom-<slug>` id for a new custom lesson (P5.4-6). */
+export function customCellId(title: string, existingIds: readonly string[]): string {
+  return mintCellId(CUSTOM_ID_PREFIX, title, existingIds);
+}
+
+/** `course-<slug>` id for a new CMS-created course lesson (U3). */
+export function courseCellId(title: string, existingIds: readonly string[]): string {
+  return mintCellId(COURSE_ID_PREFIX, title, existingIds);
 }
 
 // --- Field validators --------------------------------------------------------
@@ -798,7 +819,8 @@ export function parseContentAction(body: unknown): ParseResult {
   }
 
   // create-custom is the one action with no incoming cellId — the server
-  // generates `custom-<slug>` — so it is validated before the cellId gate.
+  // generates `custom-<slug>` / `course-<slug>` — so it is validated before the
+  // cellId gate.
   if (action === 'create-custom') {
     if (typeof b.title !== 'string' || b.title.trim() === '') {
       return err('`title` must be a non-empty string.');
@@ -808,7 +830,15 @@ export function parseContentAction(body: unknown): ParseResult {
       return err('`type` must be a non-empty string.');
     }
     if (b.type.length > TYPE_MAX) return err(`\`type\` must be at most ${TYPE_MAX} characters.`);
-    return ok({ action, title: b.title.trim(), type: b.type.trim() });
+    // Optional origin (U3): absent → 'custom' (the pre-U3 contract, unchanged).
+    let origin: CreatableOrigin = 'custom';
+    if (b.origin !== undefined && b.origin !== null) {
+      if (!(CREATABLE_ORIGINS as readonly unknown[]).includes(b.origin)) {
+        return err(`\`origin\` must be one of: ${CREATABLE_ORIGINS.join(', ')}.`);
+      }
+      origin = b.origin as CreatableOrigin;
+    }
+    return ok({ action, title: b.title.trim(), type: b.type.trim(), origin });
   }
 
   if (!isValidCellId(b.cellId)) {
@@ -892,10 +922,14 @@ export function buildContentVersionRow(input: {
 }
 
 /**
- * Builds the full row for a new free-form (custom) lesson (P5.4-6). It starts as
- * a `draft` so it is invisible to learners until Publish (R3): `origin='custom'`
- * + `stage=null` puts it in the ungated "Additional lessons" group, never the
- * matrix gating. The title/type sit in the LIVE columns (the row is hidden by
+ * Builds the full row for a new free-form lesson (P5.4-6; origin variant U3).
+ * It starts as a `draft` so it is invisible to learners until Publish (R3):
+ * `stage=null` for both creatable origins (modules_origin_stage_check).
+ * `origin='custom'` (default) puts it in the ungated "Resources & additional
+ * lessons" group; `origin='course'` mints a `course-<slug>` id and sets
+ * `visibility='program'` (enrolled + staff only once U4's policy is live) — week
+ * assignment happens separately via admin-courses and never changes visibility
+ * (Key Decisions). The title/type sit in the LIVE columns (the row is hidden by
  * status, so this is safe); the admin then stages body/quiz/lab edits into
  * `draft` via the reused editors and Publish promotes them. `sort_order` lands
  * after every existing row. The caller passes the existing ids (collision guard)
@@ -909,12 +943,17 @@ export function buildCustomInsert(
   maxSortOrder: number,
   callerId: string,
   now: string,
+  origin: CreatableOrigin = 'custom',
 ): Record<string, unknown> {
   return {
-    cell_id: customCellId(title, existingIds),
-    origin: 'custom',
+    cell_id:
+      origin === 'course' ? courseCellId(title, existingIds) : customCellId(title, existingIds),
+    origin,
     stage: null,
     status: 'draft',
+    // Course lessons are program-visible; custom lessons keep the DB default
+    // ('public') — stated explicitly so the write contract is visible here.
+    visibility: origin === 'course' ? 'program' : 'public',
     title: title.trim(),
     type,
     // Free-form lessons sit outside the matrix's 4D/evidence framework; use
@@ -928,6 +967,22 @@ export function buildCustomInsert(
     updated_by: callerId,
     updated_at: now,
   };
+}
+
+/**
+ * Archive referential guard (restructure U3 — the admin-courses counterpart):
+ * a lesson assigned to a course week cannot be archived, or learners would see
+ * a week silently lose a member (and the membership row would dangle in the
+ * CMS). Returns the 400 rejection message naming the week, else null; index.ts
+ * looks up the membership + week title. Restore deliberately does NOT
+ * auto-rejoin a week (an admin re-assigns explicitly via admin-courses).
+ */
+export function archiveBlockedReason(assignedWeekTitle: string | null | undefined): string | null {
+  if (!assignedWeekTitle) return null;
+  return (
+    `This lesson is assigned to ${assignedWeekTitle}. ` +
+    `Unassign it from ${assignedWeekTitle} first, then archive.`
+  );
 }
 
 // --- Allowlist / domain (mirrors admin-cohorts-core) -------------------------

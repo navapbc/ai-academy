@@ -2,15 +2,18 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Plus, Loader2, AlertCircle } from 'lucide-react';
 import { useDialogA11y } from '../../lib/useDialogA11y';
-import { createCustomLesson } from '../../lib/adminContent';
+import { createCustomLesson, type CreatableOrigin } from '../../lib/adminContent';
 import type { ModuleType } from '../../types';
 
-// Create a free-form (custom) lesson (P5.4-6). An admin names the lesson and
-// picks a content type; the server generates a `custom-<slug>` id and inserts a
-// hidden DRAFT row (origin='custom', stage=null) — invisible to learners until
-// it is published (R3). On success the parent re-fetches and opens the new
-// lesson's editor so the admin can immediately add body/quiz/lab content via the
-// reused Chunk 3–5 editors. Title is set here (the lesson editors don't edit it).
+// Create a free-form lesson (P5.4-6; course variant U3). An admin names the
+// lesson, picks a content type, and chooses where it lives: a standalone custom
+// lesson (default — public, `custom-<slug>`) or a Course lesson (program-visible,
+// `course-<slug>`; assigned to a week afterwards via Course management). Either
+// way the server generates the id and inserts a hidden DRAFT row (stage=null) —
+// invisible to learners until it is published (R3). On success the parent
+// re-fetches and opens the new lesson's editor so the admin can immediately add
+// body/quiz/lab content via the reused Chunk 3–5 editors. Title is set here
+// (the lesson editors don't edit it).
 
 // The content types an admin can pick for a new lesson. Each maps to the editor
 // the admin will reach from the lesson detail; `content` (markdown) is the default.
@@ -36,6 +39,7 @@ export default function CreateLessonModal({
 }) {
   const [title, setTitle] = useState('');
   const [type, setType] = useState<ModuleType>('content');
+  const [origin, setOrigin] = useState<CreatableOrigin>('custom');
   const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,10 +54,16 @@ export default function CreateLessonModal({
     setSubmitting(true);
     setError(null);
     try {
-      const res = await createCustomLesson(title.trim(), type);
+      // Only the course variant passes origin — the default custom call stays
+      // byte-identical to the pre-U3 contract.
+      const res =
+        origin === 'course'
+          ? await createCustomLesson(title.trim(), type, 'course')
+          : await createCustomLesson(title.trim(), type);
       // Reset for next time, then hand the new id back to the parent.
       setTitle('');
       setType('content');
+      setOrigin('custom');
       setTouched(false);
       setSubmitting(false);
       if (res.cellId) onCreated(res.cellId);
@@ -159,6 +169,51 @@ export default function CreateLessonModal({
                     ))}
                   </select>
                 </div>
+
+                {/* Origin choice (U3): custom (default) vs course lesson. */}
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-bold text-gray-700">Lesson home</legend>
+                  <div className="flex items-start gap-2">
+                    <input
+                      id="new-lesson-origin-custom"
+                      type="radio"
+                      name="new-lesson-origin"
+                      value="custom"
+                      checked={origin === 'custom'}
+                      onChange={() => setOrigin('custom')}
+                      className="mt-0.5 border-gray-300 text-nava-green focus:ring-nava-green"
+                    />
+                    <div className="text-sm text-gray-700">
+                      <label htmlFor="new-lesson-origin-custom" className="font-semibold">
+                        Standalone lesson
+                      </label>
+                      <p className="text-xs text-gray-500">
+                        Lives under “Resources &amp; additional lessons” — visible to everyone once
+                        published.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <input
+                      id="new-lesson-origin-course"
+                      type="radio"
+                      name="new-lesson-origin"
+                      value="course"
+                      checked={origin === 'course'}
+                      onChange={() => setOrigin('course')}
+                      className="mt-0.5 border-gray-300 text-nava-green focus:ring-nava-green"
+                    />
+                    <div className="text-sm text-gray-700">
+                      <label htmlFor="new-lesson-origin-course" className="font-semibold">
+                        Course lesson
+                      </label>
+                      <p className="text-xs text-gray-500">
+                        Program-visible (enrolled learners and staff). Assign it to a course week
+                        via Course management after creating it.
+                      </p>
+                    </div>
+                  </div>
+                </fieldset>
 
                 {error && (
                   <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex gap-2" role="alert">

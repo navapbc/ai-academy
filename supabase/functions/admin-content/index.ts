@@ -12,6 +12,7 @@
 // bumps version absolutely (DATA-05), and nulls draft — one atomic UPDATE.
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import {
+  archiveBlockedReason,
   buildContentVersionRow,
   buildCorsHeaders,
   buildCustomInsert,
@@ -60,7 +61,7 @@ async function applyAction(
       (m, r) => Math.max(m, (r.sort_order as number) ?? 0),
       0,
     );
-    const insert = buildCustomInsert(action.title, action.type, ids, maxSortOrder, callerId, stamp.updated_at);
+    const insert = buildCustomInsert(action.title, action.type, ids, maxSortOrder, callerId, stamp.updated_at, action.origin);
     const { error } = await admin.from('modules').insert(insert);
     return error ? { error: error.message } : { error: null, detail: { cellId: insert.cell_id } };
   }
@@ -123,6 +124,22 @@ async function applyAction(
       return { error: null, detail: { version: update.version } };
     }
     case 'archive': {
+      // Referential guard (restructure U3): a lesson assigned to a course week
+      // must be unassigned (via admin-courses) before archive — 400 names the
+      // week. The embedded select resolves the membership's week title in one
+      // read (course_week_modules.week_id → course_weeks is to-one).
+      const { data: membership, error: memErr } = await admin
+        .from('course_week_modules')
+        .select('week_id, course_weeks(title)')
+        .eq('cell_id', action.cellId)
+        .maybeSingle();
+      if (memErr) return { error: memErr.message };
+      const assignedWeekTitle = membership
+        ? ((membership.course_weeks as { title?: string } | null)?.title ?? 'its course week')
+        : null;
+      const blocked = archiveBlockedReason(assignedWeekTitle);
+      if (blocked) return { error: blocked, status: 400 };
+
       const { error } = await admin
         .from('modules')
         .update({ archived_at: new Date().toISOString(), ...stamp })
