@@ -32,6 +32,7 @@ import DashboardCritique from './exercises/DashboardCritique';
 import UseCasePortfolio from './exercises/UseCasePortfolio';
 import FailureLog from './exercises/FailureLog';
 import ChatCompare from './exercises/ChatCompare';
+import DecisionScenario from './exercises/DecisionScenario';
 import GlatExam from './exercises/GlatExam';
 
 interface Props {
@@ -181,6 +182,13 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         // shared prompt; records a submission but never gates completion
         // (participation completion is U9); no onComplete (see ChatCompareConfig).
         return <ChatCompare config={module.labConfig} labId={module.cellId} />;
+      case 'decision-scenario':
+        // Ungraded "Walk the Workflow" checkpoint scenario (restructure U7) —
+        // linear DELEGATE→GROUND→SCOPE→VERIFY choices with per-option authored
+        // feedback; records ONE submission on finish but never gates completion
+        // (participation completion is U9); no onComplete (see
+        // DecisionScenarioConfig).
+        return <DecisionScenario config={module.labConfig} labId={module.cellId} />;
       case 'glat':
         // GLAT objective gate (P4.10) — this lab GATES cell 2.14: ≥80% records a
         // passing quiz_attempts row and calls onComplete. 2.14 has no inline quiz.

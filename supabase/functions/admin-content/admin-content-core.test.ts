@@ -237,6 +237,96 @@ describe('validateLabConfigJson — per kind', () => {
     if (!r.ok) expect(r.error).toContain('panes');
   });
 
+  test('decision-scenario: introMd + checkpoints of phase/setup/prompt/options[≥2] with feedback (restructure U7)', () => {
+    const good = {
+      kind: 'decision-scenario',
+      introMd: 'Marina has a stack of intake notes to summarize.',
+      checkpoints: [
+        {
+          id: 'cp-delegate',
+          phase: 'delegate',
+          setupMd: 'Marina wonders what to hand off.',
+          prompt: 'What should she delegate?',
+          options: [
+            { text: 'The whole decision', feedbackMd: 'Too much — judgment stays hers.' },
+            { text: 'The first draft', feedbackMd: 'Right-sized.' },
+          ],
+        },
+        {
+          id: 'cp-verify',
+          phase: 'verify',
+          setupMd: 'The draft is back.',
+          prompt: 'Now what?',
+          multiSelect: true,
+          options: [
+            { text: 'Check the claims', feedbackMd: 'Yes.' },
+            { text: 'Ship as-is', feedbackMd: 'No.' },
+          ],
+        },
+      ],
+      closingMd: 'She ships a summary she can stand behind.',
+    };
+    // Minimal valid config (no title/closing/multiSelect) and the full one both pass.
+    expect(validateLabConfigJson(good).ok).toBe(true);
+    expect(
+      validateLabConfigJson({
+        kind: 'decision-scenario',
+        introMd: 'Intro.',
+        checkpoints: [good.checkpoints[0]],
+      }).ok,
+    ).toBe(true);
+    // introMd is required and non-empty.
+    expect(validateLabConfigJson({ kind: 'decision-scenario', checkpoints: good.checkpoints }).ok).toBe(false);
+    expect(validateLabConfigJson({ ...good, introMd: '  ' }).ok).toBe(false);
+    // 0 checkpoints rejected.
+    expect(validateLabConfigJson({ ...good, checkpoints: [] }).ok).toBe(false);
+    // Each checkpoint needs id / phase-in-enum / setupMd / prompt.
+    expect(
+      validateLabConfigJson({ ...good, checkpoints: [{ ...good.checkpoints[0], id: '' }] }).ok,
+    ).toBe(false);
+    expect(
+      validateLabConfigJson({ ...good, checkpoints: [{ ...good.checkpoints[0], phase: 'ponder' }] }).ok,
+    ).toBe(false);
+    expect(
+      validateLabConfigJson({ ...good, checkpoints: [{ ...good.checkpoints[0], setupMd: '' }] }).ok,
+    ).toBe(false);
+    expect(
+      validateLabConfigJson({ ...good, checkpoints: [{ ...good.checkpoints[0], prompt: '' }] }).ok,
+    ).toBe(false);
+    // Options: ≥2, each with non-empty text + feedbackMd.
+    expect(
+      validateLabConfigJson({
+        ...good,
+        checkpoints: [{ ...good.checkpoints[0], options: [{ text: 'Only', feedbackMd: 'f' }] }],
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateLabConfigJson({
+        ...good,
+        checkpoints: [
+          { ...good.checkpoints[0], options: [{ text: 'A', feedbackMd: 'f' }, { text: 'B' }] },
+        ],
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateLabConfigJson({
+        ...good,
+        checkpoints: [
+          { ...good.checkpoints[0], options: [{ text: 'A', feedbackMd: 'f' }, { text: 'B', feedbackMd: '' }] },
+        ],
+      }).ok,
+    ).toBe(false);
+    // multiSelect, when present, must be a boolean; closingMd a string.
+    expect(
+      validateLabConfigJson({ ...good, checkpoints: [{ ...good.checkpoints[0], multiSelect: 'yes' }] }).ok,
+    ).toBe(false);
+    expect(validateLabConfigJson({ ...good, closingMd: 7 }).ok).toBe(false);
+    // The failure carries a named error.
+    const r = validateLabConfigJson({ ...good, checkpoints: [] });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('checkpoints');
+  });
+
   test('glat: passThreshold in (0,1] + well-formed sections', () => {
     const good = {
       kind: 'glat',

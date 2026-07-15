@@ -77,6 +77,53 @@ describe('validateLabConfig — per kind', () => {
     expect(validateLabConfig({ ...good, suggestedPrompts: 'nope' }).ok).toBe(false);
   });
 
+  test('decision-scenario requires introMd + well-formed checkpoints with per-option feedback', () => {
+    const good = {
+      kind: 'decision-scenario',
+      introMd: 'Marina has notes to summarize.',
+      checkpoints: [
+        {
+          id: 'cp-1',
+          phase: 'delegate',
+          setupMd: 'Marina wonders what to hand off.',
+          prompt: 'What should she delegate?',
+          options: [
+            { text: 'The decision', feedbackMd: 'Too much.' },
+            { text: 'The draft', feedbackMd: 'Right-sized.' },
+          ],
+        },
+      ],
+    };
+    expect(validateLabConfig(good).ok).toBe(true);
+    // multiSelect and closingMd are optional extras.
+    const multi = {
+      ...good,
+      closingMd: 'She ships it.',
+      checkpoints: [{ ...good.checkpoints[0], multiSelect: true }],
+    };
+    expect(validateLabConfig(multi).ok).toBe(true);
+    // Rejections: missing introMd, 0 checkpoints, 1 option, bad phase, missing feedback.
+    expect(validateLabConfig({ ...good, introMd: '' }).ok).toBe(false);
+    expect(validateLabConfig({ ...good, checkpoints: [] }).ok).toBe(false);
+    expect(
+      validateLabConfig({
+        ...good,
+        checkpoints: [{ ...good.checkpoints[0], options: [{ text: 'Only', feedbackMd: 'f' }] }],
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateLabConfig({ ...good, checkpoints: [{ ...good.checkpoints[0], phase: 'ponder' }] }).ok,
+    ).toBe(false);
+    expect(
+      validateLabConfig({
+        ...good,
+        checkpoints: [
+          { ...good.checkpoints[0], options: [{ text: 'A', feedbackMd: 'f' }, { text: 'B' }] },
+        ],
+      }).ok,
+    ).toBe(false);
+  });
+
   test('glat threshold + sections', () => {
     const good = {
       kind: 'glat',

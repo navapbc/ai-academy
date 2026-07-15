@@ -648,6 +648,59 @@ export interface ChatCompareConfig {
 }
 
 /**
+ * One choice of a decision-scenario checkpoint (cohort-restructure U7). Every
+ * option carries its own authored feedback, revealed the moment the option is
+ * chosen (single-select) or checked via "Check answer" (multi-select) — there
+ * are no "correct" flags; the feedback IS the teaching.
+ */
+export interface DecisionOption {
+  text: string;
+  /** Authored feedback markdown revealed once this option is chosen. */
+  feedbackMd: string;
+}
+
+/**
+ * One checkpoint (decision point) of the linear decision-scenario walk. The
+ * `phase` names which workflow step the checkpoint exercises and renders as an
+ * uppercase label (DELEGATE / GROUND / SCOPE / VERIFY) beside the
+ * "Checkpoint X of Y" progress indicator.
+ */
+export interface DecisionCheckpoint {
+  id: string;
+  phase: 'delegate' | 'ground' | 'scope' | 'verify';
+  /** Story beat markdown rendered above the decision prompt. */
+  setupMd: string;
+  prompt: string;
+  /** When true: checkboxes + a "Check answer" button. Default: single-select. */
+  multiSelect?: boolean;
+  /** ≥2 options, each with its own authored feedback. */
+  options: DecisionOption[];
+}
+
+/**
+ * decision-scenario (cohort-restructure U7): "Walk the Workflow" — a LINEAR
+ * checkpoint scenario (DELEGATE → GROUND → SCOPE → VERIFY; no branching graph
+ * in v1). Flow: introMd → checkpoints in order → closingMd. Each option's
+ * authored feedback is revealed before the story continues and the choice is
+ * then immutable; Previous re-reads completed checkpoints but never re-answers.
+ * UNGRADED: finishing records ONE lab_submissions row
+ * (`transcript.kind:'decision-scenario'`, choices as option indexes per
+ * checkpoint) but never gates completion (participation completion lands in
+ * U9), so the component takes no onComplete prop.
+ */
+export interface DecisionScenarioConfig {
+  kind: 'decision-scenario';
+  title?: string; // exercise header; generic fallback if absent
+  subtitle?: string;
+  /** Markdown scene-setter shown before the first checkpoint. */
+  introMd: string;
+  /** ≥1 checkpoints, walked strictly in order. */
+  checkpoints: DecisionCheckpoint[];
+  /** Optional markdown epilogue shown after the last checkpoint. */
+  closingMd?: string;
+}
+
+/**
  * GLAT objective gate (cell 2.14, P4.10). An auto-graded exit-credential exam:
  * Section A is 5 diagnostic self-report scales (captured, NOT scored); Sections
  * B+C are 35 objective questions (scored). ≥`passThreshold` of the scored set
@@ -695,6 +748,7 @@ export type LabConfig =
   | UseCasePortfolioConfig
   | FailureLogConfig
   | ChatCompareConfig
+  | DecisionScenarioConfig
   | GlatConfig;
 
 export interface UserProgress {

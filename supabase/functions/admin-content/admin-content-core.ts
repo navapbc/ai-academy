@@ -210,6 +210,7 @@ export const LAB_KINDS = [
   'use-case-portfolio',
   'failure-log',
   'chat-compare',
+  'decision-scenario',
   'glat',
 ] as const;
 
@@ -315,6 +316,9 @@ function firstError(...checks: (string | null)[]): string | null {
   for (const c of checks) if (c) return c;
   return null;
 }
+
+/** The decision-scenario workflow phases (mirrors DecisionCheckpoint in types.ts). */
+const DECISION_PHASES = ['delegate', 'ground', 'scope', 'verify'] as const;
 
 /**
  * Per-kind validators. Each receives the config object (already confirmed to be
@@ -603,6 +607,44 @@ const LAB_VALIDATORS: Record<string, (c: Obj) => string | null> = {
       if (!Array.isArray(c.suggestedPrompts) || !c.suggestedPrompts.every((s) => typeof s === 'string')) {
         return '`suggestedPrompts` must be an array of strings.';
       }
+    }
+    return null;
+  },
+
+  // decision-scenario (restructure U7): a LINEAR "Walk the Workflow" checkpoint
+  // scenario — required introMd, ≥1 checkpoints of { id, phase∈(delegate|ground|
+  // scope|verify), setupMd, prompt, options[≥2] of { text, feedbackMd } };
+  // multiSelect and closingMd optional.
+  'decision-scenario': (c) => {
+    if (!isNonEmptyStr(c.introMd)) return '`introMd` must be a non-empty string.';
+    if (!Array.isArray(c.checkpoints) || c.checkpoints.length < 1) {
+      return '`checkpoints` must be a non-empty array.';
+    }
+    for (let i = 0; i < c.checkpoints.length; i++) {
+      const cp = c.checkpoints[i];
+      const p = `checkpoints[${i}]`;
+      if (!isObj(cp)) return `\`${p}\` must be an object.`;
+      if (!isNonEmptyStr(cp.id)) return `\`${p}.id\` must be a non-empty string.`;
+      if (!(DECISION_PHASES as readonly string[]).includes(cp.phase as string)) {
+        return `\`${p}.phase\` must be one of: ${DECISION_PHASES.join(', ')}.`;
+      }
+      if (!isNonEmptyStr(cp.setupMd)) return `\`${p}.setupMd\` must be a non-empty string.`;
+      if (!isNonEmptyStr(cp.prompt)) return `\`${p}.prompt\` must be a non-empty string.`;
+      if ('multiSelect' in cp && cp.multiSelect !== undefined && typeof cp.multiSelect !== 'boolean') {
+        return `\`${p}.multiSelect\` must be a boolean.`;
+      }
+      if (!Array.isArray(cp.options) || cp.options.length < 2) {
+        return `\`${p}.options\` must be an array of at least 2 options.`;
+      }
+      for (let j = 0; j < cp.options.length; j++) {
+        const opt = cp.options[j];
+        if (!isObj(opt) || !isNonEmptyStr(opt.text) || !isNonEmptyStr(opt.feedbackMd)) {
+          return `\`${p}.options[${j}]\` must be { text, feedbackMd } (both non-empty strings).`;
+        }
+      }
+    }
+    if ('closingMd' in c && c.closingMd !== undefined && typeof c.closingMd !== 'string') {
+      return '`closingMd` must be a string.';
     }
     return null;
   },

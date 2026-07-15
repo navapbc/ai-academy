@@ -38,6 +38,7 @@ vi.mock('./exercises/VoiceEdit', () => ({ default: () => <div>STUB:VoiceEdit</di
 vi.mock('./exercises/PromptEval', () => ({ default: () => <div>STUB:PromptEval</div> }));
 vi.mock('./exercises/IterationLab', () => ({ default: () => <div>STUB:IterationLab</div> }));
 vi.mock('./exercises/ChatCompare', () => ({ default: () => <div>STUB:ChatCompare</div> }));
+vi.mock('./exercises/DecisionScenario', () => ({ default: () => <div>STUB:DecisionScenario</div> }));
 vi.mock('./exercises/GlatExam', () => ({ default: () => <div>STUB:GlatExam objective gate</div> }));
 
 const base: Module = {
@@ -98,6 +99,7 @@ describe('renderExercise — dispatch by labConfig.kind', () => {
     ['prompt-eval', 'STUB:PromptEval'],
     ['iteration', 'STUB:IterationLab'],
     ['chat-compare', 'STUB:ChatCompare'],
+    ['decision-scenario', 'STUB:DecisionScenario'],
     ['glat', 'STUB:GlatExam objective gate'],
   ];
   test.each(kinds)('kind %s renders %s', (kind, marker) => {
