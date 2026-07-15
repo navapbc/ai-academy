@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BarChart3, X, CheckCircle2, ChevronDown, LifeBuoy, Terminal, ShieldCheck, GraduationCap, Layers } from 'lucide-react';
+import { BarChart3, X, CheckCircle2, ChevronDown, LifeBuoy, Terminal, ShieldCheck, GraduationCap } from 'lucide-react';
 import { CurriculumSection, Module, UserProgress, View } from '../../types';
 import { isModuleLive } from '../../lib/modules';
 import { BRANDING } from '../../branding';
 
 // Course-tree navigation (cohort-restructure U2): Course 1's weeks, then
 // "Supplemental coursework", then "Resources & additional lessons" — every
-// section collapsible, nothing locked (R14: gating is behaviorally off).
+// section collapsible, nothing locked (R14: gating was removed — U2/U11).
 // Collapse defaults per the plan's UX decisions: the section containing the
 // current module starts expanded, everything else collapsed; selecting (or
 // auto-advancing to) a module expands its containing section WITHOUT collapsing
@@ -231,22 +231,6 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
               >
                 <GraduationCap className="w-4 h-4 shrink-0" />
                 <span className="text-xs font-medium">My progress</span>
-              </button>
-            </div>
-
-            {/* Workshops (X.3): admin-authored guided paths through the
-                curriculum. Available to everyone (no role gate). */}
-            <div className="px-3 pb-2">
-              <button
-                onClick={() => onViewChange('workshops')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all
-                  ${activeView === 'workshops'
-                    ? 'bg-nava-mint text-nava-green border-l-4 border-nava-green shadow-sm font-bold'
-                    : 'hover:bg-gray-50 text-gray-600'
-                  }`}
-              >
-                <Layers className="w-4 h-4 shrink-0" />
-                <span className="text-xs font-medium">Workshops</span>
               </button>
             </div>
 

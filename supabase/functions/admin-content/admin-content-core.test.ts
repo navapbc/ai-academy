@@ -62,7 +62,7 @@ describe('module origin enum (restructure U1)', () => {
     expect(isValidOrigin('matrix')).toBe(true);
     expect(isValidOrigin('custom')).toBe(true);
     expect(isValidOrigin('course')).toBe(true);
-    expect(isValidOrigin('workshop')).toBe(false);
+    expect(isValidOrigin('legacy')).toBe(false);
     expect(isValidOrigin('')).toBe(false);
     expect(isValidOrigin(null)).toBe(false);
     expect(isValidOrigin(42)).toBe(false);

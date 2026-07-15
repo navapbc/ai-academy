@@ -3,7 +3,7 @@
 // client, the DB referential checks on modules/memberships, DB writes, the
 // in-memory limiter) lives in index.ts and calls here. Helpers are self-contained
 // copies so the function bundles independently (the same posture as
-// admin-workshops/admin-workshops-core.ts — keep in sync if those change).
+// admin-cohorts — keep in sync if those change).
 
 // --- Action model -----------------------------------------------------------
 
@@ -218,8 +218,8 @@ export interface AssignTargetInfo {
 
 /**
  * Returns the 400 rejection message for an invalid assignment, else null.
- * Mirrors admin-workshops `findUnpublishedSteps`: unknown and unpublished (or
- * archived) modules share one named-offender message so the response doesn't
+ * Unknown and unpublished (or archived) modules share one named-offender
+ * message so the response doesn't
  * leak whether an id exists; an already-assigned module names its week
  * (unique(cell_id): a module belongs to at most one week).
  */
@@ -270,7 +270,7 @@ export function reorderMismatchReason(
   return `The ordered list must contain exactly ${what}. Reload and try again.`;
 }
 
-// --- Allowlist / domain (mirrors admin-workshops-core) ------------------------
+// --- Allowlist / domain (mirrors admin-cohorts) --------------------------------
 
 export function isAllowlistedAdmin(
   email: string | null | undefined,
@@ -289,7 +289,7 @@ export function emailDomainAllowed(email: string | undefined | null, domain: str
   return email.split('@')[1]?.toLowerCase() === domain.toLowerCase();
 }
 
-// --- CORS allow-list (mirrors admin-workshops-core) ---------------------------
+// --- CORS allow-list (mirrors admin-cohorts) -----------------------------------
 const CORS_BASE = {
   'access-control-allow-methods': 'POST, OPTIONS',
   'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type',
@@ -306,7 +306,7 @@ export function buildCorsHeaders(
   return { ...CORS_BASE };
 }
 
-// --- Rate limiting (mirrors admin-workshops-core) -----------------------------
+// --- Rate limiting (mirrors admin-cohorts) -------------------------------------
 export interface RateLimitState {
   count: number;
   windowStart: number;

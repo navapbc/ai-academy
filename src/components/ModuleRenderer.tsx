@@ -11,7 +11,6 @@ import PrivacySimulator from './PrivacySimulator';
 import Lab from './Lab';
 import Quiz from './Quiz';
 import SectionBoundary from './SectionBoundary';
-import UseCaseLib from './UseCaseLib';
 import ScenarioSorter from './ScenarioSorter';
 import DataClassifier from './exercises/DataClassifier';
 import ToolTriage from './exercises/ToolTriage';
@@ -54,8 +53,7 @@ interface Props {
    * U10: whether THIS SESSION dropped a cached completion for this module
    * because an admin published-with-reset — shows the dismissible reset notice.
    * Dismissal is in-memory only; the notice reappears on revisit until the
-   * module is re-completed (intended v1 behavior). Optional so other callers
-   * (WorkshopRunner) need no change.
+   * module is re-completed (intended v1 behavior).
    */
   wasReset?: boolean;
 }
@@ -120,9 +118,6 @@ export default function ModuleRenderer({
         // Ungated practice (U9): finishing at any score records the attempt,
         // which auto-completes the module via the participation seam.
         return <Quiz moduleId={module.id} questions={module.quiz ?? []} />;
-      case 'use-case':
-        // Client-side-only, like the simulator — 'explored'.
-        return <UseCaseLib onComplete={() => onComplete('explored')} />;
       case 'sorter':
         // The sorter grades entirely client-side and persists nothing, so no
         // data-layer participation event exists — its Continue button is the

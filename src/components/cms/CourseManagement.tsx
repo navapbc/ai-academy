@@ -33,8 +33,7 @@ import {
 // no client-write RLS); reads use the staff SELECT RLS, so every week — empty
 // or not — is visible here even though learners only see weeks with a published
 // member. Admin-only — gated by the StaffArea entry (admin) and the function's
-// own admin check. Reloads after each write (simple + always correct). Evolves
-// the WorkshopManagement ordered-picker patterns.
+// own admin check. Reloads after each write (simple + always correct).
 
 /**
  * The create/rename form for one week (create when `existing` is null). Owns

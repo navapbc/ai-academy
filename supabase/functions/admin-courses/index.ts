@@ -5,11 +5,10 @@
 // service_role, which lives here and is never exposed to the browser. An admin
 // calls this to create/rename/reorder/delete course weeks and to assign/
 // unassign/reorder published modules within a week. Authn/CORS/rate-limit/authz
-// mirror admin-cohorts/admin-workshops; pure parse/validate logic is in
+// mirror admin-cohorts; pure parse/validate logic is in
 // ./admin-courses-core.ts (unit-tested under vitest).
 //
-// Server-authoritative referential checks (mirrors admin-workshops
-// `findUnpublishedSteps`): assign_module requires an existing PUBLISHED,
+// Server-authoritative referential checks: assign_module requires an existing PUBLISHED,
 // non-archived module not already in another week (unique(cell_id) — 400 names
 // the offender); delete_week requires an empty week (409 otherwise). The other
 // direction — archive refuses while a week membership exists — lives in
@@ -131,7 +130,7 @@ async function applyAction(admin: SupabaseClient, action: CourseAction): Promise
       return { error: null };
     }
     case 'assign_module': {
-      // Referential check (mirrors admin-workshops findUnpublishedSteps): the
+      // Referential check: the
       // module must exist, be published, non-archived, and not already belong to
       // a week (unique(cell_id)). 400 names the offender.
       const { data: mod, error: modErr } = await admin

@@ -6,7 +6,7 @@ import CourseManagement from './CourseManagement';
 import type { CourseAuthoringData } from '../../lib/adminCourses';
 
 // Mock the whole adminCourses module (writes + read) so the test exercises only
-// the panel's UI logic. Mirrors WorkshopManagement.test.tsx.
+// the panel's UI logic.
 const api = vi.hoisted(() => ({
   fetchCourseAuthoring: vi.fn(),
   createWeek: vi.fn(),

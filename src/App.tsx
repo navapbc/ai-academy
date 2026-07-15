@@ -7,7 +7,6 @@ import type { CompletedVia } from './lib/progress';
 import { useProgress } from './lib/useProgress';
 import { useRole } from './lib/useRole';
 import { useCurriculum } from './lib/useCurriculum';
-import { useWorkshops } from './lib/useWorkshops';
 import Login from './components/Login';
 import ModuleRenderer from './components/ModuleRenderer';
 import ModulePager from './components/ModulePager';
@@ -15,8 +14,6 @@ import Playground from './components/Playground';
 import RoleGuard from './components/RoleGuard';
 import StaffArea from './components/StaffArea';
 import LearnerDashboard from './components/LearnerDashboard';
-import WorkshopList from './components/WorkshopList';
-import WorkshopRunner from './components/WorkshopRunner';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import ContentContainer from './components/layout/ContentContainer';
@@ -111,12 +108,10 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
     [moduleById],
   );
 
-  // Gating is behaviorally OFF (restructure U2, R14): no isLocked predicate is
-  // passed (undefined — the parameter itself is deleted in U11), so useProgress
-  // treats every module as unlocked and the completion cursor advances straight
-  // through the flattened visible order.
+  // No gating (restructure U2 turned it off, U11 deleted it — R14): the
+  // completion cursor advances straight through the flattened visible order.
   const { progress, completeModule, selectModule, resetModuleIds, error, dismissError } =
-    useProgress(userId, allModuleIds, undefined, getResetEpoch);
+    useProgress(userId, allModuleIds, getResetEpoch);
 
   // Role drives which views are reachable (P5.1d). Resolved here, inside the
   // `key={session.user.id}` subtree, so it resets cleanly on a user switch and
@@ -124,8 +119,6 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
   const { role, loading: roleLoading, isStaff } = useRole();
 
   const [view, setView] = useState<View>('learning');
-  // X.3: which workshop the learner is walking in the runner (null = the list).
-  const [activeWorkshopId, setActiveWorkshopId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<AIPersona>('default');
@@ -177,31 +170,7 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
 
   const handleViewChange = (next: View) => {
     if (next !== view) navIntentRef.current = true;
-    // Leaving the workshops view (or re-entering it) returns to the list, so the
-    // runner never lingers behind another view.
-    if (next !== 'workshops') setActiveWorkshopId(null);
     setView(next);
-  };
-
-  // X.3 workshop runner wiring. The runner reuses ModuleRenderer verbatim, so it
-  // needs the same module resolution + completion path as the standalone
-  // learning view — it writes no new progress (R5/R6).
-  const { getWorkshop } = useWorkshops();
-  const activeWorkshop = activeWorkshopId ? getWorkshop(activeWorkshopId) : undefined;
-  const resolveWorkshopModule = useCallback(
-    (cellId: string) => moduleById.get(cellId),
-    [moduleById],
-  );
-  // Nothing is locked anymore (restructure U2); workshops retire in U12, so the
-  // prop stays wired with a constant unlocked predicate until then.
-  const isWorkshopStepLocked = useCallback(() => false, []);
-  const handleLaunchWorkshop = (id: string) => {
-    navIntentRef.current = true;
-    setActiveWorkshopId(id);
-  };
-  const handleExitWorkshop = () => {
-    navIntentRef.current = true;
-    setActiveWorkshopId(null);
   };
 
   // Progress denominators (restructure U2): numerator = completions ∩ the
@@ -263,9 +232,7 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
                 ? 'Staff tools'
                 : view === 'progress'
                   ? 'Your progress'
-                  : view === 'workshops'
-                    ? 'Workshops'
-                    : currentModule.title
+                  : currentModule.title
           }
           className="flex-1 overflow-y-auto w-full focus:outline-none"
         >
@@ -286,31 +253,6 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
           {view === 'progress' && (
             <ContentContainer wide>
               <LearnerDashboard userId={userId} />
-            </ContentContainer>
-          )}
-          {/* Workshops (X.3): the list, or the guided runner once one is launched.
-              Conditionally mounted (not hidden) so the derived progress reflects a
-              just-completed step. The runner reuses ModuleRenderer verbatim and
-              routes completion through completeModule — no new writes (R5/R6). */}
-          {view === 'workshops' && (
-            <ContentContainer wide>
-              {activeWorkshop ? (
-                <WorkshopRunner
-                  key={activeWorkshop.id}
-                  workshop={activeWorkshop}
-                  moduleById={resolveWorkshopModule}
-                  isStepLocked={isWorkshopStepLocked}
-                  completedModuleIds={progress.completedModuleIds}
-                  selectedPersona={selectedPersona}
-                  onCompleteModule={handleComplete}
-                  onExit={handleExitWorkshop}
-                />
-              ) : (
-                <WorkshopList
-                  completedModuleIds={progress.completedModuleIds}
-                  onLaunch={handleLaunchWorkshop}
-                />
-              )}
             </ContentContainer>
           )}
           <ContentContainer active={view === 'learning'}>

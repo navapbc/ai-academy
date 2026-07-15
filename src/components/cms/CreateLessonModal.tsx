@@ -22,7 +22,6 @@ const LESSON_TYPES: { value: ModuleType; label: string }[] = [
   { value: 'lab', label: 'Lab (hands-on exercise)' },
   { value: 'quiz', label: 'Quiz' },
   { value: 'sorter', label: 'Scenario sorter' },
-  { value: 'use-case', label: 'Use-case' },
   { value: 'simulator', label: 'Simulator' },
   { value: 'glossary', label: 'Glossary' },
 ];

@@ -642,7 +642,7 @@ example.
 
 ### Phase 4 — Course 1 content
 
-- [ ] **Unit 8: Course 1 seed (Weeks 0–4) + resources**
+- [x] **Unit 8: Course 1 seed (Weeks 0–4) + resources** ✓ committed aded56c (rig live-verified vs real Claude; Exp-2 rig iterated after round-1 refusals)
 
 **Goal:** All authored Course 1 activities exist as data and are assigned to weeks;
 the enrollment-visibility e2e spec becomes executable.
@@ -724,7 +724,7 @@ quizzes never gate; `completed_via` stamped.
 **Verification:** Browser: complete one module each way; sidebar, "My progress", and
 staff drill-down agree.
 
-- [ ] **Unit 10: Durable progress reset on publish**
+- [x] **Unit 10: Durable progress reset on publish** ✓ committed b6b2342 (FOR SHARE correction over the plan's FOR KEY SHARE; acceptance test rejects epoch re-derivation)
 
 **Goal:** Publish-with-reset durably clears a module's completions, is audited,
 notifies learners, and cannot be resurrected — or wrongly reject genuinely new work.

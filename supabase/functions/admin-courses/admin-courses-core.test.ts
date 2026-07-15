@@ -265,7 +265,7 @@ describe('reorderMismatchReason', () => {
   });
 });
 
-describe('shared helpers (mirror admin-workshops-core)', () => {
+describe('shared helpers (mirror admin-cohorts)', () => {
   test('isAllowlistedAdmin matches case-insensitively', () => {
     expect(isAllowlistedAdmin('A@navapbc.com', 'a@navapbc.com, b@navapbc.com')).toBe(true);
     expect(isAllowlistedAdmin('c@navapbc.com', 'a@navapbc.com')).toBe(false);

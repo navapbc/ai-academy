@@ -9,12 +9,11 @@ import type { Curriculum, CurriculumSection, Module } from './types';
 // section shape. A viewer who legitimately receives only public rows (e.g. an
 // unenrolled learner post-U4) groups into fewer sections and must render the
 // academy normally.
-const { useCurriculum, useAuth, useProgress, useRole, useWorkshops } = vi.hoisted(() => ({
+const { useCurriculum, useAuth, useProgress, useRole } = vi.hoisted(() => ({
   useCurriculum: vi.fn(),
   useAuth: vi.fn(),
   useProgress: vi.fn(),
   useRole: vi.fn(),
-  useWorkshops: vi.fn(),
 }));
 vi.mock('./lib/useCurriculum', () => ({ useCurriculum }));
 vi.mock('./lib/auth', () => ({ useAuth, AuthProvider: ({ children }: { children: unknown }) => children }));
@@ -23,7 +22,6 @@ vi.mock('./lib/useRole', () => ({
   useRole,
   isAllowed: (role: string | null, allow: readonly string[]) => !!role && allow.includes(role),
 }));
-vi.mock('./lib/useWorkshops', () => ({ useWorkshops }));
 
 const module14: Module = {
   id: '1.4',
@@ -80,13 +78,6 @@ beforeEach(() => {
     dismissError: vi.fn(),
   });
   useRole.mockReturnValue({ role: 'learner', loading: false, isStaff: false });
-  useWorkshops.mockReturnValue({
-    workshops: [],
-    loading: false,
-    error: null,
-    reload: vi.fn(),
-    getWorkshop: vi.fn(() => undefined),
-  });
 });
 
 describe('App — curriculum gating (U2 zero-rows discriminator)', () => {

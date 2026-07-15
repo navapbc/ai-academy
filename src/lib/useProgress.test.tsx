@@ -119,7 +119,7 @@ describe('completeModule', () => {
   // module object (getResetEpoch) into the write, at the moment of completion.
   test('captures the module reset epoch from getResetEpoch at completion time', async () => {
     const getResetEpoch = (id: string) => (id === 'm0' ? '2026-07-10T00:00:00.000Z' : null);
-    const { result } = renderHook(() => useProgress('u1', ALL, undefined, getResetEpoch));
+    const { result } = renderHook(() => useProgress('u1', ALL, getResetEpoch));
     await waitFor(() => expect(result.current.progress.currentModuleId).toBe('m0'));
 
     act(() => result.current.completeModule('m0', 'explored'));
@@ -211,7 +211,7 @@ describe('sync-failure handling', () => {
     submitCompletion.mockResolvedValueOnce('retry');
     const getResetEpoch = () => '2026-07-01T00:00:00.000Z';
     const { result, rerender } = renderHook(
-      ({ ids }) => useProgress('u1', ids, undefined, getResetEpoch),
+      ({ ids }) => useProgress('u1', ids, getResetEpoch),
       { initialProps: { ids: ALL } },
     );
     await waitFor(() => expect(result.current.progress.currentModuleId).toBe('m0'));
@@ -250,7 +250,7 @@ describe('sync-failure handling', () => {
     // The module has SINCE been reset — fresh curriculum now carries T1.
     const getResetEpoch = () => '2026-07-15T00:00:00.000Z';
 
-    renderHook(() => useProgress('u1', ALL, undefined, getResetEpoch));
+    renderHook(() => useProgress('u1', ALL, getResetEpoch));
 
     await waitFor(() => expect(submitCompletion).toHaveBeenCalled());
     const calls = submitCompletion.mock.calls as unknown as Array<
@@ -326,7 +326,7 @@ describe('reconcile drop-on-newer-epoch (U10)', () => {
     });
     const getResetEpoch = (id: string) => (id === 'm1' ? '2026-07-15T00:00:00.000Z' : null);
 
-    const { result } = renderHook(() => useProgress('u1', ALL, undefined, getResetEpoch));
+    const { result } = renderHook(() => useProgress('u1', ALL, getResetEpoch));
 
     await waitFor(() => expect(result.current.resetModuleIds.has('m1')).toBe(true));
     expect(result.current.progress.completedModuleIds).toEqual(['m0']);
@@ -348,7 +348,7 @@ describe('reconcile drop-on-newer-epoch (U10)', () => {
     fetchModuleProgress.mockResolvedValue(emptySnapshot);
     const getResetEpoch = (id: string) => (id === 'm1' ? '2026-07-15T00:00:00.000Z' : null);
 
-    const { result } = renderHook(() => useProgress('u1', ALL, undefined, getResetEpoch));
+    const { result } = renderHook(() => useProgress('u1', ALL, getResetEpoch));
 
     await waitFor(() => expect(fetchModuleProgress).toHaveBeenCalled());
     expect(result.current.progress.completedModuleIds).toContain('m1');
@@ -365,7 +365,7 @@ describe('reconcile drop-on-newer-epoch (U10)', () => {
     );
     fetchModuleProgress.mockResolvedValue(emptySnapshot);
 
-    const { result } = renderHook(() => useProgress('u1', ALL, undefined, () => null));
+    const { result } = renderHook(() => useProgress('u1', ALL, () => null));
 
     await waitFor(() => expect(fetchModuleProgress).toHaveBeenCalled());
     expect(result.current.progress.completedModuleIds).toContain('m1');
@@ -388,7 +388,7 @@ describe('reconcile drop-on-newer-epoch (U10)', () => {
     fetchModuleProgress.mockResolvedValue(emptySnapshot);
     const getResetEpoch = (id: string) => (id === 'm1' ? '2026-07-15T00:00:00.000Z' : null);
 
-    const { result } = renderHook(() => useProgress('u1', ALL, undefined, getResetEpoch));
+    const { result } = renderHook(() => useProgress('u1', ALL, getResetEpoch));
 
     await waitFor(() => expect(fetchModuleProgress).toHaveBeenCalled());
     expect(result.current.progress.completedModuleIds).toContain('m1');
@@ -397,26 +397,3 @@ describe('reconcile drop-on-newer-epoch (U10)', () => {
   });
 });
 
-describe('gating-aware advance (FE-03)', () => {
-  test('completeModule skips a locked next module and lands on the first unlocked one', async () => {
-    // m2 is "locked" until m0 AND m1 are both complete; completing m0 must not
-    // advance onto m2 — it should land on m1 (the next unlocked module).
-    const isLocked = (id: string, completed: string[]) =>
-      id === 'm2' && !(completed.includes('m0') && completed.includes('m1'));
-
-    const { result } = renderHook(() => useProgress('u1', ALL, isLocked));
-    await waitFor(() => expect(result.current.progress.currentModuleId).toBe('m0'));
-
-    act(() => result.current.completeModule('m0', 'explored'));
-    expect(result.current.progress.currentModuleId).toBe('m1');
-  });
-
-  test('advancing past the last unlocked module stays put rather than landing on a locked one', async () => {
-    // Everything after m0 is locked → cursor stays on m0.
-    const isLocked = (id: string) => id !== 'm0';
-    const { result } = renderHook(() => useProgress('u1', ALL, isLocked));
-    await waitFor(() => expect(result.current.progress.currentModuleId).toBe('m0'));
-    act(() => result.current.completeModule('m0', 'explored'));
-    expect(result.current.progress.currentModuleId).toBe('m0');
-  });
-});

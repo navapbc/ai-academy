@@ -1,5 +1,5 @@
 
-export type ModuleType = 'content' | 'lab' | 'simulator' | 'use-case' | 'quiz' | 'glossary' | 'sorter';
+export type ModuleType = 'content' | 'lab' | 'simulator' | 'quiz' | 'glossary' | 'sorter';
 
 // --- Nava AI Literacy Matrix metadata (P3.1) ---
 // These describe where a module sits in the matrix and how mastery is evidenced.
@@ -53,9 +53,8 @@ export type ModuleVisibility = 'public' | 'program';
 export type Role = 'learner' | 'champion' | 'admin';
 
 /** Top-level views the app can show. `staff` is role-gated (P5.1d); `progress`
- *  is the learner self-view dashboard (P5.3a), available to everyone; `workshops`
- *  is the learner guided-path list + runner (X.3), available to everyone. */
-export type View = 'learning' | 'playground' | 'staff' | 'progress' | 'workshops';
+ *  is the learner self-view dashboard (P5.3a), available to everyone. */
+export type View = 'learning' | 'playground' | 'staff' | 'progress';
 
 export interface Module {
   id: string;

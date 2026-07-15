@@ -38,7 +38,7 @@ import {
 
 interface UseProgressResult {
   progress: UserProgress;
-  /** Marks a module complete (stamping `via`) and advances to the next *unlocked* module. */
+  /** Marks a module complete (stamping `via`) and advances to the next module. */
   completeModule: (moduleId: string, via: CompletedVia) => void;
   /** Sets the current module (and records it in_progress unless completed). */
   selectModule: (moduleId: string) => void;
@@ -52,14 +52,6 @@ interface UseProgressResult {
   error: string | null;
   dismissError: () => void;
 }
-
-/**
- * Optional gating predicate (FE-03): given a candidate module and the completed
- * set *after* a completion, returns whether that module is currently locked.
- * `completeModule` uses it to skip locked modules when advancing the cursor, so
- * a normal "Continue" never lands the learner on a gated Stage-2 module.
- */
-export type IsModuleLockedFn = (moduleId: string, completedIds: string[]) => boolean;
 
 /**
  * Optional reset-epoch lookup (U10): the module's `progress_reset_at` from the
@@ -87,23 +79,14 @@ export function resolveCurrentModuleId(
 }
 
 /**
- * The next module to land on after completing `moduleId`: the first later module
- * that isn't locked given the new `completedIds`. Falls back to staying put —
- * never advances onto a locked module (FE-03).
+ * The next module to land on after completing `moduleId`: the next module in
+ * the flattened visible order. Falls back to staying put on the last module.
+ * (Gating was removed in the cohort restructure — U2 turned it off, U11
+ * deleted it — so there is no lock predicate to skip past anymore.)
  */
-export function resolveNextModuleId(
-  moduleId: string,
-  completedIds: string[],
-  allModuleIds: string[],
-  isLocked?: IsModuleLockedFn,
-): string {
-  const start = allModuleIds.indexOf(moduleId) + 1;
-  for (let i = start; i < allModuleIds.length; i++) {
-    const candidate = allModuleIds[i];
-    if (!isLocked || !isLocked(candidate, completedIds)) return candidate;
-  }
-  // Nothing unlocked ahead — stay on the just-completed module.
-  return moduleId;
+export function resolveNextModuleId(moduleId: string, allModuleIds: string[]): string {
+  const next = allModuleIds[allModuleIds.indexOf(moduleId) + 1];
+  return next ?? moduleId;
 }
 
 /** Progress + the session's reset notices, in ONE state so transitions are atomic. */
@@ -115,7 +98,6 @@ interface ProgressState {
 export function useProgress(
   userId: string,
   allModuleIds: string[],
-  isLocked?: IsModuleLockedFn,
   getResetEpoch?: GetResetEpochFn,
 ): UseProgressResult {
   // Cache and outbox are keyed by userId (audit D-01); `userId` is stable for
@@ -300,10 +282,8 @@ export function useProgress(
           progress: {
             completedModuleIds,
             completionEpochs,
-            // Skip locked modules when advancing (FE-03): the completion may itself
-            // unlock the next stage, so resolve against the new completed set.
             currentModuleId: advance
-              ? resolveNextModuleId(moduleId, completedModuleIds, allModuleIds, isLocked)
+              ? resolveNextModuleId(moduleId, allModuleIds)
               : prev.progress.currentModuleId,
           },
           resetIds,
@@ -326,7 +306,7 @@ export function useProgress(
         }
       });
     },
-    [userId, allModuleIds, isLocked, getResetEpoch, markReset],
+    [userId, allModuleIds, getResetEpoch, markReset],
   );
 
   const completeModule = useCallback(

@@ -20,7 +20,6 @@ vi.mock('./Lab', () => ({ default: () => <div>STUB:Lab</div> }));
 vi.mock('./Quiz', () => ({
   default: () => <div data-testid="stub-quiz">STUB:Quiz</div>,
 }));
-vi.mock('./UseCaseLib', () => ({ default: () => <div>STUB:UseCaseLib</div> }));
 vi.mock('./ScenarioSorter', () => ({ default: () => <div>STUB:ScenarioSorter</div> }));
 vi.mock('./exercises/DataClassifier', () => ({ default: () => <div>STUB:DataClassifier</div> }));
 vi.mock('./exercises/ToolTriage', () => ({ default: () => <div>STUB:ToolTriage</div> }));
@@ -74,7 +73,6 @@ describe('renderInteractive — dispatch by module.type', () => {
   const cases: [ModuleType, string | null][] = [
     ['simulator', 'STUB:PrivacySimulator'],
     ['quiz', 'STUB:Quiz'],
-    ['use-case', 'STUB:UseCaseLib'],
     ['sorter', 'STUB:ScenarioSorter'],
   ];
   test.each(cases)('type %s renders %s', (type, marker) => {

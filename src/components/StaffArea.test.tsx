@@ -11,9 +11,6 @@ vi.mock('./cms/CmsHome', () => ({ default: () => <div /> }));
 vi.mock('./staff/UsageMonitoring', () => ({
   default: () => <div data-testid="usage-monitoring" />,
 }));
-vi.mock('./staff/WorkshopManagement', () => ({
-  default: () => <div data-testid="workshop-management" />,
-}));
 vi.mock('./cms/CourseManagement', () => ({
   default: () => <div data-testid="course-management" />,
 }));
@@ -80,27 +77,5 @@ describe('StaffArea course-management tile gating (restructure U3)', () => {
     // Shown as an upcoming (ComingSoon) tile instead.
     expect(screen.getByText(/course management/i)).toBeInTheDocument();
     expect(screen.getByText(/U3 · admin/i)).toBeInTheDocument();
-  });
-});
-
-describe('StaffArea workshop-management tile gating (X.3 Unit 3)', () => {
-  test('admins see a live Workshop management tile that opens the view', () => {
-    render(<StaffArea role="admin" />);
-    const tile = screen.getByRole('button', { name: /workshop management/i });
-    expect(tile).toBeInTheDocument();
-    expect(tile).not.toHaveTextContent(/soon/i);
-
-    fireEvent.click(tile);
-    expect(screen.getByTestId('workshop-management')).toBeInTheDocument();
-  });
-
-  test('champions do not get the live workshop tile (see it as upcoming)', () => {
-    render(<StaffArea role="champion" />);
-    expect(
-      screen.queryByRole('button', { name: /workshop management/i }),
-    ).not.toBeInTheDocument();
-    // Shown as an upcoming (ComingSoon) tile instead.
-    expect(screen.getByText(/workshop management/i)).toBeInTheDocument();
-    expect(screen.getByText(/X\.3 · admin/i)).toBeInTheDocument();
   });
 });
