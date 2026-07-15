@@ -61,8 +61,8 @@ describe.skipIf(!RUN)('review queue read boundary (P5.5b)', () => {
     const { data: cohortB } = await svc.from('cohorts').insert({ name: uniqueName('rq-B') }).select('id').single();
     const learnerA = await newUser();
     const learnerB = await newUser();
-    await svc.from('enrollments').upsert({ user_id: learnerA.id, cohort_id: cohortA!.id }, { onConflict: 'user_id' });
-    await svc.from('enrollments').upsert({ user_id: learnerB.id, cohort_id: cohortB!.id }, { onConflict: 'user_id' });
+    await svc.from('enrollments').upsert({ user_id: learnerA.id, cohort_id: cohortA!.id }, { onConflict: 'user_id,cohort_id' });
+    await svc.from('enrollments').upsert({ user_id: learnerB.id, cohort_id: cohortB!.id }, { onConflict: 'user_id,cohort_id' });
     await svc.from('lab_submissions').insert([
       { user_id: learnerA.id, lab_id: '2.2', transcript: { kind: 'critique', critique: 'A' }, status: 'reviewable', grader: 'llm' },
       { user_id: learnerB.id, lab_id: '2.2', transcript: { kind: 'critique', critique: 'B' }, status: 'reviewable', grader: 'llm' },

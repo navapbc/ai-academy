@@ -122,6 +122,11 @@ function CohortBlock({
     <section className="space-y-4">
       <header className="flex items-baseline gap-3">
         <h2 className="text-lg font-bold text-gray-900">{summary.cohortName}</h2>
+        {summary.archived && (
+          <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
+            Archived · read-only
+          </span>
+        )}
         <span className="text-sm text-gray-500">
           {summary.learnerCount} learner{summary.learnerCount === 1 ? '' : 's'}
         </span>
@@ -246,7 +251,9 @@ export default function CohortDashboard({
           <option value="all">All cohorts</option>
           {summaries.map((s) => (
             <option key={s.cohortId} value={s.cohortId}>
-              {s.cohortName} ({s.learnerCount} learner{s.learnerCount === 1 ? '' : 's'})
+              {s.cohortName}
+              {s.archived ? ' (archived)' : ''} ({s.learnerCount} learner
+              {s.learnerCount === 1 ? '' : 's'})
             </option>
           ))}
         </select>

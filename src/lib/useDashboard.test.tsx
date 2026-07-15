@@ -30,6 +30,7 @@ import { useDashboard } from './useDashboard';
 const cohort = (id: string): CohortSummary => ({
   cohortId: id,
   cohortName: id,
+  archived: false,
   learnerCount: 1,
   avgCompletionPct: 0.5,
   glatPassRate: 0,

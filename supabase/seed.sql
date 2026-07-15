@@ -138,7 +138,7 @@ values (
   '00000000-0000-0000-0000-000000000001',
   '00000000-0000-0000-0000-000000000001'
 )
-on conflict (user_id) do nothing;
+on conflict (user_id, cohort_id) do nothing;
 
 -- Mark the demo ADMIN's Stage 1a complete so the admin can preview the gated
 -- Stage 2 content (incl. the GLAT objective gate, cell 2.14) without grinding

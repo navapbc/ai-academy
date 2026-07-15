@@ -480,7 +480,7 @@ authoring, not hiding).
 
 ### Phase 2 — Visibility & enrollment lifecycle
 
-- [ ] **Unit 4: Enrollment-based RLS visibility on modules**
+- [x] **Unit 4: Enrollment-based RLS visibility on modules** ✓ committed 8007ba4 (849/849 live-DB; 8-test boundary suite)
 
 **Goal:** Program module rows never reach unenrolled browsers; staff see everything;
 Week 0 + supplemental remain open; staff dashboards keep viewer-independent totals.
@@ -565,7 +565,7 @@ archive cohort 1, access + champion dashboards persist.
 
 ### Phase 3 — New exercise kinds
 
-- [ ] **Unit 6: `chat-compare` exercise kind (N-pane live comparison)**
+- [x] **Unit 6: `chat-compare` exercise kind (N-pane live comparison)** ✓ committed 85c08c4 (13 component tests; e2e bodies skip-gated until U8)
 
 **Goal:** One parameterized kind powers Week 1 (3-pane rigged; 1-pane
 confidently-wrong) and Week 2 (2-pane bare-vs-grounded).

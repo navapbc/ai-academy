@@ -108,23 +108,27 @@ Deno.serve(async (req: Request) => {
       allowed = true;
     } else {
       // champion-of check (two simple reads — no FK-embedding assumptions): the
-      // learner has at most one enrollment (enrollments.unique(user_id)); the caller
-      // must lead that cohort.
-      const { data: enrollment, error: enrErr } = await admin
+      // learner may hold one enrollment PER COHORT (U5 multi-enrollment,
+      // enrollments.unique(user_id, cohort_id)); the caller must lead ANY of
+      // those cohorts — the same champion-of-any-shared-cohort posture as
+      // public.is_champion_of().
+      const { data: enrollRows, error: enrErr } = await admin
         .from('enrollments')
         .select('cohort_id')
-        .eq('user_id', submission.user_id)
-        .maybeSingle();
+        .eq('user_id', submission.user_id);
       if (enrErr) {
         console.error('Enrollment lookup failed:', enrErr.message);
         return jsonError('Failed to authorize the request.', 500);
       }
-      if (enrollment?.cohort_id) {
+      const learnerCohortIds = (enrollRows ?? [])
+        .map((r) => r.cohort_id as string | null)
+        .filter((id): id is string => !!id);
+      if (learnerCohortIds.length > 0) {
         const { data: champRows, error: champErr } = await admin
           .from('cohort_champions')
           .select('id')
           .eq('user_id', caller.id)
-          .eq('cohort_id', enrollment.cohort_id)
+          .in('cohort_id', learnerCohortIds)
           .limit(1);
         if (champErr) {
           console.error('Champion-of check failed:', champErr.message);

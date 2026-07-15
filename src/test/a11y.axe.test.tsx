@@ -92,7 +92,7 @@ const USAGE_ROWS: UsageByUser[] = [
   { userId: 'u-2', name: 'Grace Hopper', callCount: 40, inputTokens: 900_000, outputTokens: 200_000, totalTokens: 1_100_000, overThreshold: true },
 ];
 const COHORTS: CohortSummary[] = [
-  { cohortId: 'c-a', cohortName: 'Alpha cohort', learnerCount: 3, avgCompletionPct: 0.5, glatPassRate: 0, avgQuizPct: 0.7, reviewableTotal: 2 },
+  { cohortId: 'c-a', cohortName: 'Alpha cohort', archived: false, learnerCount: 3, avgCompletionPct: 0.5, glatPassRate: 0, avgQuizPct: 0.7, reviewableTotal: 2 },
 ];
 const DIST = new Map<string, ScoreDistribution>([['c-a', { lt60: 1, '60to79': 1, '80to100': 1 }]]);
 

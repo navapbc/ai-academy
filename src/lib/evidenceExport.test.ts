@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   CELL_CROSSWALK, MATRIX_CELL_IDS,
-  buildEvidenceRows,
+  buildEvidenceRows, dedupLearnerRows,
 } from './evidenceExport';
 import type {
   EvidenceLearnerRow, EvidenceModuleRow, EvidenceProgressRow,
@@ -222,6 +222,58 @@ describe('buildEvidenceRows', () => {
 });
 
 // ---------------------------------------------------------------------------
+// U5 multi-enrollment: dedup + multi-cohort labels
+// ---------------------------------------------------------------------------
+
+describe('dedupLearnerRows (U5 multi-enrollment)', () => {
+  const dualRows: EvidenceLearnerRow[] = [
+    { user_id: 'u1', cohort_id: 'c1', completion_pct: '0.5', avg_quiz_pct: '0.75', glat_passed: false, reviewable_labs: 0 },
+    { user_id: 'u1', cohort_id: 'c2', completion_pct: '0.5', avg_quiz_pct: '0.75', glat_passed: false, reviewable_labs: 0 },
+    { user_id: 'u2', cohort_id: 'c2', completion_pct: '0.25', avg_quiz_pct: null, glat_passed: false, reviewable_labs: 1 },
+  ];
+
+  it('merges a dual-enrolled learner into one row carrying both cohort ids', () => {
+    const out = dedupLearnerRows(dualRows);
+    expect(out).toHaveLength(2);
+    const u1 = out.find((l) => l.user_id === 'u1')!;
+    expect(u1.cohort_ids).toEqual(['c1', 'c2']);
+    expect(u1.completion_pct).toBe('0.5'); // user-scoped metrics preserved
+    const u2 = out.find((l) => l.user_id === 'u2')!;
+    expect(u2.cohort_ids).toEqual(['c2']);
+  });
+
+  it('is a no-op shape-wise for single-enrollment and unenrolled learners', () => {
+    const single: EvidenceLearnerRow[] = [
+      { user_id: 'u9', cohort_id: null, completion_pct: null, avg_quiz_pct: null, glat_passed: false, reviewable_labs: 0 },
+    ];
+    const out = dedupLearnerRows(single);
+    expect(out).toHaveLength(1);
+    expect(out[0].cohort_ids).toEqual([]);
+  });
+
+  it('builder emits one row per (learner × module) with joined cohort labels', () => {
+    const deduped = dedupLearnerRows(dualRows.filter((l) => l.user_id === 'u1'));
+    const out = buildEvidenceRows({
+      learners: deduped,
+      profiles,
+      cohortNames: [
+        { id: 'c1', name: 'Cohort Alpha' },
+        { id: 'c2', name: 'Cohort Beta' },
+      ],
+      modules,
+      progress: [],
+      quizzes: [],
+      labs: [],
+      reviewerProfiles: [],
+    });
+    // 1 learner × 2 modules — NOT 2 cohorts × 2 modules.
+    expect(out).toHaveLength(2);
+    expect(out[0].cohortId).toBe('c1 | c2');
+    expect(out[0].cohortName).toBe('Cohort Alpha | Cohort Beta');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // fetchCohortEvidence — mocked Supabase tests
 // ---------------------------------------------------------------------------
 
@@ -330,6 +382,36 @@ describe('fetchCohortEvidence', () => {
     // reviewerProfiles will be empty → labReviewerEmail is null
     expect(row21).toBeDefined();
     expect(row21?.labReviewerEmail).toBeNull();
+  });
+
+  it('all-cohorts mode dedups a dual-enrolled learner (one row per learner × module)', async () => {
+    const dualLearnerRows = [
+      { user_id: 'u1', cohort_id: 'c1', completion_pct: '1', avg_quiz_pct: null, glat_passed: false, reviewable_labs: 0 },
+      { user_id: 'u1', cohort_id: 'c2', completion_pct: '1', avg_quiz_pct: null, glat_passed: false, reviewable_labs: 0 },
+    ];
+    const moduleRow = {
+      cell_id: '1.1', title: 'AI Foundations', stage: '1a',
+      dimension: [], evidence_type: 'quiz',
+    };
+    const cohortRows = [
+      { id: 'c1', name: 'Cohort Alpha' },
+      { id: 'c2', name: 'Cohort Beta' },
+    ];
+    const sb = {
+      from: vi.fn((table: string) => {
+        let data: unknown[] = [];
+        if (table === 'learner_progress_summary') data = dualLearnerRows;
+        if (table === 'modules') data = [moduleRow];
+        if (table === 'cohorts') data = cohortRows;
+        return makeQuery(data);
+      }),
+    };
+    vi.mocked(getSupabaseClient).mockReturnValue(sb as unknown as ReturnType<typeof getSupabaseClient>);
+
+    const result = await fetchCohortEvidence(); // all-cohorts (no cohortId)
+    // One module × one (deduped) learner — not one per (learner × cohort).
+    expect(result).toHaveLength(1);
+    expect(result[0].cohortName).toBe('Cohort Alpha | Cohort Beta');
   });
 
   it('throws when Supabase returns an error', async () => {

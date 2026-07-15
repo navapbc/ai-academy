@@ -38,6 +38,7 @@ const noop = () => {};
 const ALPHA: CohortSummary = {
   cohortId: 'c-a',
   cohortName: 'Alpha cohort',
+  archived: false,
   learnerCount: 3,
   avgCompletionPct: 0.5,
   glatPassRate: 0,
@@ -47,6 +48,7 @@ const ALPHA: CohortSummary = {
 const BETA: CohortSummary = {
   cohortId: 'c-b',
   cohortName: 'Beta cohort',
+  archived: false,
   learnerCount: 4,
   avgCompletionPct: 0.75,
   glatPassRate: 0.25,
@@ -89,6 +91,18 @@ describe('CohortDashboard', () => {
     expect(screen.getByRole('combobox')).toHaveValue('c-b');
     expect(screen.getByText('Beta cohort')).toBeInTheDocument();
     expect(screen.queryByText('Alpha cohort')).not.toBeInTheDocument();
+  });
+
+  test('labels an archived cohort read-only in its block and the filter (U5)', async () => {
+    fetchCohortSummaries.mockResolvedValue([ALPHA, { ...BETA, archived: true }]);
+    fetchScoreDistribution.mockResolvedValue(DIST);
+    render(<CohortDashboard onSelectLearner={noop} />);
+    await screen.findByText('Beta cohort');
+
+    expect(screen.getByText('Archived · read-only')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Beta cohort \(archived\)/ })).toBeInTheDocument();
+    // Active cohorts carry no archived label.
+    expect(screen.getByRole('option', { name: /^Alpha cohort \(3 learners\)$/ })).toBeInTheDocument();
   });
 
   test('shows "no quiz data yet" for a cohort with an empty distribution', async () => {

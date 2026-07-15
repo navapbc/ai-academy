@@ -1,14 +1,17 @@
-// Supabase Edge Function: `admin-cohorts` (P5.5a)
+// Supabase Edge Function: `admin-cohorts` (P5.5a; multi-enrollment + lifecycle U5)
 //
 // The sanctioned write path for the cohort substrate (cohorts / enrollments /
 // cohort_champions), which has NO client-write RLS — all mutations run as
 // service_role, which lives here and is never exposed to the browser. An admin
-// calls this to create/rename/delete cohorts, enroll/reassign/unenroll learners,
-// and assign/unassign champions. Authn/CORS/rate-limit/authz mirror admin-set-role;
-// pure logic is in ./admin-cohorts-core.ts (unit-tested under vitest).
+// calls this to create/rename/archive/delete cohorts, enroll/unenroll learners
+// (a learner may hold one enrollment per cohort — enrolling into a second
+// cohort ADDS a membership, it never moves one), and assign/unassign champions.
+// Authn/CORS/rate-limit/authz mirror admin-set-role; pure logic is in
+// ./admin-cohorts-core.ts (unit-tested under vitest).
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import {
   buildCorsHeaders,
+  deleteCohortBlockedReason,
   emailDomainAllowed,
   fixedWindowAllow,
   isAllowlistedAdmin,
@@ -39,7 +42,12 @@ interface RoleChange {
   oldRole: string | null;
   newRole: string;
 }
-type ApplyResult = { error: string } | { error: null; roleChange?: RoleChange };
+// `status` (< 500) marks a client-facing rejection whose message is safe to
+// surface verbatim (e.g. the 409 delete guard); without it the caller gets the
+// generic 500.
+type ApplyResult =
+  | { error: string; status?: number }
+  | { error: null; roleChange?: RoleChange };
 
 /** Applies one validated action via the service_role client. */
 async function applyAction(
@@ -56,23 +64,68 @@ async function applyAction(
       const { error } = await admin.from('cohorts').update({ name: action.name }).eq('id', action.cohortId);
       return error ? { error: error.message } : { error: null };
     }
+    case 'archive_cohort': {
+      // Archive = read-only end-of-cohort marker. Deliberately touches NEITHER
+      // enrollments (alumni keep program access) NOR cohort_champions (the
+      // champion keeps read access to the cohort they ran; archive never
+      // demotes — only explicit unassign does). Idempotent: the `is null`
+      // filter makes a second archive a no-op that preserves the original
+      // archived_at timestamp.
+      const { error } = await admin
+        .from('cohorts')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', action.cohortId)
+        .is('archived_at', null);
+      return error ? { error: error.message } : { error: null };
+    }
     case 'delete_cohort': {
-      // enrollments + cohort_champions cascade on cohort delete (FK on delete cascade).
+      // U5 guard: hard delete only at zero enrollments — otherwise 409 with the
+      // count, pointing the admin at archive_cohort. A zero-enrollment delete
+      // still cascades its cohort_champions rows (FK on delete cascade); that
+      // does NOT demote the champions (no role write here — same posture as
+      // archive; demotion is only ever the explicit-unassign path).
+      const { count, error: countErr } = await admin
+        .from('enrollments')
+        .select('id', { count: 'exact', head: true })
+        .eq('cohort_id', action.cohortId);
+      if (countErr) return { error: countErr.message };
+      const blocked = deleteCohortBlockedReason(count ?? 0);
+      if (blocked) return { error: blocked, status: 409 };
       const { error } = await admin.from('cohorts').delete().eq('id', action.cohortId);
       return error ? { error: error.message } : { error: null };
     }
     case 'enroll_learner': {
-      // One cohort per learner (enrollments.unique(user_id)) — upsert reassigns.
+      // Multi-enrollment (U5): one row per (user, cohort) — enrolling into a
+      // second cohort ADDS a row; re-enrolling into the same cohort is an
+      // idempotent upsert on the (user_id, cohort_id) unique pair. Archived
+      // cohorts are read-only: reject rather than silently grow an archived
+      // roster (the UI also excludes them from the picker).
+      const { data: cohort, error: cohortErr } = await admin
+        .from('cohorts')
+        .select('archived_at')
+        .eq('id', action.cohortId)
+        .maybeSingle();
+      if (cohortErr) return { error: cohortErr.message };
+      if (!cohort) return { error: 'No cohort found for that id.', status: 404 };
+      if (cohort.archived_at) {
+        return { error: 'This cohort is archived and read-only.', status: 409 };
+      }
       const { error } = await admin
         .from('enrollments')
         .upsert(
           { user_id: action.userId, cohort_id: action.cohortId, enrolled_by: callerId },
-          { onConflict: 'user_id' },
+          { onConflict: 'user_id,cohort_id' },
         );
       return error ? { error: error.message } : { error: null };
     }
     case 'unenroll_learner': {
-      const { error } = await admin.from('enrollments').delete().eq('user_id', action.userId);
+      // Cohort-scoped (U5): removes exactly the named membership; the learner's
+      // enrollments in other cohorts are untouched.
+      const { error } = await admin
+        .from('enrollments')
+        .delete()
+        .eq('user_id', action.userId)
+        .eq('cohort_id', action.cohortId);
       return error ? { error: error.message } : { error: null };
     }
     case 'assign_champion': {
@@ -217,6 +270,9 @@ Deno.serve(async (req: Request) => {
   const result = await applyAction(admin, caller.id, action);
   if (result.error) {
     console.error(`Cohort action '${action.action}' failed:`, result.error);
+    // 4xx rejections (e.g. the delete-with-enrollments 409) carry a message
+    // written for the admin; DB errors stay behind the generic 500.
+    if (result.status && result.status < 500) return jsonError(result.error, result.status);
     return jsonError('Failed to apply the cohort change.', 500);
   }
 

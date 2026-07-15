@@ -98,6 +98,19 @@ describe('buildEvidencePdfModel', () => {
     expect(model.rowCount).toBe(3);
   });
 
+  it('renders a dual-enrolled learner (deduped upstream, U5) as one section with the joined cohort label', () => {
+    // fetchCohortEvidence dedups learner×cohort rows in all-cohorts mode, so a
+    // dual-enrolled learner arrives as one row per module with a joined label.
+    const rows = [
+      makeRow({ learnerId: 'a', cellId: '1.1', cohortId: 'c1 | c2', cohortName: 'Cohort A | Cohort B' }),
+      makeRow({ learnerId: 'a', cellId: '1.2', cohortId: 'c1 | c2', cohortName: 'Cohort A | Cohort B' }),
+    ];
+    const model = buildEvidencePdfModel(rows, {});
+    expect(model.sections).toHaveLength(1);
+    expect(model.sections[0].rows.map((r) => r.cellId)).toEqual(['1.1', '1.2']); // no per-cohort duplication
+    expect(model.sections[0].cohortName).toBe('Cohort A | Cohort B');
+  });
+
   it('counts completed modules per learner', () => {
     const rows = [
       makeRow({ learnerId: 'a', cellId: '1.1', completed: true }),

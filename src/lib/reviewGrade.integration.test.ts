@@ -65,7 +65,7 @@ describe.skipIf(!RUN)('champion grade-action write boundary (P5.5c)', () => {
     const { data: cohortA } = await svc.from('cohorts').insert({ name: uniqueName('rg-A') }).select('id').single();
     const { data: cohortB } = await svc.from('cohorts').insert({ name: uniqueName('rg-B') }).select('id').single();
     const learner = await newUser();
-    await svc.from('enrollments').upsert({ user_id: learner.id, cohort_id: cohortA!.id }, { onConflict: 'user_id' });
+    await svc.from('enrollments').upsert({ user_id: learner.id, cohort_id: cohortA!.id }, { onConflict: 'user_id,cohort_id' });
     const { data: sub } = await svc
       .from('lab_submissions')
       .insert({ user_id: learner.id, lab_id: '2.2', transcript: { kind: 'critique', critique: 'x' }, status: 'reviewable', grader: 'llm' })

@@ -8,10 +8,12 @@ import { isSupabaseConfigured } from './supabaseClient';
 // `npm run test` and the fast build CI job stay green.
 //
 // Proves: (1) the service_role path the admin-cohorts function uses actually writes
-// cohorts/enrollments/cohort_champions (incl. reassign honoring enrollments.unique
-// (user_id)); (2) an authenticated client write is BLOCKED by RLS (no write
-// policy); (3) the new admin read on cohort_champions works while a plain learner
-// cannot read others' assignments.
+// cohorts/enrollments/cohort_champions (incl. the U5 multi-enrollment upsert on
+// (user_id, cohort_id) — enrolling into a second cohort ADDS a row); (2) an
+// authenticated client write is BLOCKED by RLS (no write policy); (3) the admin
+// read on cohort_champions works while a plain learner cannot read others'
+// assignments. The archive/delete lifecycle + champion scoping live in
+// multiEnrollment.integration.test.ts.
 
 const URL = import.meta.env.VITE_SUPABASE_URL as string;
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -70,7 +72,7 @@ async function authedClientFor(email: string): Promise<SupabaseClient> {
 }
 
 describe.skipIf(!RUN)('cohort management write/read boundary (P5.5a)', () => {
-  test('service_role writes cohorts/enrollments/champions (incl. reassign via unique(user_id))', async () => {
+  test('service_role writes cohorts/enrollments/champions (multi-enrollment upsert, U5)', async () => {
     const svc = serviceClient();
 
     const { data: c1, error: e1 } = await svc
@@ -91,19 +93,25 @@ describe.skipIf(!RUN)('cohort management write/read boundary (P5.5a)', () => {
     const learner = await newUser();
     const champ = await newUser('champion');
 
-    // Enroll, then reassign — upsert on user_id keeps exactly one enrollment row.
+    // Enroll into A, then into B — the (user_id, cohort_id) upsert ADDS a row
+    // (U5 multi-enrollment: no reassignment semantics), and re-enrolling into
+    // the same cohort is an idempotent no-op.
     const { error: enrollErr } = await svc
       .from('enrollments')
-      .upsert({ user_id: learner, cohort_id: cohortA }, { onConflict: 'user_id' });
+      .upsert({ user_id: learner, cohort_id: cohortA }, { onConflict: 'user_id,cohort_id' });
     expect(enrollErr).toBeNull();
-    const { error: reassignErr } = await svc
+    const { error: secondErr } = await svc
       .from('enrollments')
-      .upsert({ user_id: learner, cohort_id: cohortB }, { onConflict: 'user_id' });
-    expect(reassignErr).toBeNull();
+      .upsert({ user_id: learner, cohort_id: cohortB }, { onConflict: 'user_id,cohort_id' });
+    expect(secondErr).toBeNull();
+    const { error: rerunErr } = await svc
+      .from('enrollments')
+      .upsert({ user_id: learner, cohort_id: cohortA }, { onConflict: 'user_id,cohort_id' });
+    expect(rerunErr).toBeNull();
 
     const { data: rows } = await svc.from('enrollments').select('cohort_id').eq('user_id', learner);
-    expect(rows).toHaveLength(1);
-    expect(rows![0].cohort_id).toBe(cohortB);
+    expect(rows).toHaveLength(2);
+    expect(new Set(rows!.map((r) => r.cohort_id))).toEqual(new Set([cohortA, cohortB]));
 
     const { error: champErr } = await svc
       .from('cohort_champions')
