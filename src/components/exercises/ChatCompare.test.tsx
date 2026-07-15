@@ -23,11 +23,13 @@ interface CapturedCall {
   reject: (e: Error) => void;
 }
 
-const { recordLabSubmission, streamChat, calls } = vi.hoisted(() => {
+const { recordLabSubmission, streamChat, calls, useAuth } = vi.hoisted(() => {
   const calls: CapturedCall[] = [];
   return {
     recordLabSubmission: vi.fn(async () => 'sub-1'),
     calls,
+    // Overridable per test (the signed-out guard test returns user: null).
+    useAuth: vi.fn((): { user: { id: string } | null } => ({ user: { id: 'u1' } })),
     // Mirrors src/lib/llm.ts streamChat(messages, options, onChunk) — but held
     // OPEN: the promise settles only when the test resolves/rejects it, or when
     // the caller aborts (the real contract: aborting resolves cleanly).
@@ -44,13 +46,14 @@ const { recordLabSubmission, streamChat, calls } = vi.hoisted(() => {
     ),
   };
 });
-vi.mock('../../lib/auth', () => ({ useAuth: () => ({ user: { id: 'u1' } }) }));
+vi.mock('../../lib/auth', () => ({ useAuth }));
 vi.mock('../../lib/progress', () => ({ recordLabSubmission }));
 vi.mock('../../lib/llm', () => ({ streamChat }));
 
 beforeEach(() => {
   recordLabSubmission.mockClear();
   streamChat.mockClear();
+  useAuth.mockReturnValue({ user: { id: 'u1' } });
   calls.length = 0;
 });
 
@@ -376,6 +379,131 @@ describe('ChatCompare', () => {
     expect(screen.getByText(/Which pane would you trust/)).toBeInTheDocument();
     // Reflection is discussion copy only — no reflection input exists.
     expect(screen.getAllByRole('textbox')).toHaveLength(1); // just the shared prompt
+  });
+
+  test('a failed submission save shows the alert and a resubmit re-records (and clears it)', async () => {
+    recordLabSubmission.mockRejectedValueOnce(new Error('could not save your run'));
+    render(<ChatCompare config={threePane} labId="c1-w1" />);
+    await submitPrompt(threePane);
+    for (const c of calls) emit(c, 'answer');
+    await finish(calls[0]);
+    await finish(calls[1]);
+    await finish(calls[2]);
+
+    // The rejection surfaces as the save-error alert; one record was attempted.
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('could not save your run'),
+    );
+    expect(recordLabSubmission).toHaveBeenCalledTimes(1);
+
+    // Ask again: the new run clears the standing error and records again.
+    fireEvent.change(screen.getByLabelText(/Your prompt for every pane/i), {
+      target: { value: 'Take two?' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Ask again/i }));
+    await waitFor(() => expect(calls.length).toBe(6), { timeout: 3000 });
+    expect(screen.queryByText(/could not save your run/i)).not.toBeInTheDocument();
+    await finish(calls[3]);
+    await finish(calls[4]);
+    await finish(calls[5]);
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledTimes(2));
+  });
+
+  test('a signed-out user sees the sign-in guard and nothing records', async () => {
+    useAuth.mockReturnValue({ user: null });
+    render(<ChatCompare config={threePane} labId="c1-w1" />);
+    await submitPrompt(threePane);
+    for (const c of calls) emit(c, 'answer');
+    await finish(calls[0]);
+    await finish(calls[1]);
+    await finish(calls[2]);
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(/Sign in to record your comparison/i),
+    );
+    expect(recordLabSubmission).not.toHaveBeenCalled();
+  });
+
+  // FIX B-1: the record-time transcript reads resultsRef (written by retries),
+  // never Promise.all's stale return array.
+  test('a Retry that finishes BEFORE its siblings records the RETRIED text, not the stale pre-retry error', async () => {
+    render(<ChatCompare config={threePane} labId="c1-w1" />);
+    await submitPrompt(threePane);
+
+    // Pane B fails fast while A and C are still streaming.
+    await fail(calls[1], 'transient blip');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Retry Pane B' })).toBeInTheDocument(),
+    );
+
+    // Retry pane B; the retry COMPLETES while its siblings are still open.
+    fireEvent.click(screen.getByRole('button', { name: 'Retry Pane B' }));
+    await waitFor(() => expect(calls.length).toBe(4));
+    emit(calls[3], 'RETRIED Bravo answer');
+    await finish(calls[3]);
+
+    // Now the original siblings finish → the fan-out records once, and pane B's
+    // entry is the retried TEXT (a stale-array implementation would record the
+    // pre-retry error here).
+    emit(calls[0], 'Alpha answer');
+    emit(calls[2], 'Charlie answer');
+    await finish(calls[0]);
+    await finish(calls[2]);
+
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledTimes(1));
+    expect(recordLabSubmission).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({
+        transcript: expect.objectContaining({
+          panes: [
+            { label: 'Pane A', text: 'Alpha answer' },
+            { label: 'Pane B', text: 'RETRIED Bravo answer' },
+            { label: 'Pane C', text: 'Charlie answer' },
+          ],
+        }),
+      }),
+    );
+  });
+
+  // FIX B-2: a superseded submission's late save failure must never clobber the
+  // newer submission's state.
+  test("an in-flight submission's late save failure does not surface over a newer submission", async () => {
+    // The FIRST save hangs until the test rejects it; the second uses the
+    // default resolved mock.
+    let rejectFirst!: (e: Error) => void;
+    recordLabSubmission.mockImplementationOnce(
+      () =>
+        new Promise<string>((_, reject) => {
+          rejectFirst = reject;
+        }),
+    );
+    render(<ChatCompare config={threePane} labId="c1-w1" />);
+    await submitPrompt(threePane, 'First question?');
+    for (const c of calls) emit(c, 'first answer');
+    await finish(calls[0]);
+    await finish(calls[1]);
+    await finish(calls[2]);
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledTimes(1));
+
+    // Second submission starts (and records) while the first save is pending.
+    fireEvent.change(screen.getByLabelText(/Your prompt for every pane/i), {
+      target: { value: 'Second question?' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Ask again/i }));
+    await waitFor(() => expect(calls.length).toBe(6), { timeout: 3000 });
+    for (const c of calls.slice(3)) emit(c, 'second answer');
+    await finish(calls[3]);
+    await finish(calls[4]);
+    await finish(calls[5]);
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledTimes(2));
+
+    // The FIRST save now fails late — the stale generation is ignored, so no
+    // save-error appears over the successful newer run.
+    await act(async () => {
+      rejectFirst(new Error('late stale failure'));
+      await Promise.resolve();
+    });
+    expect(screen.queryByText(/late stale failure/i)).not.toBeInTheDocument();
   });
 
   test('does not accept an onComplete prop (ungraded — never the completion gate)', () => {

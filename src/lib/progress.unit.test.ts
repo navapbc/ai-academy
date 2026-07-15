@@ -148,22 +148,24 @@ describe('setModuleStatus', () => {
   });
 });
 
-// U9: the participation seam — record functions emit {moduleId, via} to
-// subscribers on SUCCESSFUL writes only, so useProgress can auto-complete the
-// module. No emit on failure (a lost write must not fabricate a completion).
+// U9: the participation seam — record functions emit {userId, moduleId, via}
+// to subscribers on SUCCESSFUL writes only, so useProgress can auto-complete
+// the module. No emit on failure (a lost write must not fabricate a
+// completion). FIX C: the event carries the userId that performed the write so
+// subscribers can ignore other users' events.
 describe('participation seam (onParticipation)', () => {
-  test('recordLabSubmission emits via=lab with the lab id on success', async () => {
+  test('recordLabSubmission emits via=lab with the writer userId + lab id on success', async () => {
     supa.setResult({ data: { id: 'sub-1' }, error: null });
     const events: ParticipationEvent[] = [];
     const off = onParticipation((e) => events.push(e));
 
     await recordLabSubmission(USER, { labId: '2.3', transcript: {}, status: 'submitted' });
 
-    expect(events).toEqual([{ moduleId: '2.3', via: 'lab' }]);
+    expect(events).toEqual([{ userId: USER, moduleId: '2.3', via: 'lab' }]);
     off();
   });
 
-  test('recordQuizAttempt emits via=quiz on success — any score, pass or fail', async () => {
+  test('recordQuizAttempt emits via=quiz with the writer userId on success — any score, pass or fail', async () => {
     const events: ParticipationEvent[] = [];
     const off = onParticipation((e) => events.push(e));
 
@@ -175,7 +177,7 @@ describe('participation seam (onParticipation)', () => {
       answers: null,
     });
 
-    expect(events).toEqual([{ moduleId: '1.4', via: 'quiz' }]);
+    expect(events).toEqual([{ userId: USER, moduleId: '1.4', via: 'quiz' }]);
     off();
   });
 
@@ -218,7 +220,7 @@ describe('participation seam (onParticipation)', () => {
     await expect(
       recordLabSubmission(USER, { labId: '2.3', transcript: {}, status: 'submitted' }),
     ).resolves.toBe('sub-1');
-    expect(events).toEqual([{ moduleId: '2.3', via: 'lab' }]);
+    expect(events).toEqual([{ userId: USER, moduleId: '2.3', via: 'lab' }]);
 
     offBad();
     offGood();

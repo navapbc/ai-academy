@@ -28,6 +28,13 @@ export type CompletedVia = 'quiz' | 'lab' | 'sorter' | 'explored';
  * onComplete('sorter') instead (see ModuleRenderer).
  */
 export interface ParticipationEvent {
+  /**
+   * The user whose write fired the event (the userId the record function was
+   * called with). Subscribers MUST scope to their own user — a listener for
+   * one user must never auto-complete a module off another user's write
+   * (review FIX C; the D-01 cross-account class).
+   */
+  userId: string;
   moduleId: string;
   via: 'quiz' | 'lab' | 'sorter';
 }
@@ -292,7 +299,7 @@ export async function recordQuizAttempt(
     });
 
   if (error) throw error;
-  emitParticipation({ moduleId: attempt.moduleId, via: 'quiz' });
+  emitParticipation({ userId, moduleId: attempt.moduleId, via: 'quiz' });
 }
 
 export interface LabSubmissionInput {
@@ -326,7 +333,7 @@ export async function recordLabSubmission(
     .single();
 
   if (error) throw error;
-  emitParticipation({ moduleId: submission.labId, via: 'lab' });
+  emitParticipation({ userId, moduleId: submission.labId, via: 'lab' });
   return data.id as string;
 }
 

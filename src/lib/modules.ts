@@ -31,6 +31,15 @@ import { getSupabaseClient } from './supabaseClient';
 const STAGES: Stage[] = ['1a', '1b', '2'];
 
 /**
+ * Valid module types (assertModuleRow's type allow-list) — keep in lockstep
+ * with the ModuleType union in src/types.ts. Closed-enum, same style as the
+ * origin/status/visibility guards below: a row whose `type` drifts outside the
+ * union (e.g. the removed 'use-case') throws loudly at the mapping boundary
+ * instead of silently mis-rendering.
+ */
+const MODULE_TYPES: ModuleType[] = ['content', 'lab', 'simulator', 'quiz', 'glossary', 'sorter'];
+
+/**
  * Meta for the "Supplemental coursework" section (U2/R2): the home for matrix
  * lessons that are not assigned to any visible course week. One flat group —
  * the existing sort order is preserved, no sub-groups (Key Decisions).
@@ -115,6 +124,9 @@ export function assertModuleRow(row: unknown): asserts row is ModuleRow {
   requireString('visibility');
   if (!['draft', 'in_review', 'published'].includes(r.status as string)) {
     throw new Error(`modules row has unknown status "${String(r.status)}" — schema drift?`);
+  }
+  if (!MODULE_TYPES.includes(r.type as ModuleType)) {
+    throw new Error(`modules row has unknown type "${String(r.type)}" — schema drift?`);
   }
   if (!['matrix', 'custom', 'course'].includes(r.origin as string)) {
     throw new Error(`modules row has unknown origin "${String(r.origin)}" — schema drift?`);

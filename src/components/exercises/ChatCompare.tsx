@@ -111,6 +111,14 @@ export default function ChatCompare({ config, labId }: Props) {
   // The prompt the visible outputs belong to — a per-pane Retry must re-ask
   // the SUBMITTED prompt even if the learner has since edited the textarea.
   const activePromptRef = useRef('');
+  // The recorded transcript reads THIS ref — written by BOTH the fan-out and
+  // any pane Retry at the moment a pane reaches a terminal state — instead of
+  // Promise.all's return array, so a Retry that finishes before its siblings
+  // records the retried outcome, not the stale pre-retry result (FIX B-1).
+  const resultsRef = useRef<PaneResult[]>([]);
+  // Submission generation counter (FIX B-2): an in-flight submission's late
+  // failure must never write save-error state over a newer submission's run.
+  const submissionRef = useRef(0);
   useEffect(() => {
     mountedRef.current = true;
     const controllers = controllersRef.current;
@@ -163,33 +171,46 @@ export default function ChatCompare({ config, labId }: Props) {
         },
       );
       // An abort (unmount / superseded run) resolves cleanly — don't stamp a
-      // terminal state over whatever superseded this run.
+      // terminal state (or a resultsRef entry) over whatever superseded this run.
       if (controller.signal.aborted) return { label, text: acc };
+      const result: PaneResult = { label, text: acc };
+      resultsRef.current[index] = result;
       setRun(index, { status: 'done', text: acc, error: null });
       announce(index, 'complete');
-      return { label, text: acc };
+      return result;
     } catch (err) {
       if (controller.signal.aborted) return { label, text: acc };
       const message = err instanceof Error ? err.message : 'Request to Claude failed.';
+      const result: PaneResult = { label, error: message };
+      resultsRef.current[index] = result;
       setRun(index, { status: 'error', text: acc, error: message });
       announce(index, 'failed');
-      return { label, error: message };
+      return result;
     }
   };
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
+    const submission = ++submissionRef.current; // FIX B-2: this run's generation
     const submittedPrompt = prompt.trim();
     activePromptRef.current = submittedPrompt;
     setSaveError(null);
+    resultsRef.current = []; // a fresh run owns the whole results slate
 
     // Fan out one streamChat call per pane, staggered ~200ms apart. A
     // resubmission replaces every pane's output in place (runPane resets each
     // pane before it streams).
-    const results = await Promise.all(
+    const settled = await Promise.all(
       panes.map((_, i) => runPane(i, submittedPrompt, i * PANE_STAGGER_MS)),
     );
-    if (!mountedRef.current) return; // unmounted mid-stream — nothing to record
+    // Unmounted mid-stream, or a newer submission superseded this one — the
+    // newer run owns all state and recording from here on.
+    if (!mountedRef.current || submission !== submissionRef.current) return;
+
+    // Record from resultsRef — kept current by pane Retries (FIX B-1) — with
+    // the fan-out's own settled value as a fallback for any pane that never
+    // reached a terminal write (belt-and-braces; aborted panes only).
+    const results = panes.map((_, i) => resultsRef.current[i] ?? settled[i]);
 
     // EVERY submit records — including a partial-failure run (a pane's error
     // is part of the transcript). Each resubmit appends a NEW row (history
@@ -205,7 +226,9 @@ export default function ChatCompare({ config, labId }: Props) {
         status: 'submitted',
       });
     } catch (err) {
-      if (mountedRef.current) {
+      // A late failure from a superseded submission must not clobber the newer
+      // run's state (FIX B-2).
+      if (mountedRef.current && submission === submissionRef.current) {
         setSaveError(err instanceof Error ? err.message : 'Could not record your submission.');
       }
     }

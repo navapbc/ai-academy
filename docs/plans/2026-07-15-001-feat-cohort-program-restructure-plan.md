@@ -1,7 +1,7 @@
 ---
 title: "feat: Cohort program restructure — Course 1, enrollment visibility, participation completion, cleanup"
 type: feat
-status: active
+status: completed
 date: 2026-07-15
 origin: docs/brainstorms/cohort-program-restructure-requirements.md
 ---
@@ -793,7 +793,7 @@ cache case, against the live local stack.
 
 ### Phase 6 — Cleanup & re-baseline (lands before pilot; GLAT excluded)
 
-- [ ] **Unit 11: Delete gating machinery**
+- [x] **Unit 11: Delete gating machinery** ✓ committed 733caa4 (with U12)
 
 **Goal:** The now-dead gating files and props are removed (behavior already off since
 U2).
@@ -817,7 +817,7 @@ U2).
 **Verification:** grep proves no `stage1a|isModuleLocked|LockedNotice` references
 remain; lint/unit/e2e green.
 
-- [ ] **Unit 12: Retire workshops + dead-code sweep**
+- [x] **Unit 12: Retire workshops + dead-code sweep** ✓ committed 733caa4 (with U11; migration tested on empty + populated tables)
 
 **Goal:** Standalone workshops feature removed; rows confirmed-absent or logged.
 

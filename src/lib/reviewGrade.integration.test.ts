@@ -46,15 +46,24 @@ async function newUser(): Promise<{ id: string; email: string }> {
   return { id: signup.data.user!.id, email };
 }
 
-/** Replicates the function's champion-of authz query for assertion. */
+/**
+ * Replicates the function's champion-of authz queries for assertion — U5
+ * multi-enrollment aware (review FIX E-2): the learner may hold one enrollment
+ * PER COHORT, and the champion matches when they lead ANY of the learner's
+ * cohorts (the same champion-of-any-shared-cohort posture as the review-grade
+ * function and public.is_champion_of()).
+ */
 async function championOf(svc: SupabaseClient, championId: string, learnerId: string): Promise<boolean> {
-  const { data: enr } = await svc.from('enrollments').select('cohort_id').eq('user_id', learnerId).maybeSingle();
-  if (!enr?.cohort_id) return false;
+  const { data: enrollRows } = await svc.from('enrollments').select('cohort_id').eq('user_id', learnerId);
+  const learnerCohortIds = (enrollRows ?? [])
+    .map((r) => r.cohort_id as string | null)
+    .filter((id): id is string => !!id);
+  if (learnerCohortIds.length === 0) return false;
   const { data } = await svc
     .from('cohort_champions')
     .select('id')
     .eq('user_id', championId)
-    .eq('cohort_id', enr.cohort_id)
+    .in('cohort_id', learnerCohortIds)
     .limit(1);
   return (data ?? []).length > 0;
 }
@@ -130,6 +139,18 @@ describe.skipIf(!RUN)('champion grade-action write boundary (P5.5c)', () => {
     const champBOnly = await newUser();
     await svc.from('cohort_champions').upsert({ cohort_id: cohortB!.id, user_id: champBOnly.id }, { onConflict: 'cohort_id,user_id' });
     expect(await championOf(svc, champBOnly.id, learner.id)).toBe(false); // champion of B only
+
+    // (3b) U5 dual-enrollment (review FIX E-2): the learner enrolls in cohort B
+    // as well. The champion of B ONLY must now be authorized for this learner's
+    // submission — the predicate matches on ANY shared cohort, and must not
+    // break (or fail-closed) on a learner with multiple enrollment rows.
+    await svc
+      .from('enrollments')
+      .upsert({ user_id: learner.id, cohort_id: cohortB!.id }, { onConflict: 'user_id,cohort_id' });
+    expect(await championOf(svc, champBOnly.id, learner.id)).toBe(true); // champion of B, learner in A AND B
+    expect(await championOf(svc, champ.id, learner.id)).toBe(true); // champion of A still matches
+    const nonChampion = await newUser();
+    expect(await championOf(svc, nonChampion.id, learner.id)).toBe(false); // champion of neither
 
     await svc.from('lab_submissions').delete().eq('id', submissionId);
     await svc.from('cohorts').delete().in('id', [cohortA!.id, cohortB!.id]);

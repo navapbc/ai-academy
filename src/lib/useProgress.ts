@@ -316,14 +316,18 @@ export function useProgress(
 
   // U9: participation events (a recorded lab submission / finished quiz attempt)
   // auto-complete their module. The event is completion, not navigation — no
-  // cursor advance. Ids outside the learner's visible curriculum are ignored,
-  // matching resolveCurrentModuleId's "never land on an unknown module" posture.
+  // cursor advance. Events for OTHER USERS are ignored (FIX C — the seam is a
+  // module-level singleton, so a write performed under a different userId must
+  // never complete a module for this hook's user; the D-01 class). Ids outside
+  // the learner's visible curriculum are ignored too, matching
+  // resolveCurrentModuleId's "never land on an unknown module" posture.
   useEffect(() => {
-    return onParticipation(({ moduleId, via }) => {
+    return onParticipation(({ userId: eventUserId, moduleId, via }) => {
+      if (eventUserId !== userId) return;
       if (!allModuleIds.includes(moduleId)) return;
       applyCompletion(moduleId, via, false);
     });
-  }, [allModuleIds, applyCompletion]);
+  }, [userId, allModuleIds, applyCompletion]);
 
   const selectModule = useCallback(
     (moduleId: string) => {

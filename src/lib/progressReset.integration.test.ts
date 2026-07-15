@@ -25,7 +25,11 @@ import { isSupabaseConfigured } from './supabaseClient';
 //  (e) an unenrolled learner replaying against a now-invisible program module
 //      is still rejected — the trigger's modules read is SECURITY DEFINER
 //      (fail-closed), not subject to the caller's RLS;
-//  (f) a completion written with the fresh epoch AFTER the reset sticks.
+//  (f) a completion written with the fresh epoch AFTER the reset sticks;
+//  (g) FIX A-1: the reset delete is SCOPED — a fresh-epoch completion written
+//      in the epoch→delete gap survives while stale-epoch rows are removed;
+//  (h) FIX A-3: the reset-only retry (publish with resetProgress and a NULL
+//      draft) re-runs the epoch→scoped-delete sequence and works.
 
 const URL = import.meta.env.VITE_SUPABASE_URL as string;
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -104,15 +108,22 @@ async function newModule(visibility: 'public' | 'program' = 'public'): Promise<s
 /**
  * Replicates the admin-content publish-with-reset sequence exactly (the Deno
  * function itself can't run under vitest): (1) commit the epoch on the module
- * row FIRST, (2) THEN delete the module's progress rows, counting them.
- * Returns the epoch as the DB stores/returns it (the value clients echo).
+ * row FIRST, (2) THEN delete the module's PRE-EPOCH progress rows, counting
+ * them. The delete is SCOPED (review FIX A-1) to rows whose reset_epoch is
+ * NULL or predates the just-committed epoch — a completion legitimately
+ * written WITH the fresh epoch in the epoch→delete gap must survive. Returns
+ * the epoch as the DB stores/returns it (the value clients echo).
  */
 async function publishReset(cellId: string): Promise<{ epoch: string; deleted: number }> {
   const svc = serviceClient();
   const minted = new Date().toISOString();
   const up = await svc.from('modules').update({ progress_reset_at: minted }).eq('cell_id', cellId);
   expect(up.error).toBeNull();
-  const del = await svc.from('module_progress').delete({ count: 'exact' }).eq('module_id', cellId);
+  const del = await svc
+    .from('module_progress')
+    .delete({ count: 'exact' })
+    .eq('module_id', cellId)
+    .or(`reset_epoch.is.null,reset_epoch.lt."${minted}"`);
   expect(del.error).toBeNull();
   // Read the stored epoch back in PostgREST's own format — this is exactly what
   // a client's curriculum fetch would capture and later echo.
@@ -288,6 +299,85 @@ describe.skipIf(!RUN)('progress-reset epoch trigger (U10)', () => {
     const replay = await insertCompletion(client, uid, cellId, null);
     expect(replay.error).toBeTruthy();
     expect(replay.error!.message).toMatch(/STALE_RESET_EPOCH/);
+  });
+
+  test('(g) FIX A-1 — the reset delete is SCOPED: a fresh-epoch completion written in the epoch→delete gap survives while the stale-epoch row is removed', async () => {
+    const cellId = await newModule('public');
+    const userA = await newUser(); // holds the stale, pre-reset row
+    const userB = await newUser(); // completes in the epoch→delete gap
+
+    // Pre-reset completion (epoch null) — the row the reset must clear.
+    const stale = await insertCompletion(userA.client, userA.uid, cellId, null);
+    expect(stale.error).toBeNull();
+
+    // Replicate the function's sequence with the gap made explicit.
+    // Step 1: commit the epoch (the commit point).
+    const svc = serviceClient();
+    const minted = new Date().toISOString();
+    const up = await svc.from('modules').update({ progress_reset_at: minted }).eq('cell_id', cellId);
+    expect(up.error).toBeNull();
+
+    // THE GAP: learner B fetches the module (now carrying the fresh epoch) and
+    // completes with it BEFORE step 2's delete runs. The trigger accepts it
+    // (epoch == reset_at), so the row is legitimate post-reset work.
+    const { data: mod } = await userB.client
+      .from('modules')
+      .select('progress_reset_at')
+      .eq('cell_id', cellId)
+      .single();
+    const freshEpoch = mod!.progress_reset_at as string;
+    const gapWrite = await insertCompletion(userB.client, userB.uid, cellId, freshEpoch);
+    expect(gapWrite.error).toBeNull();
+
+    // Step 2: the function's exact SCOPED delete — only pre-epoch rows go. An
+    // unscoped delete (the pre-FIX bug) would return count 2 and destroy B's
+    // legitimate completion.
+    const del = await svc
+      .from('module_progress')
+      .delete({ count: 'exact' })
+      .eq('module_id', cellId)
+      .or(`reset_epoch.is.null,reset_epoch.lt."${minted}"`);
+    expect(del.error).toBeNull();
+    expect(del.count).toBe(1); // ONLY the stale null-epoch row
+
+    const { data: survivors, error: readErr } = await svc
+      .from('module_progress')
+      .select('user_id, status')
+      .eq('module_id', cellId);
+    expect(readErr).toBeNull();
+    expect(survivors).toHaveLength(1);
+    expect(survivors![0].user_id).toBe(userB.uid);
+    expect(survivors![0].status).toBe('completed');
+  });
+
+  test('(h) FIX A-3 — the reset-only RETRY (draft NULL) works: re-commit epoch + scoped delete clears the lingering pre-reset row; a fresh completion then sticks', async () => {
+    // The retry scenario: a publish-with-reset committed the promotion (which
+    // consumed the draft → draft is NULL) but its delete step failed, leaving a
+    // stale-epoch progress row behind. The retry is publish{resetProgress:true}
+    // with no draft — the function skips promotion/version bump/snapshot and
+    // re-runs ONLY the epoch→scoped-delete sequence, which publishReset
+    // replicates. The module here has draft NULL throughout (newModule seeds no
+    // draft), so this asserts the retry's SQL semantics on exactly that shape.
+    const cellId = await newModule('public');
+    const { client, uid } = await newUser();
+
+    const stale = await insertCompletion(client, uid, cellId, null);
+    expect(stale.error).toBeNull();
+
+    const retry = await publishReset(cellId);
+    expect(retry.deleted).toBe(1); // the lingering pre-reset row is cleared
+
+    // The retry's epoch governs: echoing it is accepted and the row survives a
+    // read-back — the "publish with reset again" instruction actually works.
+    const fresh = await insertCompletion(client, uid, cellId, retry.epoch);
+    expect(fresh.error).toBeNull();
+    const { data } = await serviceClient()
+      .from('module_progress')
+      .select('status, reset_epoch')
+      .eq('module_id', cellId)
+      .eq('user_id', uid);
+    expect(data).toHaveLength(1);
+    expect(data![0].status).toBe('completed');
   });
 
   test('(f) a completion written with the fresh epoch AFTER the reset sticks (no lingering rejection)', async () => {

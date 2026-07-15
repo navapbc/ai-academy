@@ -22,3 +22,6 @@ supabase/.temp
 
 .vscode
 pnpm-lock.yaml
+
+# Session/review working artifacts (ce-review runs) — never committed
+.context/

@@ -16,13 +16,13 @@ import type { CompletionSyncOutcome, ParticipationEvent } from './progress';
 // comparison) is the real implementation, imported from the actual module.
 const { fetchModuleProgress, setModuleStatus, submitCompletion, onParticipation, listeners } =
   vi.hoisted(() => {
-    const listeners = new Set<(e: { moduleId: string; via: string }) => void>();
+    const listeners = new Set<(e: { userId: string; moduleId: string; via: string }) => void>();
     return {
       fetchModuleProgress: vi.fn(),
       setModuleStatus: vi.fn(async () => {}),
       submitCompletion: vi.fn(async (): Promise<CompletionSyncOutcome> => 'ok'),
       listeners,
-      onParticipation: vi.fn((cb: (e: { moduleId: string; via: string }) => void) => {
+      onParticipation: vi.fn((cb: (e: { userId: string; moduleId: string; via: string }) => void) => {
         listeners.add(cb);
         return () => listeners.delete(cb);
       }),
@@ -105,7 +105,7 @@ describe('completeModule', () => {
     const { result } = renderHook(() => useProgress('u1', ALL));
     await waitFor(() => expect(result.current.progress.currentModuleId).toBe('m0'));
 
-    act(() => emit({ moduleId: 'm0', via: 'quiz' }));
+    act(() => emit({ userId: 'u1', moduleId: 'm0', via: 'quiz' }));
     expect(result.current.progress.currentModuleId).toBe('m0'); // seam: no advance
 
     act(() => result.current.completeModule('m0', 'quiz')); // explicit Finish
@@ -143,7 +143,7 @@ describe('participation seam subscription (U9)', () => {
     expect(onParticipation).toHaveBeenCalled();
 
     // The learner submits the lab of the module they're on.
-    act(() => emit({ moduleId: 'm0', via: 'lab' }));
+    act(() => emit({ userId: 'u1', moduleId: 'm0', via: 'lab' }));
 
     expect(result.current.progress.completedModuleIds).toContain('m0');
     // Completion is an event, not navigation: the learner stays put.
@@ -155,7 +155,7 @@ describe('participation seam subscription (U9)', () => {
     const { result } = renderHook(() => useProgress('u1', ALL));
     await waitFor(() => expect(result.current.progress.currentModuleId).toBe('m0'));
 
-    act(() => emit({ moduleId: 'm1', via: 'quiz' }));
+    act(() => emit({ userId: 'u1', moduleId: 'm1', via: 'quiz' }));
 
     expect(result.current.progress.completedModuleIds).toContain('m1');
     expect(submitCompletion).toHaveBeenCalledWith('u1', 'm1', 'quiz', null, expect.any(String));
@@ -165,9 +165,22 @@ describe('participation seam subscription (U9)', () => {
     const { result } = renderHook(() => useProgress('u1', ALL));
     await waitFor(() => expect(result.current.progress.currentModuleId).toBe('m0'));
 
-    act(() => emit({ moduleId: 'ghost', via: 'lab' }));
+    act(() => emit({ userId: 'u1', moduleId: 'ghost', via: 'lab' }));
 
     expect(result.current.progress.completedModuleIds).not.toContain('ghost');
+    expect(submitCompletion).not.toHaveBeenCalled();
+  });
+
+  // FIX C: the seam is a module-level singleton — an event fired by a write
+  // performed under a DIFFERENT userId must never complete a module for this
+  // hook's user (the D-01 cross-account class).
+  test("an event for a different userId is ignored (no completion, no write)", async () => {
+    const { result } = renderHook(() => useProgress('u1', ALL));
+    await waitFor(() => expect(result.current.progress.currentModuleId).toBe('m0'));
+
+    act(() => emit({ userId: 'u2', moduleId: 'm0', via: 'lab' }));
+
+    expect(result.current.progress.completedModuleIds).not.toContain('m0');
     expect(submitCompletion).not.toHaveBeenCalled();
   });
 

@@ -238,6 +238,20 @@ describe('assertModuleRow — restructure U1 course origin + visibility guard', 
   });
 });
 
+describe('assertModuleRow — type closed-enum guard', () => {
+  test('accepts every ModuleType union member', () => {
+    for (const type of ['content', 'lab', 'simulator', 'quiz', 'glossary', 'sorter']) {
+      expect(() => assertModuleRow({ ...baseRow, type })).not.toThrow();
+    }
+  });
+
+  test("throws loudly on a type outside the union (e.g. the removed 'use-case')", () => {
+    expect(() => assertModuleRow({ ...baseRow, type: 'use-case' })).toThrow(/unknown type/);
+    expect(() => assertModuleRow({ ...baseRow, type: 'workshop' })).toThrow(/unknown type/);
+    expect(() => assertModuleRow({ ...baseRow, type: '' })).toThrow(/type/);
+  });
+});
+
 describe('assertModuleRow — U10 progress_reset_at guard', () => {
   test('accepts null, a timestamp string, and an absent column', () => {
     expect(() => assertModuleRow({ ...baseRow, progress_reset_at: null })).not.toThrow();
