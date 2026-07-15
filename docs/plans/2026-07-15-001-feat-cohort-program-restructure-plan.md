@@ -352,7 +352,7 @@ sequenceDiagram
 
 ### Phase 1 — Course/Week structure (nothing hidden yet)
 
-- [ ] **Unit 1: Curriculum structure schema, helpers, Course 1 shell, deploy ordering**
+- [x] **Unit 1: Curriculum structure schema, helpers, Course 1 shell, deploy ordering** ✓ committed 0848d79 (805/805 incl. live-DB gated suite; migration double-applied)
 
 **Goal:** Courses/weeks/membership exist as data with their **final** RLS policies;
 `is_staff()`/`has_program_access()` exist; modules gain `visibility` + `course` origin;

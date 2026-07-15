@@ -1,17 +1,16 @@
 import { test, expect } from '@playwright/test';
-import { signInAsDemo, openModule, completeStage1a, SUPABASE_URL, ANON_KEY } from './helpers';
+import { signInAsDemo, openModule, SUPABASE_URL, ANON_KEY } from './helpers';
 
 // Cell 2.5 ("Working with the context window") renders the auto-graded
 // context-window diagnostic after the lesson. The learner picks the best
 // diagnosis/remedy for each AI-session scenario; on submit it auto-grades
 // against the seeded correctIndex and compiles a "quick reference" takeaway. No
-// LLM call (deterministic single-select), so no grade stub. 2.5 is Stage 2, so
-// we complete Stage 1a first to unlock it. It reuses the same ScenarioExercise
+// LLM call (deterministic single-select), so no grade stub. Nothing is gated
+// (restructure U2), so 2.5 opens directly. It reuses the same ScenarioExercise
 // component as 1.9/1.10 and records a lab_submission, but is NOT the completion
 // gate — the inline quiz still owns completion.
 test('run the 2.5 context-diagnostic end to end (pick the best fix per scenario, submit, see the quick reference); quiz still gates', async ({ page }) => {
   await signInAsDemo(page);
-  await completeStage1a(page);
   await openModule(page, '2.5');
 
   const exercise = page.locator('#scenario-exercise');

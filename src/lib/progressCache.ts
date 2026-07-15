@@ -17,8 +17,10 @@ const LEGACY_CACHE_KEY = 'sprint_progress';
 // without this exact version — or one that fails the shape check — is discarded
 // rather than trusted, so a stale/old-schema blob can't deserialize into a
 // wrong-shaped object. Supabase is the source of truth, so discarding just
-// triggers a reconcile.
-const CACHE_VERSION = 1;
+// triggers a reconcile. v2: the cohort-restructure deploy (U2) — same shape,
+// but pre-restructure caches are dropped once so nothing stale paints across
+// the curriculum re-grouping.
+const CACHE_VERSION = 2;
 
 interface CacheEnvelope {
   v: number;

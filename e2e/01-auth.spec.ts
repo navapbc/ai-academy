@@ -5,8 +5,19 @@ test.describe('Authentication', () => {
   test('signs in as the seeded dev @navapbc.com user', async ({ page }) => {
     await signInAsDemo(page);
     await expect(page.locator('#sidebar')).toBeVisible();
-    // Curriculum loaded → the first Stage-1a module nav row is present.
+    // Curriculum loaded → the U2 sidebar shape for the (unenrolled) demo user:
+    // every seeded course week is empty (hidden), so the nav shows the
+    // "Supplemental coursework" section — expanded, because it contains the
+    // current module — with the matrix cells inside it, and no week entries.
+    await expect(page.getByRole('button', { name: /Supplemental coursework/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
     await expect(page.locator('#module-1\\.3')).toBeVisible();
+    const sidebar = page.locator('#sidebar');
+    await expect(sidebar.getByText(/Week 0|Week 1/)).toHaveCount(0);
+    // No stage headings and no locks anywhere in the nav (restructure U2 / R14).
+    await expect(sidebar.getByText(/Stage 1a|Stage 2|Locked/)).toHaveCount(0);
   });
 
   test('a non-@navapbc.com sign-in is rejected (no session granted)', async ({ page }) => {

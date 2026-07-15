@@ -253,11 +253,11 @@ export default function WorkshopManagement({ onBack }: { onBack: () => void }) {
     setLoading(true);
     setError(null);
     Promise.all([fetchWorkshops(), fetchCurriculum()])
-      .then(([ws, phases]) => {
+      .then(([ws, curriculum]) => {
         setWorkshops(ws);
         // Only PUBLISHED modules are offered as workshop steps.
-        const published: StepOption[] = phases
-          .flatMap((p) => p.modules)
+        const published: StepOption[] = curriculum.sections
+          .flatMap((s) => s.modules)
           .filter((m: Module) => m.status === 'published')
           .map((m) => ({ cellId: m.cellId, title: m.title }));
         setOptions(published);
@@ -282,11 +282,11 @@ export default function WorkshopManagement({ onBack }: { onBack: () => void }) {
       setActionError(null);
       fn()
         .then(() => Promise.all([fetchWorkshops(), fetchCurriculum()]))
-        .then(([ws, phases]) => {
+        .then(([ws, curriculum]) => {
           setWorkshops(ws);
           setOptions(
-            phases
-              .flatMap((p) => p.modules)
+            curriculum.sections
+              .flatMap((s) => s.modules)
               .filter((m: Module) => m.status === 'published')
               .map((m) => ({ cellId: m.cellId, title: m.title })),
           );

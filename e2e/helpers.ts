@@ -182,10 +182,8 @@ export async function completeSorter(page: Page, cellId: string) {
   await sorter.getByRole('button', { name: 'Continue' }).click();
 }
 
-/** Completes ALL of Stage 1a (the 7 cells) so Stage 2 unlocks. */
-export async function completeStage1a(page: Page) {
-  for (const cell of ['1.4', '1.5', '1.6', '1.9', '1.10', '1.13']) {
-    await completeQuizModule(page, cell);
-  }
-  await completeSorter(page, '1.3');
-}
+// NOTE (restructure U2): the former `completeStage1a` unlock helper is gone —
+// stage gating is behaviorally off, so every module (including the old Stage-2
+// cells) is directly openable. Specs open their target module without any
+// unlock preamble. `completeQuizModule` / `completeSorter` above remain as
+// generic completion drivers.

@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { signInAsDemo, openModule, completeStage1a, stubGrade } from './helpers';
+import { signInAsDemo, openModule, stubGrade } from './helpers';
 
 // Cell 2.2 renders the critique exercise (P4.3b) after the lesson: read a
 // polished AI artifact, write a critique, get an anchor-scored grade in place.
-// We STUB the `grade` Edge Function (no real key). 2.2 is Stage 2, so we complete
-// Stage 1a to unlock it. The critique is graded PRACTICE — it must NOT gate
+// We STUB the `grade` Edge Function (no real key). Nothing is gated (restructure
+// U2), so 2.2 opens directly. The critique is graded PRACTICE — it must NOT gate
 // completion, so we also confirm the inline quiz is still present as the gate.
 test('the 2.2 critique exercise grades in place and does not gate completion', async ({ page }) => {
   await stubGrade(page, {
@@ -19,7 +19,6 @@ test('the 2.2 critique exercise grades in place and does not gate completion', a
   });
 
   await signInAsDemo(page);
-  await completeStage1a(page);
 
   await openModule(page, '2.2');
   const critique = page.locator('#critique');

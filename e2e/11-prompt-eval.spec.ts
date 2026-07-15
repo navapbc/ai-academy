@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { signInAsDemo, openModule, completeStage1a, stubClaude, stubGrade } from './helpers';
+import { signInAsDemo, openModule, stubClaude, stubGrade } from './helpers';
 
 // Cell 2.10 ("Test-driven and constraint-first prompting") renders the reusable-
 // prompt eval (P4.5b) after the lesson: read a recurring task + the constraints to
@@ -9,8 +9,8 @@ import { signInAsDemo, openModule, completeStage1a, stubClaude, stubGrade } from
 // per-case outputs to the P4.2 judge for an anchor-scored verdict in place. We STUB
 // BOTH the chat Edge Function (the per-case runs) AND the grade Edge Function (the
 // judge) — no real key. The stubClaude route returns the same canned body for EVERY
-// chat call, so it transparently handles the multiple per-case calls. 2.10 is Stage
-// 2, so we complete Stage 1a to unlock it. The prompt-eval is graded PRACTICE — it
+// chat call, so it transparently handles the multiple per-case calls. Nothing is gated
+// (restructure U2), so 2.10 opens directly. The prompt-eval is graded PRACTICE — it
 // must NOT gate completion, so we also confirm the inline quiz is still present as
 // the gate. Reuses streamChat + the #48 judge stub + GradeResultCard.
 test('the 2.10 prompt-eval runs the prompt against every case, grades it in place, and does not gate completion', async ({ page }) => {
@@ -33,7 +33,6 @@ test('the 2.10 prompt-eval runs the prompt against every case, grades it in plac
   });
 
   await signInAsDemo(page);
-  await completeStage1a(page);
 
   await openModule(page, '2.10');
   const promptEval = page.locator('#prompt-eval');

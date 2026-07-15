@@ -95,6 +95,63 @@ export interface Phase {
   modules: Module[];
 }
 
+// --- Course/Week curriculum structure (cohort-restructure U2) -----------------
+
+/** A row from the `courses` table (U1). */
+export interface Course {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  sortOrder: number;
+}
+
+/** A row from the `course_weeks` table (U1). */
+export interface CourseWeek {
+  id: string;
+  courseId: string;
+  title: string;
+  subtitle: string | null;
+  sortOrder: number;
+}
+
+/** A row from the `course_week_modules` join table (U1) — a module belongs to at most one week. */
+export interface CourseWeekModule {
+  weekId: string;
+  cellId: string;
+  sortOrder: number;
+}
+
+/** Which learner-nav bucket a curriculum section is (U2). */
+export type SectionKind = 'week' | 'supplemental' | 'resources';
+
+/**
+ * One renderable learner-nav section (U2): a course week, the "Supplemental
+ * coursework" bucket (matrix modules not in any visible week), or the
+ * "Resources & additional lessons" bucket (custom lessons). Extends the legacy
+ * `Phase` render shape (id/title/description/week/modules) so downstream
+ * consumers that flatten `modules` keep working unchanged; `kind` discriminates
+ * the buckets, and week sections carry their course for the sidebar's tree.
+ */
+export interface CurriculumSection extends Phase {
+  kind: SectionKind;
+  /** Set on kind='week' sections: the course this week belongs to. */
+  courseId?: string;
+  courseTitle?: string;
+}
+
+/**
+ * The fetched curriculum (U2). `moduleRowCount` is the raw number of module
+ * rows the query returned BEFORE client-side filtering/grouping — the FE-02
+ * empty-state discriminator (zero rows = error state; any rows = render). A
+ * shape-based check over sections would misfire for an unenrolled learner who
+ * legitimately receives only public rows (post-U4).
+ */
+export interface Curriculum {
+  sections: CurriculumSection[];
+  moduleRowCount: number;
+}
+
 export interface QuizQuestion {
   question: string;
   options: string[];

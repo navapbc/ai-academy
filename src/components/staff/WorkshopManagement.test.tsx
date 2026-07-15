@@ -28,21 +28,24 @@ const WORKSHOPS: Workshop[] = [
 
 // Only the fields WorkshopManagement reads (cellId, title, status). One draft
 // module is present to prove the picker offers PUBLISHED cells only.
-const PHASES = [
-  {
-    modules: [
-      { cellId: '1.1', title: 'Rules of the road', status: 'published' },
-      { cellId: '1.4', title: 'Getting access', status: 'published' },
-      { cellId: '2.1', title: 'Your first lab', status: 'published' },
-      { cellId: '9.9', title: 'Draft lesson', status: 'draft' },
-    ],
-  },
-] as unknown as Phase[];
+const CURRICULUM = {
+  sections: [
+    {
+      modules: [
+        { cellId: '1.1', title: 'Rules of the road', status: 'published' },
+        { cellId: '1.4', title: 'Getting access', status: 'published' },
+        { cellId: '2.1', title: 'Your first lab', status: 'published' },
+        { cellId: '9.9', title: 'Draft lesson', status: 'draft' },
+      ],
+    },
+  ] as unknown as Phase[],
+  moduleRowCount: 4,
+};
 
 beforeEach(() => {
   for (const fn of [...Object.values(admin), ...Object.values(reads)]) fn.mockReset();
   reads.fetchWorkshops.mockResolvedValue(WORKSHOPS);
-  reads.fetchCurriculum.mockResolvedValue(PHASES);
+  reads.fetchCurriculum.mockResolvedValue(CURRICULUM);
   admin.createWorkshop.mockResolvedValue(undefined);
   admin.updateWorkshop.mockResolvedValue(undefined);
   admin.deleteWorkshop.mockResolvedValue(undefined);

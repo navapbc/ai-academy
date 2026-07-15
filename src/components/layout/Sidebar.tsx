@@ -1,15 +1,22 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BarChart3, X, CheckCircle2, LifeBuoy, Terminal, Lock, ShieldCheck, GraduationCap, Layers } from 'lucide-react';
-import { Phase, UserProgress, View } from '../../types';
+import { BarChart3, X, CheckCircle2, ChevronDown, LifeBuoy, Terminal, ShieldCheck, GraduationCap, Layers } from 'lucide-react';
+import { CurriculumSection, Module, UserProgress, View } from '../../types';
 import { isModuleLive } from '../../lib/modules';
-import { isModuleLocked } from '../../lib/gating';
 import { BRANDING } from '../../branding';
+
+// Course-tree navigation (cohort-restructure U2): Course 1's weeks, then
+// "Supplemental coursework", then "Resources & additional lessons" — every
+// section collapsible, nothing locked (R14: gating is behaviorally off).
+// Collapse defaults per the plan's UX decisions: the section containing the
+// current module starts expanded, everything else collapsed; selecting (or
+// auto-advancing to) a module expands its containing section WITHOUT collapsing
+// others; expansion state is in-memory only.
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  phases: Phase[];
+  sections: CurriculumSection[];
   progress: UserProgress;
   onModuleSelect: (id: string) => void;
   overallProgress: number;
@@ -18,32 +25,147 @@ interface SidebarProps {
   onViewChange: (view: View) => void;
   /** Whether the signed-in user is a champion/admin — gates the Staff entry (P5.1d). */
   isStaff: boolean;
-  /** Stage gating (P3.11): whether all of Stage 1a is complete (unlocks Stage 2). */
-  stage1aDone: boolean;
-  stage1aCompleted: number;
-  stage1aTotal: number;
 }
 
-export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSelect, overallProgress, onOpenSupport, activeView, onViewChange, isStaff, stage1aDone, stage1aCompleted, stage1aTotal }: SidebarProps) {
+/** The id of the section containing a module (undefined when it's in none). */
+function sectionIdOf(sections: CurriculumSection[], moduleId: string): string | undefined {
+  return sections.find((s) => s.modules.some((m) => m.id === moduleId))?.id;
+}
+
+export default function Sidebar({ isOpen, onClose, sections, progress, onModuleSelect, overallProgress, onOpenSupport, activeView, onViewChange, isStaff }: SidebarProps) {
   const completed = new Set(progress.completedModuleIds);
-  const totalModules = phases.reduce((n, p) => n + p.modules.length, 0);
-  // Count only completed ids that are still in the curriculum, so the headline
-  // count can't exceed the total.
-  const completedCount = phases.reduce(
-    (n, p) => n + p.modules.filter(m => completed.has(m.id)).length,
+  const totalModules = sections.reduce((n, s) => n + s.modules.length, 0);
+  // Count only completed ids that are still in the visible curriculum, so the
+  // headline count can't exceed the total (U2 denominator rule).
+  const completedCount = sections.reduce(
+    (n, s) => n + s.modules.filter(m => completed.has(m.id)).length,
     0,
   );
   // "Soon" badge tracks which cells are still stubs — derived from the fetched
   // content, so an edited row drops its badge with no code change.
   const liveModuleIds = useMemo(
-    () => new Set(phases.flatMap(p => p.modules).filter(isModuleLive).map(m => m.id)),
-    [phases],
+    () => new Set(sections.flatMap(s => s.modules).filter(isModuleLive).map(m => m.id)),
+    [sections],
   );
+
+  // Expansion state (in-memory, per UX decision): starts with only the section
+  // containing the current module open; a module change (select OR
+  // auto-advance) opens its section and never closes any other.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
+    const initial = sectionIdOf(sections, progress.currentModuleId);
+    return new Set(initial ? [initial] : []);
+  });
+  useEffect(() => {
+    const id = sectionIdOf(sections, progress.currentModuleId);
+    if (!id) return;
+    setExpandedIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, [sections, progress.currentModuleId]);
+  const toggleSection = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // The course tree: consecutive week sections grouped under their course
+  // heading; supplemental/resources render as top-level sections after it.
+  const courseGroups = useMemo(() => {
+    const groups: { courseId: string; courseTitle: string; weeks: CurriculumSection[] }[] = [];
+    for (const s of sections) {
+      if (s.kind !== 'week' || !s.courseId) continue;
+      const last = groups[groups.length - 1];
+      if (last && last.courseId === s.courseId) last.weeks.push(s);
+      else groups.push({ courseId: s.courseId, courseTitle: s.courseTitle ?? '', weeks: [s] });
+    }
+    return groups;
+  }, [sections]);
+  const standaloneSections = useMemo(
+    () => sections.filter((s) => s.kind !== 'week'),
+    [sections],
+  );
+
+  const renderModuleRow = (module: Module) => {
+    const isCompleted = completed.has(module.id);
+    const isActive = progress.currentModuleId === module.id;
+    return (
+      <button
+        key={module.id}
+        onClick={() => onModuleSelect(module.id)}
+        className={`
+          w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all group cursor-pointer
+          ${isActive ? 'bg-nava-mint text-nava-green border-l-4 border-nava-green shadow-sm' : 'hover:bg-gray-50 text-gray-600'}
+        `}
+        id={`module-${module.id}`}
+      >
+        <div className={`
+          flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border transition-colors
+          ${isCompleted ? 'bg-nava-green border-nava-green' : 'border-gray-300 group-hover:border-nava-green/30'}
+        `}>
+          {isCompleted ? (
+            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+          ) : (
+            <div className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-nava-green/20" />
+          )}
+        </div>
+        <span className="flex-shrink-0 text-[10px] font-bold tabular-nums text-gray-500 w-7">{module.id}</span>
+        <span className={`flex-1 min-w-0 text-xs font-medium truncate ${isActive ? 'font-bold' : ''}`}>
+          {module.title}
+        </span>
+        {!liveModuleIds.has(module.id) && (
+          <span className="flex-shrink-0 text-[9px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 rounded-full px-1.5 py-0.5">
+            Soon
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  const renderSection = (section: CurriculumSection) => {
+    const sectionCompleted = section.modules.filter(m => completed.has(m.id)).length;
+    const expanded = expandedIds.has(section.id);
+    const panelId = `section-modules-${section.id}`;
+    return (
+      <div key={section.id} className="space-y-2">
+        <h2 className="px-1">
+          <button
+            onClick={() => toggleSection(section.id)}
+            aria-expanded={expanded}
+            aria-controls={panelId}
+            className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-gray-50 transition-colors"
+          >
+            <span className="min-w-0">
+              <span className="block text-[10px] font-bold text-nava-green tracking-widest uppercase">{section.week}</span>
+              <span className="block font-semibold text-sm text-gray-900 truncate">{section.title}</span>
+            </span>
+            <span className="flex items-center gap-2 shrink-0">
+              <span className="text-[10px] font-bold tabular-nums text-gray-500">{sectionCompleted}/{section.modules.length}</span>
+              <ChevronDown
+                className={`w-4 h-4 text-gray-500 transition-transform ${expanded ? '' : '-rotate-90'}`}
+                aria-hidden="true"
+              />
+            </span>
+          </button>
+        </h2>
+        {expanded && (
+          <div id={panelId} className="space-y-0.5">
+            {section.modules.map(renderModuleRow)}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <AnimatePresence mode="wait">
       {isOpen && (
-        <motion.aside 
+        <motion.aside
           initial={{ width: 0, opacity: 0 }}
           animate={{ width: 320, opacity: 1 }}
           exit={{ width: 0, opacity: 0 }}
@@ -149,90 +271,18 @@ export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSel
 
             <div className="border-t border-gray-100 my-2 mx-3" />
 
-            {phases.map((phase) => {
-              const phaseCompleted = phase.modules.filter(m => completed.has(m.id)).length;
-              // A phase is locked when all of its modules are gated (i.e. Stage 2
-              // before Stage 1a is done). Stage 1a/1b never lock.
-              const phaseLocked =
-                phase.modules.length > 0 &&
-                phase.modules.every(m => isModuleLocked(m, stage1aDone));
-              return (
-              <div key={phase.id} className="space-y-2">
-                <div className="px-3 mb-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-nava-green tracking-widest uppercase">{phase.week}</span>
-                    <span className="text-[10px] font-bold tabular-nums text-gray-500">{phaseCompleted}/{phase.modules.length}</span>
-                  </div>
-                  <h2 className="font-semibold text-sm text-gray-900">{phase.title}</h2>
-                  {phaseLocked && (
-                    <p className="mt-1 flex items-center gap-1 text-[10px] font-medium text-gray-500">
-                      <Lock className="w-3 h-3 shrink-0" />
-                      Locked — complete Stage 1a ({stage1aCompleted}/{stage1aTotal}) to unlock
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-0.5">
-                  {phase.modules.map((module) => {
-                    const isCompleted = progress.completedModuleIds.includes(module.id);
-                    const isActive = progress.currentModuleId === module.id;
-                    const locked = isModuleLocked(module, stage1aDone);
-
-                    // Locked Stage-2 rows render as a non-interactive, muted row
-                    // with a Lock icon — not a button, so they can't be selected.
-                    if (locked) {
-                      return (
-                        <div
-                          key={module.id}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-gray-500 cursor-not-allowed select-none"
-                          id={`module-${module.id}`}
-                          aria-disabled="true"
-                        >
-                          <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border border-gray-200">
-                            <Lock className="w-3 h-3 text-gray-500" />
-                          </div>
-                          <span className="flex-shrink-0 text-[10px] font-bold tabular-nums text-gray-500 w-7">{module.id}</span>
-                          <span className="flex-1 min-w-0 text-xs font-medium truncate">{module.title}</span>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <button
-                        key={module.id}
-                        onClick={() => onModuleSelect(module.id)}
-                        className={`
-                          w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all group cursor-pointer
-                          ${isActive ? 'bg-nava-mint text-nava-green border-l-4 border-nava-green shadow-sm' : 'hover:bg-gray-50 text-gray-600'}
-                        `}
-                        id={`module-${module.id}`}
-                      >
-                        <div className={`
-                          flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border transition-colors
-                          ${isCompleted ? 'bg-nava-green border-nava-green' : 'border-gray-300 group-hover:border-nava-green/30'}
-                        `}>
-                          {isCompleted ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                          ) : (
-                            <div className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-nava-green/20" />
-                          )}
-                        </div>
-                        <span className="flex-shrink-0 text-[10px] font-bold tabular-nums text-gray-500 w-7">{module.id}</span>
-                        <span className={`flex-1 min-w-0 text-xs font-medium truncate ${isActive ? 'font-bold' : ''}`}>
-                          {module.title}
-                        </span>
-                        {!liveModuleIds.has(module.id) && (
-                          <span className="flex-shrink-0 text-[9px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 rounded-full px-1.5 py-0.5">
-                            Soon
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* Course tree: each course heading with its (visible) weeks. */}
+            {courseGroups.map((group) => (
+              <div key={group.courseId} className="space-y-4">
+                <p className="px-3 text-[10px] font-bold text-gray-500 tracking-widest uppercase">
+                  {group.courseTitle}
+                </p>
+                {group.weeks.map(renderSection)}
               </div>
-              );
-            })}
+            ))}
+
+            {/* Supplemental coursework + Resources & additional lessons. */}
+            {standaloneSections.map(renderSection)}
           </nav>
 
           <div className="p-4 border-t border-gray-100 bg-gray-50/50 space-y-4">
@@ -260,7 +310,7 @@ export default function Sidebar({ isOpen, onClose, phases, progress, onModuleSel
               </p>
             </div>
 
-            <button 
+            <button
               onClick={onOpenSupport}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold text-gray-500 hover:bg-white hover:text-gray-600 transition-all border border-transparent hover:border-gray-200 shadow-sm"
               id="report-issue-btn"
