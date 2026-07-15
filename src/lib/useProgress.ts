@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { UserProgress } from '../types';
 import { readProgressCache, writeProgressCache } from './progressCache';
 import {
@@ -8,7 +8,9 @@ import {
 } from './pendingWrites';
 import {
   fetchModuleProgress,
+  onParticipation,
   setModuleStatus,
+  type CompletedVia,
   type ModuleProgressSnapshot,
 } from './progress';
 
@@ -17,11 +19,17 @@ import {
 // and offline fallback. Lifecycle: hydrate from cache -> reconcile with
 // Supabase -> persist every change to both. Supabase write failures keep the
 // optimistic state and surface a dismissible error rather than blocking the UI.
+//
+// U9 (hybrid participation completion): the hook also subscribes to the data
+// layer's participation seam — a recorded lab submission or finished quiz
+// attempt auto-completes its module (stamped with `completed_via`), WITHOUT
+// moving the cursor, so a background completion never yanks the learner off
+// the activity they just submitted.
 
 interface UseProgressResult {
   progress: UserProgress;
-  /** Marks a module complete and advances to the next *unlocked* module. */
-  completeModule: (moduleId: string) => void;
+  /** Marks a module complete (stamping `via`) and advances to the next *unlocked* module. */
+  completeModule: (moduleId: string, via: CompletedVia) => void;
   /** Sets the current module (and records it in_progress unless completed). */
   selectModule: (moduleId: string) => void;
   /** Non-blocking message when a Supabase sync fails; UI stays usable. */
@@ -91,6 +99,16 @@ export function useProgress(
   );
   const [error, setError] = useState<string | null>(null);
 
+  // Synchronous mirror of the completed set for idempotence checks (U9): state
+  // updaters run asynchronously, so a repeat completion (footer click followed
+  // by a participation event, or a duplicate submission) can't be reliably
+  // detected through setProgress alone. Kept in sync from every state change
+  // below; applyCompletion also adds to it eagerly before its write.
+  const completedIdsRef = useRef<Set<string>>(new Set(progress.completedModuleIds));
+  useEffect(() => {
+    completedIdsRef.current = new Set(progress.completedModuleIds);
+  }, [progress.completedModuleIds]);
+
   // Persist to cache on every change so the next load paints instantly and the
   // app survives offline.
   useEffect(() => {
@@ -102,9 +120,12 @@ export function useProgress(
   useEffect(() => {
     let cancelled = false;
 
-    // Retry parked writes; drop each from the outbox once confirmed.
-    for (const id of readPendingCompletions(userId)) {
-      setModuleStatus(userId, id, 'completed')
+    // Retry parked writes; drop each from the outbox once confirmed. Each entry
+    // carries the via it was earned with (U9) so the replay stamps completed_via
+    // exactly as the original write would have (null for pre-U9 entries — the
+    // data layer then omits the column rather than guessing).
+    for (const { id, via } of readPendingCompletions(userId)) {
+      setModuleStatus(userId, id, 'completed', via)
         .then(() => removePendingCompletion(userId, id))
         .catch(() => {
           /* still offline — keep it parked for the next reconcile */
@@ -119,7 +140,7 @@ export function useProgress(
           // local completions and anything still pending in the outbox, so a
           // completion can never regress here (DATA-02). Completions are
           // monotonic in this app (no "un-complete"), so union is safe.
-          const pending = readPendingCompletions(userId);
+          const pending = readPendingCompletions(userId).map((p) => p.id);
           const mergedCompleted = Array.from(
             new Set([...snapshot.completedModuleIds, ...prev.completedModuleIds, ...pending]),
           );
@@ -146,33 +167,64 @@ export function useProgress(
     };
   }, [userId, allModuleIds]);
 
-  const completeModule = useCallback(
-    (moduleId: string) => {
+  /**
+   * Shared completion core (U9). `advance` distinguishes an explicit learner
+   * action (footer button, sorter Continue, GLAT Finish — cursor moves on) from
+   * a background participation event (the learner stays on the module they just
+   * worked in).
+   *
+   * Idempotence: the FIRST completion owns the write — a repeat never writes
+   * again, so completed_via is never re-stamped. An explicit repeat still
+   * advances the cursor (e.g. GLAT's Finish button clicked after the seam
+   * already completed 2.14 must still navigate); a seam repeat is a full no-op.
+   */
+  const applyCompletion = useCallback(
+    (moduleId: string, via: CompletedVia, advance: boolean) => {
+      const alreadyCompleted = completedIdsRef.current.has(moduleId);
+      if (alreadyCompleted && !advance) return;
+      completedIdsRef.current.add(moduleId);
       setProgress((prev) => {
-        if (prev.completedModuleIds.includes(moduleId)) return prev;
-        const completedModuleIds = [...prev.completedModuleIds, moduleId];
+        const isNew = !prev.completedModuleIds.includes(moduleId);
+        if (!isNew && !advance) return prev;
+        const completedModuleIds = isNew
+          ? [...prev.completedModuleIds, moduleId]
+          : prev.completedModuleIds;
         return {
           completedModuleIds,
           // Skip locked modules when advancing (FE-03): the completion may itself
           // unlock the next stage, so resolve against the new completed set.
-          currentModuleId: resolveNextModuleId(
-            moduleId,
-            completedModuleIds,
-            allModuleIds,
-            isLocked,
-          ),
+          currentModuleId: advance
+            ? resolveNextModuleId(moduleId, completedModuleIds, allModuleIds, isLocked)
+            : prev.currentModuleId,
         };
       });
-      setModuleStatus(userId, moduleId, 'completed')
+      if (alreadyCompleted) return; // navigation only — no second write, no re-stamp
+      setModuleStatus(userId, moduleId, 'completed', via)
         .then(() => removePendingCompletion(userId, moduleId))
         .catch(() => {
-          // Park the write so the next reconcile retries it (DATA-02).
-          addPendingCompletion(userId, moduleId);
+          // Park the write (with its via) so the next reconcile retries it (DATA-02).
+          addPendingCompletion(userId, moduleId, via);
           setError('Your progress was saved locally but could not sync. It will retry automatically.');
         });
     },
     [userId, allModuleIds, isLocked],
   );
+
+  const completeModule = useCallback(
+    (moduleId: string, via: CompletedVia) => applyCompletion(moduleId, via, true),
+    [applyCompletion],
+  );
+
+  // U9: participation events (a recorded lab submission / finished quiz attempt)
+  // auto-complete their module. The event is completion, not navigation — no
+  // cursor advance. Ids outside the learner's visible curriculum are ignored,
+  // matching resolveCurrentModuleId's "never land on an unknown module" posture.
+  useEffect(() => {
+    return onParticipation(({ moduleId, via }) => {
+      if (!allModuleIds.includes(moduleId)) return;
+      applyCompletion(moduleId, via, false);
+    });
+  }, [allModuleIds, applyCompletion]);
 
   const selectModule = useCallback(
     (moduleId: string) => {

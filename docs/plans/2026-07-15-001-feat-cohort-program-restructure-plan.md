@@ -519,7 +519,7 @@ Week 0 + supplemental remain open; staff dashboards keep viewer-independent tota
 **Verification:** The origin criterion via the gated suite now; the full e2e criterion
 (enroll → see; unenroll → reload → don't see) executes once U8 content exists.
 
-- [ ] **Unit 5: Multi-row enrollment + cohort lifecycle guard**
+- [x] **Unit 5: Multi-row enrollment + cohort lifecycle guard** ✓ committed 9c4ae07 (incl. review-grade dual-enrollment collateral fix + seed/fixture onConflict repairs)
 
 **Goal:** Multiple enrollments per learner; archive replaces delete without touching
 champions or enrollments; admin contract updated; staff analytics correct; champion
@@ -607,7 +607,7 @@ confidently-wrong) and Week 2 (2-pane bare-vs-grounded).
 **Verification:** Live local stack: real 3× stream, rigged pane diverges on a suggested
 prompt, abort verified in the network panel.
 
-- [ ] **Unit 7: `decision-scenario` exercise kind (Walk the Workflow)**
+- [x] **Unit 7: `decision-scenario` exercise kind (Walk the Workflow)** ✓ committed e428846 (11 component tests)
 
 **Goal:** Linear checkpoint scenario with per-option authored feedback; choices
 recorded.

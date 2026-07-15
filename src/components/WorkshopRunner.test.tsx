@@ -8,14 +8,14 @@ import type { Module } from '../types';
 import type { Workshop } from '../lib/workshops';
 
 // ModuleRenderer is mocked to a recognizable marker exposing the module id and a
-// button that fires onComplete — so we assert the runner reuses it per step and
-// routes completion through the passed-in callback (no second write), without
-// pulling in the real renderer's children.
+// button that fires onComplete (with a via, per U9) — so we assert the runner
+// reuses it per step and routes completion through the passed-in callback (no
+// second write), without pulling in the real renderer's children.
 vi.mock('./ModuleRenderer', () => ({
-  default: ({ module, onComplete }: { module: Module; onComplete: () => void }) => (
+  default: ({ module, onComplete }: { module: Module; onComplete: (via: string) => void }) => (
     <div data-testid="stub-module-renderer">
       <span>STEP:{module.id}</span>
-      <button onClick={onComplete}>complete step</button>
+      <button onClick={() => onComplete('explored')}>complete step</button>
     </div>
   ),
 }));
@@ -92,10 +92,10 @@ describe('WorkshopRunner', () => {
     expect(screen.getByText('STEP:2.7')).toBeInTheDocument();
   });
 
-  test('completing a step routes to onCompleteModule with the module id (no second write)', async () => {
+  test('completing a step routes to onCompleteModule with the module id and via (no second write)', async () => {
     const { props } = renderRunner();
     await userEvent.click(screen.getByRole('button', { name: /complete step/i }));
-    expect(props.onCompleteModule).toHaveBeenCalledWith('2.6');
+    expect(props.onCompleteModule).toHaveBeenCalledWith('2.6', 'explored');
   });
 
   test('a step whose module is unavailable shows an unavailable state, not the renderer; nav still works', async () => {

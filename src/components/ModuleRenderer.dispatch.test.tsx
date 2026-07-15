@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, test, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import ModuleRenderer from './ModuleRenderer';
 import type { LabConfig, Module, ModuleType } from '../types';
 
@@ -16,12 +17,8 @@ vi.mock('../lib/progress', () => ({ fetchQuizSummary: vi.fn(async () => ({ best:
 // hoisted vi.mock execution.
 vi.mock('./PrivacySimulator', () => ({ default: () => <div>STUB:PrivacySimulator</div> }));
 vi.mock('./Lab', () => ({ default: () => <div>STUB:Lab</div> }));
-// Surfaces the `gates` prop so the 2.1 lab-gates wiring (W2-3/D8) is assertable;
-// keeps the STUB:Quiz text so the routing assertions are unaffected.
 vi.mock('./Quiz', () => ({
-  default: ({ gates = true }: { gates?: boolean }) => (
-    <div data-testid="stub-quiz" data-gates={String(gates)}>STUB:Quiz</div>
-  ),
+  default: () => <div data-testid="stub-quiz">STUB:Quiz</div>,
 }));
 vi.mock('./UseCaseLib', () => ({ default: () => <div>STUB:UseCaseLib</div> }));
 vi.mock('./ScenarioSorter', () => ({ default: () => <div>STUB:ScenarioSorter</div> }));
@@ -57,9 +54,17 @@ const base: Module = {
   selfReportValidity: 'medium',
 };
 
-function renderModule(over: Partial<Module>) {
+function renderModule(
+  over: Partial<Module>,
+  opts: { isCompleted?: boolean; onComplete?: (via: string) => void } = {},
+) {
   return render(
-    <ModuleRenderer module={{ ...base, ...over }} selectedPersona="default" onComplete={() => {}} />,
+    <ModuleRenderer
+      module={{ ...base, ...over }}
+      selectedPersona="default"
+      isCompleted={opts.isCompleted ?? false}
+      onComplete={opts.onComplete ?? (() => {})}
+    />,
   );
 }
 
@@ -109,60 +114,72 @@ describe('renderExercise — dispatch by labConfig.kind', () => {
 
 });
 
-describe('completion affordance', () => {
-  test('a content module with no inline quiz shows the "completed this section" button', () => {
+// U9 explored-affordance rule: EVERY incomplete module renders exactly one
+// footer "Mark as explored" button — it coexists with an inline quiz or
+// exercise (those auto-complete via participation events in the data layer).
+// Once completed by any path, the footer is a static "Completed ✓" state.
+describe('completion footer (U9)', () => {
+  test('an incomplete content module shows the "Mark as explored" footer button', () => {
     renderModule({ type: 'content', content: '# Lesson' });
-    expect(screen.getByText(/completed this section/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mark as explored/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Completed ✓/)).not.toBeInTheDocument();
   });
 
-  test('a content module WITH an inline quiz suppresses the standalone complete button (quiz is the gate)', () => {
+  test('clicking "Mark as explored" completes with via=explored', async () => {
+    const user = userEvent.setup();
+    const onComplete = vi.fn();
+    renderModule({ type: 'content', content: '# Lesson' }, { onComplete });
+    await user.click(screen.getByRole('button', { name: /mark as explored/i }));
+    expect(onComplete).toHaveBeenCalledOnce();
+    expect(onComplete).toHaveBeenCalledWith('explored');
+  });
+
+  test('a completed module shows the static Completed state and no button (one-way)', () => {
+    renderModule({ type: 'content', content: '# Lesson' }, { isCompleted: true });
+    expect(screen.getByText(/Completed ✓/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /mark as explored/i })).not.toBeInTheDocument();
+  });
+
+  test('the footer button COEXISTS with an inline quiz (quizzes never gate)', () => {
     renderModule({
       type: 'content',
       content: '# Lesson',
       quiz: [{ question: 'q', options: ['a', 'b'], correctIndex: 0, explanation: 'e' }],
     });
-    expect(screen.queryByText(/completed this section/i)).not.toBeInTheDocument();
     expect(screen.getByText('STUB:Quiz')).toBeInTheDocument();
-    // The default: the inline quiz IS the gate (gates=true).
-    expect(screen.getByTestId('stub-quiz')).toHaveAttribute('data-gates', 'true');
+    expect(screen.getByRole('button', { name: /mark as explored/i })).toBeInTheDocument();
   });
 
-  // W2-3 / D8 / audit D-02: cell 2.1 — the hands-on prompt-construction lab gates,
-  // so its inline quiz is rendered as an ungated concept check (gates=false).
-  test('a prompt-construction module renders its inline quiz as practice (the lab gates, not the quiz)', () => {
+  test('the footer button coexists with a lab exercise (old lab-gates special case dissolved)', () => {
     renderModule({
       type: 'content',
       content: '# Lesson',
       labConfig: { kind: 'prompt-construction' } as LabConfig,
       quiz: [{ question: 'q', options: ['a', 'b'], correctIndex: 0, explanation: 'e' }],
     });
-    // Both the lab and the quiz render…
     expect(screen.getByText('STUB:Lab')).toBeInTheDocument();
     expect(screen.getByText('STUB:Quiz')).toBeInTheDocument();
-    // …but the quiz is non-gating; the lab's own onComplete is the gate.
-    expect(screen.getByTestId('stub-quiz')).toHaveAttribute('data-gates', 'false');
+    expect(screen.getByRole('button', { name: /mark as explored/i })).toBeInTheDocument();
   });
 
-  // P4.10 — cell 2.14: the GLAT lab gates and the placeholder quiz was removed, so a
-  // content module with a glat labConfig and no inline quiz must NOT also show the
-  // manual "completed this section" button (the GLAT's Finish→onComplete is the only
-  // completion path — no second, unguarded one).
-  test('a content module with a glat labConfig and no quiz suppresses the manual complete button', () => {
+  test('the footer button coexists with the GLAT (no longer the only completion path)', () => {
     renderModule({
       type: 'content',
       content: '# Lesson',
       labConfig: { kind: 'glat' } as LabConfig,
     });
     expect(screen.getByText('STUB:GlatExam objective gate')).toBeInTheDocument();
-    expect(screen.queryByText(/completed this section/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mark as explored/i })).toBeInTheDocument();
   });
 
   // FE-06 — a type:'lab' module whose labConfig is missing (or whose kind is
-  // unhandled) used to render no exercise, no quiz, and no completion control: a
-  // silent dead-end. It now shows a visible fallback notice.
-  test('a lab module with no labConfig shows a fallback instead of a silent dead-end (FE-06)', () => {
+  // unhandled) renders no exercise widget. The footer explored button means it
+  // is no longer a dead-end, but the visible fallback notice still flags the
+  // missing activity.
+  test('a lab module with no labConfig shows the missing-activity fallback (FE-06)', () => {
     renderModule({ type: 'lab', content: '# Lab intro' });
     expect(screen.getByText(/isn't available yet|not configured/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mark as explored/i })).toBeInTheDocument();
   });
 });
 

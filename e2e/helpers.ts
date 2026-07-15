@@ -150,21 +150,30 @@ export async function openModule(page: Page, cellId: string) {
 }
 
 /**
- * Drives the inline quiz of the currently-open module to a 100% pass by
- * clicking the correct option text for each question. Stops at the results
- * screen (does NOT click "Continue") so callers can assert on it.
+ * Drives the inline quiz of the currently-open module to the results screen by
+ * answering every question (U9: FINISHING at any score is what counts — the
+ * recorded attempt auto-completes the module via the participation seam).
+ * `missFirst` answers the first question wrong (a deliberate sub-100% run);
+ * otherwise every answer is correct. Stops at the results screen so callers
+ * can assert on it.
  */
-export async function passQuiz(page: Page, cellId: string) {
+export async function finishQuiz(
+  page: Page,
+  cellId: string,
+  opts: { missFirst?: boolean } = {},
+) {
   const questions = await fetchQuiz(page, cellId);
   expect(questions.length).toBeGreaterThan(0);
   const quiz = page.locator('#module-quiz');
   await expect(quiz).toBeVisible();
 
   for (let i = 0; i < questions.length; i++) {
-    const correctText = questions[i].options[questions[i].correctIndex];
+    const { options, correctIndex } = questions[i];
+    const pickIndex =
+      opts.missFirst && i === 0 ? (correctIndex + 1) % options.length : correctIndex;
     // Options are a radiogroup (A11Y-01) → role="radio". Only the current
     // question is in the DOM, so the option text is unique.
-    await quiz.getByRole('radio', { name: correctText, exact: true }).click();
+    await quiz.getByRole('radio', { name: options[pickIndex], exact: true }).click();
     await quiz.getByRole('button', { name: 'Submit Answer' }).click();
     const next = i + 1 < questions.length ? 'Next Question' : 'See Results';
     await quiz.getByRole('button', { name: next }).click();
@@ -172,11 +181,19 @@ export async function passQuiz(page: Page, cellId: string) {
   await expect(page.getByText(/You scored \d+ out of \d+/i)).toBeVisible();
 }
 
-/** Opens a quiz-gated content module, passes its quiz, and clicks Continue. */
+/** Finishes the inline quiz at a 100% score. */
+export async function passQuiz(page: Page, cellId: string) {
+  await finishQuiz(page, cellId);
+}
+
+/**
+ * Opens a content module with an inline quiz and finishes the quiz. Under U9
+ * the recorded attempt itself completes the module (quizzes never gate) —
+ * there is no Continue button to click.
+ */
 export async function completeQuizModule(page: Page, cellId: string) {
   await openModule(page, cellId);
   await passQuiz(page, cellId);
-  await page.getByRole('button', { name: 'Continue to Next Sprint' }).click();
 }
 
 interface SorterScenario {

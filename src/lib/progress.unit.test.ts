@@ -3,10 +3,12 @@ import { getSupabaseClient } from './supabaseClient';
 import { createSupabaseMock } from '../test/supabaseMock';
 import {
   fetchModuleProgress,
+  onParticipation,
   setModuleStatus,
   recordQuizAttempt,
   recordLabSubmission,
   fetchQuizSummary,
+  type ParticipationEvent,
 } from './progress';
 
 // UNIT tests for the data-access layer with the Supabase client MOCKED — no
@@ -98,16 +100,109 @@ describe('setModuleStatus', () => {
     expect(opts).toEqual({ onConflict: 'user_id,module_id' });
   });
 
-  test('leaves completed_at null for in_progress', async () => {
+  // U9: completions stamp how they happened into completed_via.
+  test('stamps completed_via when a via is supplied on a completion', async () => {
+    await setModuleStatus(USER, '1.3', 'completed', 'quiz');
+    const [payload] = supa.argsFor('upsert') as [Record<string, unknown>];
+    expect(payload.completed_via).toBe('quiz');
+  });
+
+  // U9: when the via is unknown (a pre-U9 outbox entry replaying), the column
+  // is OMITTED — never guessed, and an upsert-update leaves any existing value.
+  test('omits completed_via entirely when the via is unknown', async () => {
+    await setModuleStatus(USER, '1.3', 'completed', null);
+    const [payload] = supa.argsFor('upsert') as [Record<string, unknown>];
+    expect('completed_via' in payload).toBe(false);
+  });
+
+  test('leaves completed_at null and clears completed_via for in_progress', async () => {
     await setModuleStatus(USER, '1.3', 'in_progress');
     const [payload] = supa.argsFor('upsert') as [Record<string, unknown>];
     expect(payload.status).toBe('in_progress');
     expect(payload.completed_at).toBeNull();
+    expect(payload.completed_via).toBeNull();
   });
 
   test('propagates a DB error', async () => {
     supa.setResult({ error: { message: 'boom' } });
     await expect(setModuleStatus(USER, 'm', 'completed')).rejects.toBeTruthy();
+  });
+});
+
+// U9: the participation seam — record functions emit {moduleId, via} to
+// subscribers on SUCCESSFUL writes only, so useProgress can auto-complete the
+// module. No emit on failure (a lost write must not fabricate a completion).
+describe('participation seam (onParticipation)', () => {
+  test('recordLabSubmission emits via=lab with the lab id on success', async () => {
+    supa.setResult({ data: { id: 'sub-1' }, error: null });
+    const events: ParticipationEvent[] = [];
+    const off = onParticipation((e) => events.push(e));
+
+    await recordLabSubmission(USER, { labId: '2.3', transcript: {}, status: 'submitted' });
+
+    expect(events).toEqual([{ moduleId: '2.3', via: 'lab' }]);
+    off();
+  });
+
+  test('recordQuizAttempt emits via=quiz on success — any score, pass or fail', async () => {
+    const events: ParticipationEvent[] = [];
+    const off = onParticipation((e) => events.push(e));
+
+    await recordQuizAttempt(USER, {
+      moduleId: '1.4',
+      score: 1,
+      maxScore: 5,
+      passed: false,
+      answers: null,
+    });
+
+    expect(events).toEqual([{ moduleId: '1.4', via: 'quiz' }]);
+    off();
+  });
+
+  test('no emit when the insert fails', async () => {
+    const events: ParticipationEvent[] = [];
+    const off = onParticipation((e) => events.push(e));
+
+    supa.setResult({ error: { message: 'rls denied' } });
+    await expect(
+      recordLabSubmission(USER, { labId: '2.3', transcript: {}, status: 'submitted' }),
+    ).rejects.toBeTruthy();
+    supa.setResult({ error: { message: 'insert failed' } });
+    await expect(
+      recordQuizAttempt(USER, { moduleId: 'm', score: 0, maxScore: 1, passed: false, answers: null }),
+    ).rejects.toBeTruthy();
+
+    expect(events).toEqual([]);
+    off();
+  });
+
+  test('unsubscribe stops delivery', async () => {
+    supa.setResult({ data: { id: 'sub-1' }, error: null });
+    const events: ParticipationEvent[] = [];
+    const off = onParticipation((e) => events.push(e));
+    off();
+
+    await recordLabSubmission(USER, { labId: '2.3', transcript: {}, status: 'submitted' });
+
+    expect(events).toEqual([]);
+  });
+
+  test('a throwing listener neither breaks the write nor blocks other listeners', async () => {
+    supa.setResult({ data: { id: 'sub-1' }, error: null });
+    const events: ParticipationEvent[] = [];
+    const offBad = onParticipation(() => {
+      throw new Error('listener bug');
+    });
+    const offGood = onParticipation((e) => events.push(e));
+
+    await expect(
+      recordLabSubmission(USER, { labId: '2.3', transcript: {}, status: 'submitted' }),
+    ).resolves.toBe('sub-1');
+    expect(events).toEqual([{ moduleId: '2.3', via: 'lab' }]);
+
+    offBad();
+    offGood();
   });
 });
 

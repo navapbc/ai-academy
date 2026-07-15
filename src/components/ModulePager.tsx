@@ -4,10 +4,11 @@ import type { Module } from '../types';
 // Week-flow Next/Previous controls (cohort-restructure U2, R4): a footer under
 // the module content that walks the FLATTENED VISIBLE ORDER (course weeks →
 // supplemental → resources — the same order the completion cursor advances
-// through). Pure navigation: selecting never completes anything, and the
-// existing "Continue to Next Sprint" auto-advance is untouched (U9 owns
-// completion semantics). Rendered in App's learning view, not a new top-level
-// view — the sidebar stays the primary navigation.
+// through). Pure navigation: selecting never completes anything. Under U9's
+// participation completion (which deliberately never moves the cursor), this
+// pager is how the learner moves on after an activity auto-completes. Rendered
+// in App's learning view, not a new top-level view — the sidebar stays the
+// primary navigation.
 
 interface Props {
   /** All learner-visible modules, in flattened section order. */

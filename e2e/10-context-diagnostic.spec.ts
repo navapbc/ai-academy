@@ -56,8 +56,9 @@ test('run the 2.5 context-diagnostic end to end (pick the best fix per scenario,
   await expect(exercise.getByText(cfg.takeaway.title)).toBeVisible();
   await expect(exercise.getByRole('button', { name: 'Try again' })).toBeVisible();
 
-  // The inline quiz remains the completion gate: still present, and the
-  // diagnostic did not advance the learner past the cell.
+  // U9: the recorded submission auto-completes the cell (via='lab') but never
+  // moves the cursor — the inline practice quiz is still present and the
+  // learner was not advanced past the cell.
   await expect(page.locator('#module-quiz')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Continue to Next Sprint' })).toHaveCount(0);
 });

@@ -239,12 +239,38 @@ const CASES: Case[] = [
   },
   {
     name: 'ModuleRenderer — content lesson',
-    element: <ModuleRenderer module={baseModule} selectedPersona="default" onComplete={noop} />,
+    element: (
+      <ModuleRenderer
+        module={baseModule}
+        selectedPersona="default"
+        isCompleted={false}
+        onComplete={noop}
+      />
+    ),
   },
   {
     name: 'ModuleRenderer — quiz module',
-    element: <ModuleRenderer module={quizModule} selectedPersona="default" onComplete={noop} />,
+    element: (
+      <ModuleRenderer
+        module={quizModule}
+        selectedPersona="default"
+        isCompleted={false}
+        onComplete={noop}
+      />
+    ),
     axeOptions: IGNORE_PAGE_HEADING_ORDER,
+  },
+  {
+    // U9: the completed footer state ("Completed ✓") is a status region.
+    name: 'ModuleRenderer — completed module footer',
+    element: (
+      <ModuleRenderer
+        module={baseModule}
+        selectedPersona="default"
+        isCompleted={true}
+        onComplete={noop}
+      />
+    ),
   },
   {
     name: 'Lab (prompt-construction)',

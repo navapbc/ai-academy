@@ -3,6 +3,7 @@ import { Loader2, AlertTriangle } from 'lucide-react';
 import { AIPersona, CurriculumSection, View } from './types';
 import { BRANDING } from './branding';
 import { useAuth } from './lib/auth';
+import type { CompletedVia } from './lib/progress';
 import { useProgress } from './lib/useProgress';
 import { useRole } from './lib/useRole';
 import { useCurriculum } from './lib/useCurriculum';
@@ -160,10 +161,12 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
     }
   };
 
-  const handleComplete = (moduleId: string) => {
+  const handleComplete = (moduleId: string, via: CompletedVia) => {
     // Auto-advance moves the learner to the next module — focus should follow.
+    // (Only EXPLICIT completions route here; participation-event completions
+    // are handled inside useProgress and never move the cursor — U9.)
     navIntentRef.current = true;
-    completeModule(moduleId);
+    completeModule(moduleId, via);
   };
 
   const handleViewChange = (next: View) => {
@@ -308,7 +311,8 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
             <ModuleRenderer
               module={currentModule}
               selectedPersona={selectedPersona}
-              onComplete={() => handleComplete(currentModule.id)}
+              isCompleted={progress.completedModuleIds.includes(currentModule.id)}
+              onComplete={(via) => handleComplete(currentModule.id, via)}
             />
             {/* Week flow (U2/R4): Next/Previous over the flattened visible order.
                 Pure navigation — completion semantics are untouched (U9). */}

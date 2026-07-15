@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Lock, ArrowLeft } from 'lucide-react';
 import type { AIPersona, Module } from '../types';
+import type { CompletedVia } from '../lib/progress';
 import { workshopProgress, type Workshop } from '../lib/workshops';
 import ModuleRenderer from './ModuleRenderer';
 
@@ -29,8 +30,9 @@ interface Props {
   /**
    * Completion path for a step's module — the SAME callback the standalone module
    * uses (App's completeModule), so the runner adds no second write (R5/R6).
+   * `via` threads through untouched (U9 completed_via stamping).
    */
-  onCompleteModule: (moduleId: string) => void;
+  onCompleteModule: (moduleId: string, via: CompletedVia) => void;
   /** Back to the workshop list. */
   onExit: () => void;
 }
@@ -137,7 +139,8 @@ export default function WorkshopRunner({
                 key={module.id}
                 module={module}
                 selectedPersona={selectedPersona}
-                onComplete={() => onCompleteModule(module.id)}
+                isCompleted={completedModuleIds.includes(module.id)}
+                onComplete={(via) => onCompleteModule(module.id, via)}
               />
             )}
           </div>

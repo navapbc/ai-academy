@@ -43,7 +43,12 @@ const base: Module = {
 
 function renderModule(over: Partial<Module>) {
   return render(
-    <ModuleRenderer module={{ ...base, ...over }} selectedPersona="default" onComplete={() => {}} />,
+    <ModuleRenderer
+      module={{ ...base, ...over }}
+      selectedPersona="default"
+      isCompleted={false}
+      onComplete={() => {}}
+    />,
   );
 }
 
