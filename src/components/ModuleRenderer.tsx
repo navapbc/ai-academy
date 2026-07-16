@@ -32,6 +32,7 @@ import UseCasePortfolio from './exercises/UseCasePortfolio';
 import FailureLog from './exercises/FailureLog';
 import ChatCompare from './exercises/ChatCompare';
 import DecisionScenario from './exercises/DecisionScenario';
+import PredictionSort from './exercises/PredictionSort';
 import GlatExam from './exercises/GlatExam';
 
 interface Props {
@@ -231,6 +232,11 @@ export default function ModuleRenderer({
         // (participation completion is U9); no onComplete (see
         // DecisionScenarioConfig).
         return <DecisionScenario config={module.labConfig} labId={module.cellId} />;
+      case 'prediction-sort':
+        // 1.01 intuition sort (Course 1, Week 1) — records a submission that
+        // auto-completes the module via the participation seam (via='lab'); no
+        // onComplete (see PredictionSortConfig). Matches chat-compare/decision-scenario.
+        return <PredictionSort config={module.labConfig} labId={module.cellId} />;
       case 'glat':
         // GLAT (P4.10 → U9): no longer a gate — submitting records a
         // quiz_attempts row, whose participation event auto-completes 2.14 at
