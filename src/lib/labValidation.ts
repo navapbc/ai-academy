@@ -36,6 +36,7 @@ export const LAB_KINDS: LabConfig['kind'][] = [
   'failure-log',
   'chat-compare',
   'decision-scenario',
+  'prediction-sort',
   'glat',
 ];
 
@@ -70,6 +71,7 @@ export const LAB_KIND_LABELS: Record<LabConfig['kind'], string> = {
   'failure-log': 'Failure log',
   'chat-compare': 'Chat compare',
   'decision-scenario': 'Decision scenario',
+  'prediction-sort': 'Prediction sort',
   glat: 'GLAT exam',
 };
 
