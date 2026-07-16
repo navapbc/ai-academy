@@ -124,6 +124,25 @@ describe('validateLabConfig — per kind', () => {
     ).toBe(false);
   });
 
+  test('prediction-sort requires introMd, bucketLabels, items, and a takeaway', () => {
+    const good = {
+      kind: 'prediction-sort',
+      introMd: 'Sort each task into lookup or predict.',
+      bucketLabels: { lookup: 'Lookup', predict: 'Predict' },
+      items: [{ id: 'i1', prompt: 'Summarize this memo', reveal: 'Predict — the wording varies.' }],
+      takeaway: { title: 'Takeaway', body: 'Prediction beats lookup for open-ended tasks.' },
+    };
+    expect(validateLabConfig(good).ok).toBe(true);
+    // Missing items entirely.
+    const missingItems: Record<string, unknown> = { ...good };
+    delete missingItems.items;
+    expect(validateLabConfig(missingItems).ok).toBe(false);
+    // bucketLabels missing `predict`.
+    expect(
+      validateLabConfig({ ...good, bucketLabels: { lookup: 'Lookup' } }).ok,
+    ).toBe(false);
+  });
+
   test('glat threshold + sections', () => {
     const good = {
       kind: 'glat',
