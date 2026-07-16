@@ -556,6 +556,60 @@ Drop-in sessions with people who spend a lot of time with these tools. Bring a t
    null)
 on conflict (cell_id) do nothing;
 
+-- c1-w1-lookup-vs-predict — Lookup or Predict?
+insert into public.modules
+  (cell_id, stage, origin, visibility, status, title, type, dimension,
+   evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
+values
+  ('c1-w1-lookup-vs-predict', null, 'course', 'program', 'published', 'Lookup or Predict?', 'lab',
+   ARRAY['Discernment']::text[], 'performance-task', 'na', 903,
+   $md$Part of the Week 1 live session, after the two experiments. Sort each task below by what it *feels* like Claude is doing — then submit to see the twist. There is no wrong answer while you sort; the point is to compare your gut feeling against what's actually happening.$md$,
+   $json${
+  "kind": "prediction-sort",
+  "introMd": "For each task, place it in the bucket that matches your gut: does it feel like Claude is **looking something up**, or **making something up**? Sort all six, then submit.",
+  "bucketLabels": {
+    "lookup": "Feels like looking it up",
+    "predict": "Feels like making it up"
+  },
+  "items": [
+    {
+      "id": "capital",
+      "prompt": "What's the capital of France?",
+      "reveal": "Feels like a fact Claude retrieved — but Claude predicted \"Paris\" because those words follow that question countless times in its training. Same machinery as everything else here."
+    },
+    {
+      "id": "offsite",
+      "prompt": "Give me three ideas for a team offsite.",
+      "reveal": "Obviously generated on the spot — there's no \"right\" answer to retrieve. But the capital of France worked the exact same way."
+    },
+    {
+      "id": "summary",
+      "prompt": "Summarize this paragraph I just pasted.",
+      "reveal": "It's grounded in the text you gave it, yet Claude still predicts the summary word by word — it isn't copying sentences straight out."
+    },
+    {
+      "id": "worldcup",
+      "prompt": "Who won the 2043 World Cup?",
+      "reveal": "There's nothing to look up — the match hasn't happened. Claude predicts a plausible-sounding answer anyway. That's how the confident wrong answers in Experiment 2 happen."
+    },
+    {
+      "id": "mockingbird",
+      "prompt": "What page of To Kill a Mockingbird is the trial on?",
+      "reveal": "Claude has no book to flip through; it predicts a page number that sounds right."
+    },
+    {
+      "id": "translate",
+      "prompt": "Translate 'good morning' into Spanish.",
+      "reveal": "Feels like a dictionary lookup, but Claude is predicting the words \"buenos días\" from patterns it has seen."
+    }
+  ],
+  "takeaway": {
+    "title": "The twist: it was all prediction",
+    "body": "You probably split these into \"looking it up\" and \"making it up.\" Here's the catch — Claude did the exact same thing for every one: it predicted the next word from patterns in its training. It never looked anything up. Some predictions land on the truth (they're common patterns); some drift into confident fiction (Experiment 2). Your Champion will unpack why in the live debrief."
+  }
+}$json$::jsonb)
+on conflict (cell_id) do nothing;
+
 -- ---------------------------------------------------------------------------
 -- Week membership (fixed week uuids from 20260715000000_course_structure.sql).
 -- The custom resource lesson is deliberately NOT assigned — it renders in the
@@ -570,5 +624,6 @@ values
   ('c0000000-0000-4000-8000-000000000103', 'c1-w34-pod-kickoff', 0),
   ('c0000000-0000-4000-8000-000000000103', 'c1-w34-walk-the-workflow-delivery', 1),
   ('c0000000-0000-4000-8000-000000000103', 'c1-w34-walk-the-workflow-general', 2),
-  ('c0000000-0000-4000-8000-000000000103', 'c1-w34-scavenger-hunt', 3)
+  ('c0000000-0000-4000-8000-000000000103', 'c1-w34-scavenger-hunt', 3),
+  ('c0000000-0000-4000-8000-000000000101', 'c1-w1-lookup-vs-predict', 2)
 on conflict do nothing;
