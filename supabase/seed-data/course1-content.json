@@ -101,7 +101,7 @@
     {
       "cell_id": "c1-w2-ground-and-scope",
       "week": "week2",
-      "week_sort_order": 0,
+      "week_sort_order": 1,
       "origin": "course",
       "visibility": "program",
       "title": "Ground & Scope for Improvement",
@@ -456,7 +456,7 @@
     {
       "cell_id": "c1-w2-delegation-sort",
       "week": "week2",
-      "week_sort_order": 1,
+      "week_sort_order": 0,
       "origin": "course",
       "visibility": "program",
       "title": "Full-AI, Assisted, or Human-Only?",
