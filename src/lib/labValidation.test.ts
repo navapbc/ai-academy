@@ -143,6 +143,41 @@ describe('validateLabConfig — per kind', () => {
     ).toBe(false);
   });
 
+  test('delegation-sort: accepts a well-formed config', () => {
+    expect(
+      validateLabConfig({
+        kind: 'delegation-sort',
+        introMd: 'Sort these.',
+        categories: [
+          { id: 'full-ai', label: 'Full-AI', desc: 'end to end' },
+          { id: 'human-only', label: 'Human-only', desc: 'person owns it' },
+        ],
+        items: [{ id: 'a', scenario: 'Reformat a table.', suggested: 'full-ai', rationale: 'Mechanical.' }],
+        takeaway: { title: 'T', body: 'B' },
+      }).ok,
+    ).toBe(true);
+  });
+
+  test('delegation-sort: rejects missing items and incomplete categories', () => {
+    expect(
+      validateLabConfig({
+        kind: 'delegation-sort',
+        introMd: 'x',
+        categories: [{ id: 'full-ai', label: 'Full-AI', desc: '' }],
+        takeaway: { title: 'T', body: 'B' },
+      }).ok,
+    ).toBe(false); // items missing
+    expect(
+      validateLabConfig({
+        kind: 'delegation-sort',
+        introMd: 'x',
+        categories: [{ id: '', label: 'Full-AI', desc: 'd' }],
+        items: [{ id: 'a', scenario: 's', suggested: 'full-ai', rationale: 'r' }],
+        takeaway: { title: 'T', body: 'B' },
+      }).ok,
+    ).toBe(false); // category id blank
+  });
+
   test('glat threshold + sections', () => {
     const good = {
       kind: 'glat',
