@@ -365,6 +365,25 @@ describe('validateLabConfigJson — per kind', () => {
     if (!r2.ok) expect(r2.error).toContain('items');
   });
 
+  test('delegation-sort: valid accepted, malformed rejected', () => {
+    const valid = {
+      kind: 'delegation-sort',
+      introMd: 'Sort these.',
+      categories: [
+        { id: 'full-ai', label: 'Full-AI', desc: 'end to end' },
+        { id: 'human-only', label: 'Human-only', desc: 'person owns it' },
+      ],
+      items: [{ id: 'a', scenario: 'Reformat a table.', suggested: 'full-ai', rationale: 'Mechanical.' }],
+      takeaway: { title: 'T', body: 'B' },
+    };
+    expect(validateLabConfigJson(valid).ok).toBe(true);
+    expect(validateLabConfigJson({ ...valid, items: [] }).ok).toBe(false);
+    expect(validateLabConfigJson({ ...valid, categories: [] }).ok).toBe(false);
+    expect(
+      validateLabConfigJson({ ...valid, items: [{ id: 'a', scenario: '', suggested: 'full-ai', rationale: 'r' }] }).ok,
+    ).toBe(false);
+  });
+
   test('glat: passThreshold in (0,1] + well-formed sections', () => {
     const good = {
       kind: 'glat',
