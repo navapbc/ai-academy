@@ -599,13 +599,13 @@
             "text": "A Slack message that includes a client's name and a detail from their case.",
             "dataClass": "Regulated (PII/PHI/CUI)",
             "tool": "local",
-            "why": "A client's name plus a case detail is regulated PII/PHI. It doesn't belong in any external tool — use a local/no-external path, or fully redact the identifiers first."
+            "why": "A client's name plus a case detail is regulated PII/PHI. It doesn't belong in any external tool — keep it in a local/no-external path unless you have fully and verifiably de-identified it yourself first (a redaction you didn't do and can't verify doesn't count — see the next item)."
           },
           {
             "text": "A benefits determination letter with the name, address, and case number already redacted.",
             "dataClass": "Regulated (PII/PHI/CUI)",
             "tool": "local",
-            "why": "Redaction is not reclassification. Removing the name doesn't make the rest safe — leftover details can still be linkable, and visible redactions can be reversed by a determined actor. Treat it as regulated: no external tool by default, and check the contract before using even a managed tool."
+            "why": "Redaction is not reclassification. A redaction already stamped on a document you received isn't something you can trust — visible redactions can be reversed by a determined actor, and details beyond the obvious identifiers can still be linkable. Treat it as regulated: no external tool by default, and check the contract before using even a managed tool."
           },
           {
             "text": "A comment you're drafting on a public open-source pull request.",
