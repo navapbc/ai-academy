@@ -585,13 +585,13 @@
       "dimension": ["Diligence"],
       "evidence_type": "performance-task",
       "sort_order": 941,
-      "body_md": "Part of the Week 5 live session — run this in breakout rooms with your group. Before you route anything to a tool, you have to classify it. For each artifact below, pick its **data class**, then pick the **right tool** for that class (or no external tool at all). Be ready to defend each call in a sentence or two.",
+      "body_md": "Part of the Week 5 live session — run this in breakout rooms with your group. Before you route anything to a tool, you have to classify it. For each artifact below, pick its **data class**, then pick the **right tool** for that class (or no external tool at all). Be ready to defend each call in a sentence or two.\n\n**A note on this guidance:** Nava's data-class guidance is still being developed — treat it as a way to reason about what's safe to share, not as published policy. Your contract's rules always supersede it, and when you're unsure what class something is, the safe move is **no external tool** until you confirm with your program lead.",
       "lab_config_json": {
         "kind": "data-classifier",
         "tools": [
-          { "id": "enterprise", "label": "Enterprise Claude (Nava-contracted, data-protected)" },
-          { "id": "local", "label": "Local / no external AI tool" },
-          { "id": "consumer", "label": "Consumer chatbot (e.g., personal ChatGPT)" }
+          { "id": "enterprise", "label": "Managed all-staff tool (Claude / Gemini / Copilot)" },
+          { "id": "local", "label": "No tool / local (no external AI)" },
+          { "id": "consumer", "label": "Unsanctioned / consumer tool (e.g., personal ChatGPT)" }
         ],
         "classes": ["Public", "Internal", "Confidential", "Regulated (PII/PHI/CUI)"],
         "items": [
@@ -603,9 +603,9 @@
           },
           {
             "text": "A benefits determination letter with the name, address, and case number already redacted.",
-            "dataClass": "Confidential",
-            "tool": "enterprise",
-            "why": "With the identifiers redacted, this drops to confidential program content. The Nava-contracted, data-protected tool is cleared for it; a consumer chatbot is not."
+            "dataClass": "Regulated (PII/PHI/CUI)",
+            "tool": "local",
+            "why": "Redaction is not reclassification. Removing the name doesn't make the rest safe — leftover details can still be linkable, and visible redactions can be reversed by a determined actor. Treat it as regulated: no external tool by default, and check the contract before using even a managed tool."
           },
           {
             "text": "A comment you're drafting on a public open-source pull request.",
@@ -627,9 +627,9 @@
           },
           {
             "text": "A blog post draft written for publication on Nava's public site.",
-            "dataClass": "Public",
+            "dataClass": "Internal",
             "tool": "enterprise",
-            "why": "A draft written for Nava's public site is destined to be public — safe for the approved tool."
+            "why": "A draft isn't public until it's actually posted — \"will be public\" is not \"is public.\" It's Internal for now (low sensitivity), so the managed all-staff tool is fine, but don't treat unpublished work as already cleared."
           }
         ]
       }
