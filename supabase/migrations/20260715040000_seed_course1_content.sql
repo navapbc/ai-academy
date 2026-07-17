@@ -583,24 +583,24 @@ values
       "reveal": "Obviously generated on the spot — there's no \"right\" answer to retrieve. But the capital of France worked the exact same way."
     },
     {
+      "id": "pto",
+      "prompt": "What's our company's PTO policy?",
+      "reveal": "Feels like Claude is checking an HR page — but it has no access to Nava's policies unless you give them to it. It predicts a plausible-sounding policy that can be wrong in exactly the ways that matter. High-stakes at Nava."
+    },
+    {
       "id": "summary",
       "prompt": "Summarize this paragraph I just pasted.",
       "reveal": "It's grounded in the text you gave it, yet Claude still predicts the summary word by word — it isn't copying sentences straight out."
     },
     {
+      "id": "medicaid",
+      "prompt": "What were the Q3 2025 Medicaid enrollment numbers for New Jersey?",
+      "reveal": "Nothing to look up here — Claude predicts plausible-looking numbers that can be entirely fabricated. This is the confident-wrong pattern from Experiment 2, aimed straight at the kind of data we work with."
+    },
+    {
       "id": "worldcup",
       "prompt": "Who won the 2043 World Cup?",
       "reveal": "There's nothing to look up — the match hasn't happened. Claude predicts a plausible-sounding answer anyway. That's how the confident wrong answers in Experiment 2 happen."
-    },
-    {
-      "id": "mockingbird",
-      "prompt": "What page of To Kill a Mockingbird is the trial on?",
-      "reveal": "Claude has no book to flip through; it predicts a page number that sounds right."
-    },
-    {
-      "id": "translate",
-      "prompt": "Translate 'good morning' into Spanish.",
-      "reveal": "Feels like a dictionary lookup, but Claude is predicting the words \"buenos días\" from patterns it has seen."
     }
   ],
   "takeaway": {
