@@ -19,6 +19,7 @@ import Header from './components/layout/Header';
 import ContentContainer from './components/layout/ContentContainer';
 import SupportModal from './components/SupportModal';
 import LocalTutorFAB from './components/LocalTutorFAB';
+import LandingPage from './components/LandingPage';
 
 export default function App() {
   const { loading, session, signOut } = useAuth();
@@ -123,6 +124,24 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<AIPersona>('default');
 
+  // First-run landing gate (per user). Shown until the user clicks "Enter AI
+  // Academy"; persisted in localStorage so later logins go straight to the app.
+  const [hasEntered, setHasEntered] = useState(() => {
+    try {
+      return localStorage.getItem(`academy-entered-${userId}`) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const handleEnter = () => {
+    setHasEntered(true);
+    try {
+      localStorage.setItem(`academy-entered-${userId}`, '1');
+    } catch {
+      /* storage disabled — entry still works for this session */
+    }
+  };
+
   const currentModule = allModules.find(m => m.id === progress.currentModuleId) || allModules[0];
   const currentSection = sections.find(s => s.id === currentModule.phaseId);
 
@@ -182,6 +201,10 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
   );
   const overallProgress =
     allModules.length > 0 ? Math.round((completedVisibleCount / allModules.length) * 100) : 0;
+
+  if (!hasEntered) {
+    return <LandingPage onEnter={handleEnter} />;
+  }
 
   return (
     <div className="flex h-screen bg-nava-grey text-[#1A1A1A] font-sans overflow-hidden" id="app-container">

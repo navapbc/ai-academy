@@ -69,6 +69,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   // jsdom has no scrollIntoView; the (hidden) Playground calls it on mount.
   window.HTMLElement.prototype.scrollIntoView = vi.fn();
+  // Gate the landing page for tests by marking the user as entered (Task 2).
+  localStorage.setItem('academy-entered-u1', '1');
   useProgress.mockReturnValue({
     progress: { completedModuleIds: [], currentModuleId: '1.4' },
     completeModule: vi.fn(),
