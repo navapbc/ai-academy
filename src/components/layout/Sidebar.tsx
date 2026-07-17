@@ -181,7 +181,7 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
               <BarChart3 className="w-6 h-6 text-nava-plum" aria-hidden="true" />
               {/* A logo/wordmark, not the page heading — kept out of the heading
                   outline so the lesson title is the single page-level h1 (A11Y-09). */}
-              <span className="font-bold text-xl tracking-tight">{BRANDING.name}</span>
+              <span className="font-bold text-xl tracking-tight whitespace-nowrap">{BRANDING.name}</span>
             </div>
             <button
               onClick={onClose}
