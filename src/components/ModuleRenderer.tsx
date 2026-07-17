@@ -421,7 +421,7 @@ export default function ModuleRenderer({
         ) : (
           <button
             onClick={() => onComplete('explored')}
-            className="flex items-center gap-2 px-12 py-4 bg-nava-green hover:bg-nava-plum text-white rounded-2xl font-bold shadow-lg shadow-nava-mint transition-all active:scale-95"
+            className="flex items-center gap-2 px-12 py-4 bg-nava-green hover:bg-nava-green/90 text-white rounded-2xl font-bold shadow-lg shadow-nava-mint transition-all active:scale-95"
             id="mark-explored-button"
           >
             Mark as explored

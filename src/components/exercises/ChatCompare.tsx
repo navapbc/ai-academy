@@ -292,13 +292,13 @@ export default function ChatCompare({ config, labId }: Props) {
           rows={3}
           aria-label="Your prompt for every pane"
           placeholder="Ask one question — each pane answers it side by side…"
-          className="w-full rounded-2xl border-2 border-gray-100 focus:border-nava-green focus:outline-none p-4 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
+          className="w-full rounded-2xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none p-4 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
         />
         <div className="flex justify-end">
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg shadow-nava-green/20 hover:bg-nava-plum disabled:opacity-50 transition-all active:scale-95"
+            className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg shadow-nava-green/20 hover:bg-nava-green/90 disabled:opacity-50 transition-all active:scale-95"
           >
             {anyStreaming ? (
               <>

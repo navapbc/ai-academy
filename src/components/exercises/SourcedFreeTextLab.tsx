@@ -148,7 +148,7 @@ export default function SourcedFreeTextLab({
             rows={9}
             aria-label={`Your ${noun}`}
             placeholder={textareaPlaceholder}
-            className="w-full rounded-2xl border-2 border-gray-100 focus:border-nava-green focus:outline-none p-4 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
+            className="w-full rounded-2xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none p-4 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
           />
 
           {saveError && <p role="alert" className="text-xs text-red-600 font-medium">{saveError}</p>}

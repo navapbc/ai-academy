@@ -110,7 +110,7 @@ export default function PredictionSort({ config, labId }: Props) {
                       onClick={() => place(item.id, bucket)}
                       className={`flex-1 text-left text-sm font-medium rounded-xl px-4 py-2.5 border-2 transition-all ${
                         selected
-                          ? 'border-nava-green bg-nava-mint text-nava-green'
+                          ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
                           : 'border-gray-100 text-gray-700 hover:border-nava-green/30'
                       }`}
                     >

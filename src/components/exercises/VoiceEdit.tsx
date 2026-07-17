@@ -228,7 +228,7 @@ export default function VoiceEdit({ config, labId }: Props) {
           <button
             onClick={handleGenerate}
             disabled={generating}
-            className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg shadow-nava-green/20 hover:bg-nava-plum disabled:opacity-50 transition-all active:scale-95"
+            className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg shadow-nava-green/20 hover:bg-nava-green/90 disabled:opacity-50 transition-all active:scale-95"
           >
             {generating ? (
               <>
@@ -298,7 +298,7 @@ export default function VoiceEdit({ config, labId }: Props) {
                 rows={10}
                 aria-label="Your revision"
                 placeholder="Rewrite the draft for the person who will actually read it…"
-                className="w-full rounded-2xl border-2 border-gray-100 focus:border-nava-green focus:outline-none p-4 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
+                className="w-full rounded-2xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none p-4 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
               />
 
               {saveError && <p role="alert" className="text-xs text-red-600 font-medium">{saveError}</p>}

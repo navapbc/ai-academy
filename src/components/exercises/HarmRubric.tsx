@@ -122,7 +122,7 @@ export default function HarmRubric({ config, labId }: Props) {
                           : wrongPick
                             ? 'border-red-600 bg-red-50 text-red-900'
                             : sel
-                              ? 'border-nava-green bg-nava-mint text-nava-green'
+                              ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
                               : 'border-gray-100 text-gray-600 hover:border-nava-green/30'
                       }`}
                     >

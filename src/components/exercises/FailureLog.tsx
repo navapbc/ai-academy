@@ -81,7 +81,7 @@ export default function FailureLog({ config, labId }: Props) {
         onChange={(e) => updateEntry(i, { [key]: e.target.value })}
         rows={rows}
         placeholder={placeholder}
-        className="w-full rounded-xl border-2 border-gray-100 focus:border-nava-green focus:outline-none p-3 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
+        className="w-full rounded-xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none p-3 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
       />
     </div>
   );
@@ -144,7 +144,7 @@ export default function FailureLog({ config, labId }: Props) {
                       type="date"
                       value={entries[i].date}
                       onChange={(e) => updateEntry(i, { date: e.target.value })}
-                      className="rounded-xl border-2 border-gray-100 focus:border-nava-green focus:outline-none p-2 text-sm text-gray-700 transition-colors"
+                      className="rounded-xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none p-2 text-sm text-gray-700 transition-colors"
                     />
                   </div>
                   {entries.length > 1 && (

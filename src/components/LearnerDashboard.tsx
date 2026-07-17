@@ -50,7 +50,7 @@ export default function LearnerDashboard({ userId }: { userId: string }) {
           <p className="text-sm text-gray-700">{error}</p>
           <button
             onClick={reload}
-            className="px-5 py-2 bg-nava-green hover:bg-nava-plum text-white rounded-xl font-bold transition-all"
+            className="px-5 py-2 bg-nava-green hover:bg-nava-green/90 text-white rounded-xl font-bold transition-all"
           >
             Retry
           </button>

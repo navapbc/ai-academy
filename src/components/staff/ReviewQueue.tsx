@@ -109,7 +109,7 @@ function ReviewDetail({
             type="button"
             disabled={busy}
             onClick={() => run(() => approveSubmission(item.submissionId, note.trim() || undefined))}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-nava-green px-5 py-2 text-sm font-bold text-white hover:bg-nava-plum disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-nava-green px-5 py-2 text-sm font-bold text-white hover:bg-nava-green/90 disabled:opacity-40"
           >
             <Check className="w-4 h-4" aria-hidden="true" />
             Approve
@@ -181,7 +181,7 @@ export default function ReviewQueue({ onBack }: { onBack: () => void }) {
           <p className="text-sm text-gray-700">{error}</p>
           <button
             onClick={reload}
-            className="px-5 py-2 bg-nava-green hover:bg-nava-plum text-white rounded-xl font-bold transition-all"
+            className="px-5 py-2 bg-nava-green hover:bg-nava-green/90 text-white rounded-xl font-bold transition-all"
           >
             Retry
           </button>

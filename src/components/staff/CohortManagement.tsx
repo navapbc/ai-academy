@@ -66,7 +66,7 @@ function UserPicker({
           if (value) onPick(value);
           setValue('');
         }}
-        className="shrink-0 rounded-lg bg-nava-green px-3 py-1.5 text-sm font-bold text-white hover:bg-nava-plum disabled:opacity-40"
+        className="shrink-0 rounded-lg bg-nava-green px-3 py-1.5 text-sm font-bold text-white hover:bg-nava-green/90 disabled:opacity-40"
       >
         Add
       </button>
@@ -383,7 +383,7 @@ export default function CohortManagement({ onBack }: { onBack: () => void }) {
         <button
           type="submit"
           disabled={busy || newName.trim() === ''}
-          className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-plum disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-green/90 disabled:opacity-40"
         >
           <Plus className="w-4 h-4" aria-hidden="true" />
           Create
@@ -410,7 +410,7 @@ export default function CohortManagement({ onBack }: { onBack: () => void }) {
           <p className="text-sm text-gray-700">{error}</p>
           <button
             onClick={load}
-            className="px-5 py-2 bg-nava-green hover:bg-nava-plum text-white rounded-xl font-bold transition-all"
+            className="px-5 py-2 bg-nava-green hover:bg-nava-green/90 text-white rounded-xl font-bold transition-all"
           >
             Retry
           </button>

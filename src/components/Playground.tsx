@@ -240,7 +240,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
                   value={systemPrompt}
                   onChange={e => setSystemPrompt(e.target.value)}
                   rows={4}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs font-mono text-gray-700 focus:ring-2 focus:ring-nava-green focus:border-transparent outline-none transition-all resize-none"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs font-mono text-gray-700 focus:ring-2 focus:ring-nava-plum focus:border-transparent outline-none transition-all resize-none"
                   aria-label="System prompt"
                   placeholder="Enter a system prompt…"
                 />
@@ -343,7 +343,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
             rows={3}
             aria-label="Message"
             placeholder="Type a message… (⌘↵ to send)"
-            className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 pr-16 text-sm focus:ring-2 focus:ring-nava-green focus:border-transparent outline-none transition-all resize-none"
+            className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 pr-16 text-sm focus:ring-2 focus:ring-nava-plum focus:border-transparent outline-none transition-all resize-none"
           />
           {isLoading ? (
             <button
@@ -358,7 +358,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
               onClick={() => handleSend()}
               disabled={!userInput.trim()}
               aria-label="Send message"
-              className="absolute bottom-4 right-4 p-3 bg-nava-green text-white rounded-xl shadow-lg hover:bg-nava-plum disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
+              className="absolute bottom-4 right-4 p-3 bg-nava-green text-white rounded-xl shadow-lg hover:bg-nava-green/90 disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
             >
               <Send className="w-4 h-4" />
             </button>

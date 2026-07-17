@@ -112,7 +112,7 @@ export default function ReflectionCapture({ config, labId }: Props) {
             rows={10}
             aria-label="Your reflection"
             placeholder="Write your reflection here…"
-            className="w-full rounded-2xl border-2 border-gray-100 focus:border-nava-green focus:outline-none p-4 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
+            className="w-full rounded-2xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none p-4 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
           />
 
           {saveError && <p role="alert" className="text-xs text-red-600 font-medium">{saveError}</p>}

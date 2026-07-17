@@ -209,7 +209,7 @@ export default function LocalTutorFAB({ currentModule, phases }: Props) {
             {/* Composer */}
             <div className="border-t border-gray-100 p-3 shrink-0 space-y-2">
               <PiiNotice />
-              <div className="flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-nava-green focus-within:border-transparent transition-all">
+              <div className="flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-nava-plum focus-within:border-transparent transition-all">
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -228,7 +228,7 @@ export default function LocalTutorFAB({ currentModule, phases }: Props) {
                   onClick={handleSend}
                   disabled={isLoading || !input.trim()}
                   aria-label="Send"
-                  className="w-9 h-9 shrink-0 bg-nava-green text-white rounded-xl flex items-center justify-center hover:bg-nava-plum disabled:opacity-40 disabled:grayscale transition-all active:scale-95"
+                  className="w-9 h-9 shrink-0 bg-nava-green text-white rounded-xl flex items-center justify-center hover:bg-nava-green/90 disabled:opacity-40 disabled:grayscale transition-all active:scale-95"
                 >
                   <Send className="w-4 h-4" aria-hidden="true" />
                 </button>

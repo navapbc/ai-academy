@@ -91,7 +91,7 @@ export default function ScenarioSorter({
                     onClick={() => assign(s.id, c.id)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-all ${
                       picked === c.id
-                        ? 'border-nava-green bg-nava-mint text-nava-green'
+                        ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
                         : 'border-gray-100 text-gray-600 hover:border-nava-green/30'
                     }`}
                   >
@@ -124,7 +124,7 @@ export default function ScenarioSorter({
         <button
           type="button"
           onClick={onComplete}
-          className="w-full py-4 bg-nava-green text-white rounded-2xl font-bold hover:bg-nava-plum transition-all shadow-lg flex items-center justify-center gap-2"
+          className="w-full py-4 bg-nava-green text-white rounded-2xl font-bold hover:bg-nava-green/90 transition-all shadow-lg flex items-center justify-center gap-2"
         >
           <ShieldCheck className="w-5 h-5" /> Continue
         </button>

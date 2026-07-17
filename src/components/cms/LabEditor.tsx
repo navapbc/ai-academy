@@ -295,7 +295,7 @@ export default function LabEditor({
             id="lab-kind"
             value={kind}
             onChange={(e) => changeKind(e.target.value as EditorKind)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-nava-green focus:outline-none"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-nava-plum focus:outline-none"
           >
             {[...LAB_KINDS, SORTER_KIND].map((k) => (
               <option key={k} value={k}>
@@ -326,7 +326,7 @@ export default function LabEditor({
                     value={form[f.key] ?? ''}
                     onChange={(e) => patchField(f.key, e.target.value)}
                     rows={3}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-nava-green focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-nava-plum focus:outline-none"
                   />
                 ) : (
                   <input
@@ -334,7 +334,7 @@ export default function LabEditor({
                     type={f.type === 'number' ? 'number' : 'text'}
                     value={form[f.key] ?? ''}
                     onChange={(e) => patchField(f.key, e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-nava-green focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-nava-plum focus:outline-none"
                   />
                 )}
               </div>
@@ -357,7 +357,7 @@ export default function LabEditor({
               rows={20}
               spellCheck={false}
               aria-invalid={!valid}
-              className={`w-full rounded-lg border px-3 py-2 text-sm font-mono leading-relaxed focus:ring-2 focus:ring-nava-green focus:outline-none ${
+              className={`w-full rounded-lg border px-3 py-2 text-sm font-mono leading-relaxed focus:ring-2 focus:ring-nava-plum focus:outline-none ${
                 valid ? 'border-gray-300' : 'border-red-400'
               }`}
             />
@@ -387,7 +387,7 @@ export default function LabEditor({
         <button
           onClick={handlePublish}
           disabled={busy !== null || !valid}
-          className="inline-flex items-center gap-2 rounded-xl bg-nava-green px-5 py-2 text-sm font-bold text-white hover:bg-nava-plum disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          className="inline-flex items-center gap-2 rounded-xl bg-nava-green px-5 py-2 text-sm font-bold text-white hover:bg-nava-green/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {busy === 'publish' ? (
             <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
