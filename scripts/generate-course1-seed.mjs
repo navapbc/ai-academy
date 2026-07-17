@@ -8,7 +8,7 @@
 // This is a SEPARATE pipeline from the matrix one (curriculum-content.json →
 // *_load_curriculum_content.sql). Differences are deliberate:
 //   - the matrix pipeline UPDATEs 28 pre-existing rows by cell_id;
-//   - this pipeline INSERTs brand-new `origin='course'` (and one
+//   - this pipeline INSERTs brand-new `origin='course'` (and
 //     `origin='custom'` resource) rows with ON CONFLICT (cell_id) DO NOTHING
 //     (idempotent, D-25) and assigns course-week membership by the FIXED week
 //     uuids minted in 20260715000000_course_structure.sql.
@@ -132,8 +132,9 @@ const sql = `-- seed_course1_content (cohort-restructure U8): Course 1 Weeks 0�
 --
 -- Mechanics:
 --   - modules: INSERT … ON CONFLICT (cell_id) DO NOTHING (idempotent, D-25).
---     origin='course', stage=null, status='published'; visibility='public' for
---     Week 0 (the R8 getting-started exemption), 'program' for everything else.
+--     stage=null, status='published'; visibility='public' for Week 0 (the R8
+--     getting-started exemption) and the origin='custom' resource lessons,
+--     'program' for the rest of the course modules.
 --   - membership: INSERT into course_week_modules resolving weeks BY the FIXED
 --     uuids minted in 20260715000000_course_structure.sql; ON CONFLICT DO
 --     NOTHING keeps re-runs (and the unique(cell_id) invariant) clean.

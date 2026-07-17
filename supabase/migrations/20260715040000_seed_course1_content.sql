@@ -12,8 +12,9 @@
 --
 -- Mechanics:
 --   - modules: INSERT … ON CONFLICT (cell_id) DO NOTHING (idempotent, D-25).
---     origin='course', stage=null, status='published'; visibility='public' for
---     Week 0 (the R8 getting-started exemption), 'program' for everything else.
+--     stage=null, status='published'; visibility='public' for Week 0 (the R8
+--     getting-started exemption) and the origin='custom' resource lessons,
+--     'program' for the rest of the course modules.
 --   - membership: INSERT into course_week_modules resolving weeks BY the FIXED
 --     uuids minted in 20260715000000_course_structure.sql; ON CONFLICT DO
 --     NOTHING keeps re-runs (and the unique(cell_id) invariant) clean.
