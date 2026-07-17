@@ -683,6 +683,192 @@ values
 }$json$::jsonb)
 on conflict (cell_id) do nothing;
 
+-- c1-w5-classify-route — Classify & Route: What Goes Where?
+insert into public.modules
+  (cell_id, stage, origin, visibility, status, title, type, dimension,
+   evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
+values
+  ('c1-w5-classify-route', null, 'course', 'program', 'published', 'Classify & Route: What Goes Where?', 'lab',
+   ARRAY['Diligence']::text[], 'performance-task', 'na', 941,
+   $md$Part of the Week 5 live session — run this in breakout rooms with your group. Before you route anything to a tool, you have to classify it. For each artifact below, pick its **data class**, then pick the **right tool** for that class (or no external tool at all). Be ready to defend each call in a sentence or two.$md$,
+   $json${
+  "kind": "data-classifier",
+  "tools": [
+    {
+      "id": "enterprise",
+      "label": "Enterprise Claude (Nava-contracted, data-protected)"
+    },
+    {
+      "id": "local",
+      "label": "Local / no external AI tool"
+    },
+    {
+      "id": "consumer",
+      "label": "Consumer chatbot (e.g., personal ChatGPT)"
+    }
+  ],
+  "classes": [
+    "Public",
+    "Internal",
+    "Confidential",
+    "Regulated (PII/PHI/CUI)"
+  ],
+  "items": [
+    {
+      "text": "A Slack message that includes a client's name and a detail from their case.",
+      "dataClass": "Regulated (PII/PHI/CUI)",
+      "tool": "local",
+      "why": "A client's name plus a case detail is regulated PII/PHI. It doesn't belong in any external tool — use a local/no-external path, or fully redact the identifiers first."
+    },
+    {
+      "text": "A benefits determination letter with the name, address, and case number already redacted.",
+      "dataClass": "Confidential",
+      "tool": "enterprise",
+      "why": "With the identifiers redacted, this drops to confidential program content. The Nava-contracted, data-protected tool is cleared for it; a consumer chatbot is not."
+    },
+    {
+      "text": "A comment you're drafting on a public open-source pull request.",
+      "dataClass": "Public",
+      "tool": "enterprise",
+      "why": "A comment headed for a public pull request is already public — safe for the approved tool, with no sensitive data to protect."
+    },
+    {
+      "text": "An excerpt from a vendor solicitation that hasn't been publicly released yet.",
+      "dataClass": "Confidential",
+      "tool": "local",
+      "why": "An unreleased solicitation is confidential until it's public — keep it in a local/no-external path; off-limits in external tools until release."
+    },
+    {
+      "text": "An internal memo listing staff salaries and performance ratings.",
+      "dataClass": "Regulated (PII/PHI/CUI)",
+      "tool": "local",
+      "why": "Salaries and performance ratings are personnel data — regulated and off-limits in external tools. Local/no-external only."
+    },
+    {
+      "text": "A blog post draft written for publication on Nava's public site.",
+      "dataClass": "Public",
+      "tool": "enterprise",
+      "why": "A draft written for Nava's public site is destined to be public — safe for the approved tool."
+    }
+  ]
+}$json$::jsonb)
+on conflict (cell_id) do nothing;
+
+-- c1-w5-pattern-spotting — Spot the Pattern: Four Ways AI Fails in Civic Tech
+insert into public.modules
+  (cell_id, stage, origin, visibility, status, title, type, dimension,
+   evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
+values
+  ('c1-w5-pattern-spotting', null, 'course', 'program', 'published', 'Spot the Pattern: Four Ways AI Fails in Civic Tech', 'lab',
+   ARRAY['Discernment']::text[], 'performance-task', 'na', 942,
+   $md$Part of the Week 5 live session. There are four failure shapes that matter most in civic tech. For each AI output below, name **which shape** it is and **what to do about it**. The core posture for all four: any of these surfacing is an **escalation event, not a quiet edit** — you flag it, you don't silently reword and move on.$md$,
+   $json${
+  "kind": "failure-spotter",
+  "items": [
+    {
+      "id": "eligibility",
+      "artifactMd": "**Claude:** Yes — based on what you've described, you qualify for expedited SNAP benefits and should receive your first payment within 7 days.",
+      "issue": {
+        "prompt": "Which civic-tech failure shape is this?",
+        "options": [
+          "Wrong eligibility/benefits/legal guidance",
+          "Audit-failing artifact",
+          "Agency-policy bypass",
+          "Vulnerable-population voice flattening"
+        ],
+        "correctIndex": 0,
+        "why": "It hands a claimant a definitive eligibility determination — exactly the kind of wrong benefits/legal guidance that can cost someone benefits they're owed, or promise benefits they aren't."
+      },
+      "mitigation": {
+        "prompt": "What's the right move?",
+        "options": [
+          "Escalate it as an incident — flag it, don't quietly edit and move on",
+          "Quietly fix the wording and send it",
+          "Ship it — the AI is usually right"
+        ],
+        "correctIndex": 0,
+        "why": "Wrong eligibility guidance is an escalation event: flag it so a person reviews the determination. Quietly rewording hides that the model gave benefits guidance at all."
+      }
+    },
+    {
+      "id": "audit",
+      "artifactMd": "**Claude:** The grantee met all closeout requirements and funds were properly expended.",
+      "issue": {
+        "prompt": "Which civic-tech failure shape is this?",
+        "options": [
+          "Wrong eligibility/benefits/legal guidance",
+          "Audit-failing artifact",
+          "Agency-policy bypass",
+          "Vulnerable-population voice flattening"
+        ],
+        "correctIndex": 1,
+        "why": "It states audit conclusions with no source documents, record numbers, or evidence — an artifact that won't survive an actual audit."
+      },
+      "mitigation": {
+        "prompt": "What's the right move?",
+        "options": [
+          "Escalate it as an incident — flag it, don't quietly edit and move on",
+          "Quietly fix the wording and send it",
+          "Ship it — the AI is usually right"
+        ],
+        "correctIndex": 0,
+        "why": "An artifact that can't be traced to evidence is an escalation event — flag it so the record gets built properly, don't paper over it."
+      }
+    },
+    {
+      "id": "policy-bypass",
+      "artifactMd": "**Claude:** To move faster, you can approve the change yourself now and record the supervisor's sign-off afterward.",
+      "issue": {
+        "prompt": "Which civic-tech failure shape is this?",
+        "options": [
+          "Wrong eligibility/benefits/legal guidance",
+          "Audit-failing artifact",
+          "Agency-policy bypass",
+          "Vulnerable-population voice flattening"
+        ],
+        "correctIndex": 2,
+        "why": "It proposes skipping a required approval step — bypassing agency policy in the name of speed."
+      },
+      "mitigation": {
+        "prompt": "What's the right move?",
+        "options": [
+          "Escalate it as an incident — flag it, don't quietly edit and move on",
+          "Quietly fix the wording and send it",
+          "Ship it — the AI is usually right"
+        ],
+        "correctIndex": 0,
+        "why": "A suggested policy workaround is an escalation event — flag it; don't quietly follow or soften it into something that still skips the control."
+      }
+    },
+    {
+      "id": "voice-flattening",
+      "artifactMd": "**Claude:** Most commenters supported the change; a few outliers raised access concerns that didn't reflect the general view.",
+      "issue": {
+        "prompt": "Which civic-tech failure shape is this?",
+        "options": [
+          "Wrong eligibility/benefits/legal guidance",
+          "Audit-failing artifact",
+          "Agency-policy bypass",
+          "Vulnerable-population voice flattening"
+        ],
+        "correctIndex": 3,
+        "why": "It flattens a vulnerable constituent's specific access concern into a dismissed 'outlier' — erasing the very voice the comment process exists to surface."
+      },
+      "mitigation": {
+        "prompt": "What's the right move?",
+        "options": [
+          "Escalate it as an incident — flag it, don't quietly edit and move on",
+          "Quietly fix the wording and send it",
+          "Ship it — the AI is usually right"
+        ],
+        "correctIndex": 0,
+        "why": "A flattened minority voice is an escalation event — flag it so the concern is represented, don't quietly keep the tidy summary that dropped it."
+      }
+    }
+  ]
+}$json$::jsonb)
+on conflict (cell_id) do nothing;
+
 -- ---------------------------------------------------------------------------
 -- Week membership (fixed week uuids from 20260715000000_course_structure.sql).
 -- The custom resource lesson is deliberately NOT assigned — it renders in the
@@ -699,5 +885,7 @@ values
   ('c0000000-0000-4000-8000-000000000103', 'c1-w34-walk-the-workflow-general', 2),
   ('c0000000-0000-4000-8000-000000000103', 'c1-w34-scavenger-hunt', 3),
   ('c0000000-0000-4000-8000-000000000101', 'c1-w1-lookup-vs-predict', 2),
-  ('c0000000-0000-4000-8000-000000000102', 'c1-w2-delegation-sort', 0)
+  ('c0000000-0000-4000-8000-000000000102', 'c1-w2-delegation-sort', 0),
+  ('c0000000-0000-4000-8000-000000000104', 'c1-w5-classify-route', 0),
+  ('c0000000-0000-4000-8000-000000000104', 'c1-w5-pattern-spotting', 1)
 on conflict do nothing;
