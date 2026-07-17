@@ -184,7 +184,7 @@ values
    ARRAY['Description', 'Diligence']::text[], 'performance-task', 'na', 903,
    $md$Part of the Week 2 live session — you'll run this in breakout rooms with your group.
 
-One of the best ways to understand foundational prompting strategies is to test them in realistic scenarios. You'll run the same task two ways and compare the answers: the two Claude chats below get the **same prompt**, but only the second one is given the source material shown here.
+This activity is about the first habit — **grounding**. You'll run the same task two ways and compare the answers: the two Claude chats below get the **same prompt**, but only the second one is given the source material shown here. (Scoping, the companion habit, comes up in the live session — and the *Reusing context: Claude Projects* resource shows how to save grounding and scoping together.)
 
 ## Source material
 
@@ -222,7 +222,7 @@ Use this policy summary to verify the responses. (It's a realistic but fictional
     "Summarize what changed in Meridian State's rule for reporting part-time earnings while on unemployment benefits, in plain language for claimants.",
     "List every specific number a Meridian State claimant needs to know under the updated part-time earnings rule, and what each one means."
   ],
-  "reflectionMd": "**Reflect on or discuss with your group:**\n\n1. What's different about the two responses?\n2. Verify a few critical pieces of content in both responses against the source material in the lesson above. What do you notice about the accuracy between the responses?\n3. What was different about what each pane had to work from, and how do you think that impacted the responses?\n\nIf you have time, feel free to try some of the other suggested prompts or make up your own. Direct discussion of foundational prompting strategies will be discussed later in the Week 2 full-cohort live training."
+  "reflectionMd": "**Reflect on or discuss with your group:**\n\n1. What's different about the two responses?\n2. Verify a few critical pieces of content in both responses against the source material in the lesson above. What do you notice about the accuracy between the responses?\n3. What was different about what each pane had to work from, and how do you think that impacted the responses?\n\n**Keep in mind:** Grounding lowers the odds of a wrong answer — it doesn't remove the need to verify. A grounded answer is still an unverified answer until you check it against the source.\n\nIf you have time, feel free to try some of the other suggested prompts or make up your own. Direct discussion of foundational prompting strategies will be discussed later in the Week 2 full-cohort live training."
 }$json$::jsonb)
 on conflict (cell_id) do nothing;
 
