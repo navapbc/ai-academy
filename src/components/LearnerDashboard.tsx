@@ -26,7 +26,7 @@ export default function LearnerDashboard({ userId }: { userId: string }) {
   return (
     <div className="space-y-8">
       <header className="space-y-1">
-        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-green">
+        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-plum">
           Your dashboard
         </span>
         <h1 className="text-2xl font-bold text-gray-900" tabIndex={-1}>
@@ -39,7 +39,7 @@ export default function LearnerDashboard({ userId }: { userId: string }) {
 
       {loading && (
         <div className="flex items-center justify-center py-12" role="status">
-          <Loader2 className="w-6 h-6 text-nava-green animate-spin" aria-hidden="true" />
+          <Loader2 className="w-6 h-6 text-nava-plum animate-spin" aria-hidden="true" />
           <span className="sr-only">Loading your progress…</span>
         </div>
       )}

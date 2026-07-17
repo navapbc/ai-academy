@@ -65,7 +65,7 @@ export default function UsageMonitoring({ onBack }: { onBack: () => void }) {
       </div>
 
       <header className="space-y-2">
-        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-green">
+        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-plum">
           Admin area
         </span>
         <h1 className="text-2xl font-bold text-gray-900" tabIndex={-1}>
@@ -97,7 +97,7 @@ export default function UsageMonitoring({ onBack }: { onBack: () => void }) {
 
       {loading ? (
         <div className="flex items-center justify-center py-16" role="status">
-          <Loader2 className="w-6 h-6 text-nava-green animate-spin" aria-hidden="true" />
+          <Loader2 className="w-6 h-6 text-nava-plum animate-spin" aria-hidden="true" />
           <span className="sr-only">Loading usage monitoring…</span>
         </div>
       ) : error ? (
