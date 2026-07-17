@@ -32,6 +32,8 @@ import UseCasePortfolio from './exercises/UseCasePortfolio';
 import FailureLog from './exercises/FailureLog';
 import ChatCompare from './exercises/ChatCompare';
 import DecisionScenario from './exercises/DecisionScenario';
+import PredictionSort from './exercises/PredictionSort';
+import DelegationSort from './exercises/DelegationSort';
 import GlatExam from './exercises/GlatExam';
 
 interface Props {
@@ -231,6 +233,16 @@ export default function ModuleRenderer({
         // (participation completion is U9); no onComplete (see
         // DecisionScenarioConfig).
         return <DecisionScenario config={module.labConfig} labId={module.cellId} />;
+      case 'prediction-sort':
+        // 1.01 intuition sort (Course 1, Week 1) — records a submission that
+        // auto-completes the module via the participation seam (via='lab'); no
+        // onComplete (see PredictionSortConfig). Matches chat-compare/decision-scenario.
+        return <PredictionSort config={module.labConfig} labId={module.cellId} />;
+      case 'delegation-sort':
+        // 1.03 delegation sort (Course 1, Week 2) — records a submission that
+        // auto-completes the module via the participation seam (via='lab'); no
+        // onComplete (see DelegationSortConfig). Matches prediction-sort.
+        return <DelegationSort config={module.labConfig} labId={module.cellId} />;
       case 'glat':
         // GLAT (P4.10 → U9): no longer a gate — submitting records a
         // quiz_attempts row, whose participation event auto-completes 2.14 at
@@ -409,7 +421,7 @@ export default function ModuleRenderer({
         ) : (
           <button
             onClick={() => onComplete('explored')}
-            className="flex items-center gap-2 px-12 py-4 bg-nava-green hover:bg-nava-plum text-white rounded-2xl font-bold shadow-lg shadow-nava-mint transition-all active:scale-95"
+            className="flex items-center gap-2 px-12 py-4 bg-nava-green hover:bg-nava-green/90 text-white rounded-2xl font-bold shadow-lg shadow-nava-mint transition-all active:scale-95"
             id="mark-explored-button"
           >
             Mark as explored

@@ -111,7 +111,7 @@ function WeekForm({
         <button
           type="submit"
           disabled={!canSave}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-plum disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-green/90 disabled:opacity-40"
         >
           {existing ? 'Save changes' : 'Create week'}
         </button>
@@ -293,7 +293,7 @@ function WeekCard({
               if (toAdd) onAction(() => assignModule(week.id, toAdd));
               setToAdd('');
             }}
-            className="shrink-0 rounded-lg bg-nava-green px-3 py-1.5 text-sm font-bold text-white hover:bg-nava-plum disabled:opacity-40"
+            className="shrink-0 rounded-lg bg-nava-green px-3 py-1.5 text-sm font-bold text-white hover:bg-nava-green/90 disabled:opacity-40"
           >
             Assign
           </button>
@@ -407,7 +407,7 @@ export default function CourseManagement({ onBack }: { onBack: () => void }) {
           <p className="text-sm text-gray-700">{error}</p>
           <button
             onClick={load}
-            className="px-5 py-2 bg-nava-green hover:bg-nava-plum text-white rounded-xl font-bold transition-all"
+            className="px-5 py-2 bg-nava-green hover:bg-nava-green/90 text-white rounded-xl font-bold transition-all"
           >
             Retry
           </button>
@@ -429,7 +429,7 @@ export default function CourseManagement({ onBack }: { onBack: () => void }) {
                       setActionError(null);
                       setEditing({ courseId: course.id, weekId: null });
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-plum"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-green/90"
                   >
                     <Plus className="w-4 h-4" aria-hidden="true" />
                     New week

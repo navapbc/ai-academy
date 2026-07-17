@@ -101,7 +101,7 @@
     {
       "cell_id": "c1-w2-ground-and-scope",
       "week": "week2",
-      "week_sort_order": 0,
+      "week_sort_order": 1,
       "origin": "course",
       "visibility": "program",
       "title": "Ground & Scope for Improvement",
@@ -395,6 +395,127 @@
       "sort_order": 950,
       "body_md": "Questions about AI at Nava don't need to wait for a course. Here's where to go, any time:\n\n## AI Slack channels\n\n- Ask anything — no question is too basic. Post what you tried, what you expected, and what you got.\n- Share wins and useful prompts: something that saved you an hour will probably save someone else an hour too.\n- If your cohort has its own channel, that's the best first stop during the program.\n\n## AI Office Hours\n\nDrop-in sessions with people who spend a lot of time with these tools. Bring a task you're stuck on, something you're curious about, or a result you don't understand — live troubleshooting beats guessing.\n\n## Other internal resources\n\n- **Nava's AI Tool Policy** — the basic guidance on what's safe and compliant to put into AI tools. When in doubt, check the policy first, then ask in a channel.\n- **Your manager or project lead** — for questions about what's appropriate on your specific program or contract, since program-level restrictions can differ.",
       "lab_config_json": null
+    },
+    {
+      "cell_id": "c1-w1-lookup-vs-predict",
+      "week": "week1",
+      "week_sort_order": 2,
+      "origin": "course",
+      "visibility": "program",
+      "title": "Lookup or Predict?",
+      "type": "lab",
+      "dimension": ["Discernment"],
+      "evidence_type": "performance-task",
+      "sort_order": 903,
+      "body_md": "Part of the Week 1 live session, after the two experiments. Sort each task below by what it *feels* like Claude is doing — then submit to see the twist. There is no wrong answer while you sort; the point is to compare your gut feeling against what's actually happening.",
+      "lab_config_json": {
+        "kind": "prediction-sort",
+        "introMd": "For each task, place it in the bucket that matches your gut: does it feel like Claude is **looking something up**, or **making something up**? Sort all six, then submit.",
+        "bucketLabels": {
+          "lookup": "Feels like looking it up",
+          "predict": "Feels like making it up"
+        },
+        "items": [
+          {
+            "id": "capital",
+            "prompt": "What's the capital of France?",
+            "reveal": "Feels like a fact Claude retrieved — but Claude predicted \"Paris\" because those words follow that question countless times in its training. Same machinery as everything else here."
+          },
+          {
+            "id": "offsite",
+            "prompt": "Give me three ideas for a team offsite.",
+            "reveal": "Obviously generated on the spot — there's no \"right\" answer to retrieve. But the capital of France worked the exact same way."
+          },
+          {
+            "id": "summary",
+            "prompt": "Summarize this paragraph I just pasted.",
+            "reveal": "It's grounded in the text you gave it, yet Claude still predicts the summary word by word — it isn't copying sentences straight out."
+          },
+          {
+            "id": "worldcup",
+            "prompt": "Who won the 2043 World Cup?",
+            "reveal": "There's nothing to look up — the match hasn't happened. Claude predicts a plausible-sounding answer anyway. That's how the confident wrong answers in Experiment 2 happen."
+          },
+          {
+            "id": "mockingbird",
+            "prompt": "What page of To Kill a Mockingbird is the trial on?",
+            "reveal": "Claude has no book to flip through; it predicts a page number that sounds right."
+          },
+          {
+            "id": "translate",
+            "prompt": "Translate 'good morning' into Spanish.",
+            "reveal": "Feels like a dictionary lookup, but Claude is predicting the words \"buenos días\" from patterns it has seen."
+          }
+        ],
+        "takeaway": {
+          "title": "The twist: it was all prediction",
+          "body": "You probably split these into \"looking it up\" and \"making it up.\" Here's the catch — Claude did the exact same thing for every one: it predicted the next word from patterns in its training. It never looked anything up. Some predictions land on the truth (they're common patterns); some drift into confident fiction (Experiment 2). Your Champion will unpack why in the live debrief."
+        }
+      }
+    },
+    {
+      "cell_id": "c1-w2-delegation-sort",
+      "week": "week2",
+      "week_sort_order": 0,
+      "origin": "course",
+      "visibility": "program",
+      "title": "Full-AI, Assisted, or Human-Only?",
+      "type": "lab",
+      "dimension": ["Delegation"],
+      "evidence_type": "performance-task",
+      "sort_order": 921,
+      "body_md": "Part of the Week 2 live session — run this in breakout rooms with your group, before the Ground & Scope activity. Before reaching for AI, the first move is deciding *who should do the task*. Sort each scenario below, then submit to see a defensible call and talk it through.",
+      "lab_config_json": {
+        "kind": "delegation-sort",
+        "introMd": "For each task, decide how AI should be involved: **Full-AI** (AI does it end to end), **AI-assisted** (AI helps, a person checks and owns it), or **Human-only** (a person must make and own the call). Sort all six, then submit — the point isn't a single right answer, it's the reasoning.",
+        "categories": [
+          { "id": "full-ai", "label": "Full-AI", "desc": "AI does it end-to-end — pattern-matching or synthesis, low-stakes, easy to verify." },
+          { "id": "assisted", "label": "AI-assisted", "desc": "AI helps; a person directs, checks, and owns the result." },
+          { "id": "human-only", "label": "Human-only", "desc": "A person must make and own the call (AI may help prep, never decide)." }
+        ],
+        "items": [
+          {
+            "id": "denial-letter",
+            "scenario": "Draft a benefits-eligibility denial letter for a caseworker to review before it goes out.",
+            "suggested": "assisted",
+            "rationale": "AI can draft the language, but a person must verify the determination and own what's sent to the claimant."
+          },
+          {
+            "id": "508-table",
+            "scenario": "Reformat the findings from a 508 accessibility audit into a summary table.",
+            "suggested": "full-ai",
+            "rationale": "Mechanical restructuring of existing content — low-stakes and easy to check at a glance."
+          },
+          {
+            "id": "pip",
+            "scenario": "Write a performance improvement plan (PIP) for a teammate who's struggling.",
+            "suggested": "human-only",
+            "rationale": "Accountability and values — a manager must make and own this call, not a model."
+          },
+          {
+            "id": "condolence",
+            "scenario": "Write a condolence note to a colleague who just lost a family member.",
+            "suggested": "human-only",
+            "rationale": "A human relationship; sincerity is the whole point and can't be delegated."
+          },
+          {
+            "id": "policy-comments",
+            "scenario": "Summarize 40 pages of public comments on a proposed policy into the main themes.",
+            "suggested": "full-ai",
+            "rationale": "Pattern-matching and synthesis over public text — exactly where AI speeds you up (spot-check the themes)."
+          },
+          {
+            "id": "vendor-award",
+            "scenario": "Decide which of three vendors should be awarded a contract.",
+            "suggested": "human-only",
+            "rationale": "A high-stakes, accountable decision; AI may help you compare, but a person makes the call."
+          }
+        ],
+        "takeaway": {
+          "title": "The question to ask first: who owns the call?",
+          "body": "Before reaching for AI, ask what kind of task this is. Pattern-matching and synthesis — summarizing, reformatting, drafting — are where AI multiplies your speed. Anything carrying values, ethics, or accountability stays human-owned: AI can help you prepare, but a person makes and owns the decision. The gray-area cases (the 508 table, the policy comments) are worth arguing about — that's the point of today's discussion."
+        }
+      }
     }
   ]
 }

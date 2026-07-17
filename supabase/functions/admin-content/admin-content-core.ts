@@ -235,6 +235,8 @@ export const LAB_KINDS = [
   'failure-log',
   'chat-compare',
   'decision-scenario',
+  'prediction-sort',
+  'delegation-sort',
   'glat',
 ] as const;
 
@@ -672,6 +674,53 @@ const LAB_VALIDATORS: Record<string, (c: Obj) => string | null> = {
     }
     return null;
   },
+
+  // prediction-sort (Week 1 Lookup-vs-Predict intuition sort, 1.01): required
+  // introMd, bucketLabels{lookup,predict}, ≥1 items of { id, prompt, reveal },
+  // and a uniform takeaway{title,body} payoff card.
+  'prediction-sort': (c) =>
+    firstError(
+      isNonEmptyStr(c.introMd) ? null : '`introMd` must be a non-empty string.',
+      isObj(c.bucketLabels) &&
+      isNonEmptyStr((c.bucketLabels as Obj).lookup) &&
+      isNonEmptyStr((c.bucketLabels as Obj).predict)
+        ? null
+        : '`bucketLabels` must be { lookup, predict } (both non-empty strings).',
+      checkArray(c.items, 'items', (it, p) =>
+        isObj(it) && isNonEmptyStr(it.id) && isNonEmptyStr(it.prompt) && isNonEmptyStr(it.reveal)
+          ? null
+          : `\`${p}\` must be { id, prompt, reveal } (all non-empty strings).`,
+      ),
+      isObj(c.takeaway) &&
+      isNonEmptyStr((c.takeaway as Obj).title) &&
+      isNonEmptyStr((c.takeaway as Obj).body)
+        ? null
+        : '`takeaway` must be { title, body } (both non-empty strings).',
+    ),
+
+  'delegation-sort': (c) =>
+    firstError(
+      isNonEmptyStr(c.introMd) ? null : '`introMd` must be a non-empty string.',
+      checkArray(c.categories, 'categories', (cat, p) =>
+        isObj(cat) && isNonEmptyStr(cat.id) && isNonEmptyStr(cat.label) && typeof cat.desc === 'string'
+          ? null
+          : `\`${p}\` must be { id, label, desc }.`,
+      ),
+      checkArray(c.items, 'items', (it, p) =>
+        isObj(it) &&
+        isNonEmptyStr(it.id) &&
+        isNonEmptyStr(it.scenario) &&
+        isNonEmptyStr(it.suggested) &&
+        isNonEmptyStr(it.rationale)
+          ? null
+          : `\`${p}\` must be { id, scenario, suggested, rationale } (all non-empty strings).`,
+      ),
+      isObj(c.takeaway) &&
+      isNonEmptyStr((c.takeaway as Obj).title) &&
+      isNonEmptyStr((c.takeaway as Obj).body)
+        ? null
+        : '`takeaway` must be { title, body } (both non-empty strings).',
+    ),
 
   glat: (c) => {
     // Number.isFinite rejects NaN/Infinity/non-numbers (a bare `typeof === number`

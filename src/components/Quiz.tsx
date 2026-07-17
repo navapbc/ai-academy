@@ -102,7 +102,7 @@ export default function Quiz({
         animate={{ opacity: 1, scale: 1 }}
         role="status"
         aria-live="polite"
-        className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-8 text-center"
+        className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-8 text-center"
       >
          <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center ${passing ? 'bg-green-100' : 'bg-orange-100'}`}>
           {passing ? <ShieldCheck className="w-10 h-10 text-green-600" /> : <HelpCircle className="w-10 h-10 text-orange-600" />}
@@ -148,10 +148,10 @@ export default function Quiz({
   }
 
   return (
-    <div className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-8" id="module-quiz">
-      <div className="flex items-center justify-between border-b border-nava-mint pb-6">
+    <div className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-8" id="module-quiz">
+      <div className="flex items-center justify-between border-b border-nava-plum/20 pb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-nava-mint rounded-xl flex items-center justify-center text-nava-green">
+          <div className="w-10 h-10 bg-nava-plum/10 rounded-xl flex items-center justify-center text-nava-plum">
             <HelpCircle className="w-5 h-5" />
           </div>
           <div>
@@ -192,7 +192,7 @@ export default function Quiz({
                 onClick={() => setSelected(idx)}
                 className={`
                   w-full p-4 rounded-xl text-left text-sm font-medium transition-all border-2
-                  ${selected === idx ? 'border-nava-green bg-nava-mint text-nava-green shadow-sm' : 'border-gray-100 hover:border-nava-green/30'}
+                  ${selected === idx ? 'border-nava-plum bg-nava-plum/10 text-nava-plum shadow-sm' : 'border-gray-100 hover:border-nava-green/30'}
                   ${isAnswer ? 'border-green-600 bg-green-50 text-green-900' : ''}
                   ${wrongPick ? 'border-red-600 bg-red-50 text-red-900' : ''}
                 `}

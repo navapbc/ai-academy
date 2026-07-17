@@ -66,7 +66,7 @@ function UserPicker({
           if (value) onPick(value);
           setValue('');
         }}
-        className="shrink-0 rounded-lg bg-nava-green px-3 py-1.5 text-sm font-bold text-white hover:bg-nava-plum disabled:opacity-40"
+        className="shrink-0 rounded-lg bg-nava-green px-3 py-1.5 text-sm font-bold text-white hover:bg-nava-green/90 disabled:opacity-40"
       >
         Add
       </button>
@@ -124,7 +124,7 @@ function CohortCard({
                   setEditing(false);
                 })
               }
-              className="shrink-0 text-nava-green hover:text-nava-plum disabled:opacity-40"
+              className="shrink-0 text-nava-plum hover:text-nava-plum disabled:opacity-40"
               aria-label="Save name"
             >
               <Check className="w-5 h-5" aria-hidden="true" />
@@ -160,7 +160,7 @@ function CohortCard({
                       setDraftName(cohort.name);
                       setEditing(true);
                     }}
-                    className="p-1.5 text-gray-400 hover:text-nava-green"
+                    className="p-1.5 text-gray-400 hover:text-nava-plum"
                     aria-label={`Rename ${cohort.name}`}
                   >
                     <Pencil className="w-4 h-4" aria-hidden="true" />
@@ -177,7 +177,7 @@ function CohortCard({
                         onRun(() => archiveCohort(cohort.id));
                       }
                     }}
-                    className="p-1.5 text-gray-400 hover:text-nava-green disabled:opacity-40"
+                    className="p-1.5 text-gray-400 hover:text-nava-plum disabled:opacity-40"
                     aria-label={`Archive ${cohort.name}`}
                   >
                     <Archive className="w-4 h-4" aria-hidden="true" />
@@ -339,14 +339,14 @@ export default function CohortManagement({ onBack }: { onBack: () => void }) {
     <div className="space-y-6">
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-nava-green hover:text-nava-plum transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-nava-plum hover:text-nava-plum transition-colors"
       >
         <ArrowLeft className="w-4 h-4" aria-hidden="true" />
         Back to staff area
       </button>
 
       <header className="space-y-1">
-        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-green">Admin</span>
+        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-plum">Admin</span>
         <h1 className="text-2xl font-bold text-gray-900" tabIndex={-1}>
           Cohort management
         </h1>
@@ -383,7 +383,7 @@ export default function CohortManagement({ onBack }: { onBack: () => void }) {
         <button
           type="submit"
           disabled={busy || newName.trim() === ''}
-          className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-plum disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-green/90 disabled:opacity-40"
         >
           <Plus className="w-4 h-4" aria-hidden="true" />
           Create
@@ -399,7 +399,7 @@ export default function CohortManagement({ onBack }: { onBack: () => void }) {
 
       {loading && (
         <div className="flex items-center justify-center py-12" role="status">
-          <Loader2 className="w-6 h-6 text-nava-green animate-spin" aria-hidden="true" />
+          <Loader2 className="w-6 h-6 text-nava-plum animate-spin" aria-hidden="true" />
           <span className="sr-only">Loading cohorts…</span>
         </div>
       )}
@@ -410,7 +410,7 @@ export default function CohortManagement({ onBack }: { onBack: () => void }) {
           <p className="text-sm text-gray-700">{error}</p>
           <button
             onClick={load}
-            className="px-5 py-2 bg-nava-green hover:bg-nava-plum text-white rounded-xl font-bold transition-all"
+            className="px-5 py-2 bg-nava-green hover:bg-nava-green/90 text-white rounded-xl font-bold transition-all"
           >
             Retry
           </button>

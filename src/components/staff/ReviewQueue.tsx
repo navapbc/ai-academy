@@ -45,7 +45,7 @@ function ReviewDetail({
     <div className="space-y-6">
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-nava-green hover:text-nava-plum transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-nava-plum hover:text-nava-plum transition-colors"
       >
         <ArrowLeft className="w-4 h-4" aria-hidden="true" />
         Back to queue
@@ -109,7 +109,7 @@ function ReviewDetail({
             type="button"
             disabled={busy}
             onClick={() => run(() => approveSubmission(item.submissionId, note.trim() || undefined))}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-nava-green px-5 py-2 text-sm font-bold text-white hover:bg-nava-plum disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-nava-green px-5 py-2 text-sm font-bold text-white hover:bg-nava-green/90 disabled:opacity-40"
           >
             <Check className="w-4 h-4" aria-hidden="true" />
             Approve
@@ -152,14 +152,14 @@ export default function ReviewQueue({ onBack }: { onBack: () => void }) {
     <div className="space-y-6">
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-nava-green hover:text-nava-plum transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-nava-plum hover:text-nava-plum transition-colors"
       >
         <ArrowLeft className="w-4 h-4" aria-hidden="true" />
         Back to staff area
       </button>
 
       <header className="space-y-1">
-        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-green">Review</span>
+        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-plum">Review</span>
         <h1 className="text-2xl font-bold text-gray-900" tabIndex={-1}>
           Review queue
         </h1>
@@ -170,7 +170,7 @@ export default function ReviewQueue({ onBack }: { onBack: () => void }) {
 
       {loading && (
         <div className="flex items-center justify-center py-12" role="status">
-          <Loader2 className="w-6 h-6 text-nava-green animate-spin" aria-hidden="true" />
+          <Loader2 className="w-6 h-6 text-nava-plum animate-spin" aria-hidden="true" />
           <span className="sr-only">Loading the review queue…</span>
         </div>
       )}
@@ -181,7 +181,7 @@ export default function ReviewQueue({ onBack }: { onBack: () => void }) {
           <p className="text-sm text-gray-700">{error}</p>
           <button
             onClick={reload}
-            className="px-5 py-2 bg-nava-green hover:bg-nava-plum text-white rounded-xl font-bold transition-all"
+            className="px-5 py-2 bg-nava-green hover:bg-nava-green/90 text-white rounded-xl font-bold transition-all"
           >
             Retry
           </button>
@@ -190,7 +190,7 @@ export default function ReviewQueue({ onBack }: { onBack: () => void }) {
 
       {!loading && !error && queue.length === 0 && (
         <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-5 text-gray-600">
-          <ClipboardCheck className="w-5 h-5 text-nava-green shrink-0" aria-hidden="true" />
+          <ClipboardCheck className="w-5 h-5 text-nava-plum shrink-0" aria-hidden="true" />
           <p className="text-sm">No submissions awaiting review right now.</p>
         </div>
       )}

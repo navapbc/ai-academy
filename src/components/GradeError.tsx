@@ -21,7 +21,7 @@ export default function GradeError({ note, onRetry }: Props) {
       <button
         type="button"
         onClick={onRetry}
-        className="font-semibold text-nava-green underline underline-offset-2 hover:text-nava-plum rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-nava-green"
+        className="font-semibold text-nava-green underline underline-offset-2 hover:text-nava-plum rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-nava-plum"
       >
         Try grading again
       </button>

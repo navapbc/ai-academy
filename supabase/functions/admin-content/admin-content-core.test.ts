@@ -330,6 +330,60 @@ describe('validateLabConfigJson — per kind', () => {
     if (!r.ok) expect(r.error).toContain('checkpoints');
   });
 
+  test('prediction-sort: introMd + bucketLabels + items[≥1] of {id,prompt,reveal} + takeaway (Week 1 1.01)', () => {
+    const good = {
+      kind: 'prediction-sort',
+      introMd: 'Sort each task into Lookup or Predict.',
+      bucketLabels: { lookup: 'Lookup', predict: 'Predict' },
+      items: [
+        { id: 'i1', prompt: "What's the capital of France?", reveal: 'Lookup — a stored fact.' },
+        { id: 'i2', prompt: 'Write a toast for a retirement party.', reveal: 'Predict — generated text.' },
+      ],
+      takeaway: {
+        title: 'Lookup vs. Predict',
+        body: 'Claude predicts the next most likely token; it does not look answers up.',
+      },
+    };
+    expect(validateLabConfigJson(good).ok).toBe(true);
+    // introMd is required and non-empty.
+    expect(validateLabConfigJson({ ...good, introMd: '  ' }).ok).toBe(false);
+    expect(validateLabConfigJson({ ...good, introMd: undefined }).ok).toBe(false);
+    // bucketLabels must be { lookup, predict } (both non-empty strings).
+    expect(validateLabConfigJson({ ...good, bucketLabels: { lookup: 'Lookup' } }).ok).toBe(false);
+    expect(validateLabConfigJson({ ...good, bucketLabels: { lookup: '', predict: 'Predict' } }).ok).toBe(false);
+    // items must be a non-empty array of { id, prompt, reveal }.
+    expect(validateLabConfigJson({ ...good, items: [] }).ok).toBe(false);
+    expect(
+      validateLabConfigJson({ ...good, items: [{ id: 'i1', prompt: 'p' }] }).ok,
+    ).toBe(false);
+    // takeaway must be { title, body } (both non-empty strings).
+    expect(validateLabConfigJson({ ...good, takeaway: { title: 'T' } }).ok).toBe(false);
+    expect(validateLabConfigJson({ ...good, takeaway: { title: 'T', body: '' } }).ok).toBe(false);
+    // The failure carries a named error.
+    const r2 = validateLabConfigJson({ ...good, items: [] });
+    expect(r2.ok).toBe(false);
+    if (!r2.ok) expect(r2.error).toContain('items');
+  });
+
+  test('delegation-sort: valid accepted, malformed rejected', () => {
+    const valid = {
+      kind: 'delegation-sort',
+      introMd: 'Sort these.',
+      categories: [
+        { id: 'full-ai', label: 'Full-AI', desc: 'end to end' },
+        { id: 'human-only', label: 'Human-only', desc: 'person owns it' },
+      ],
+      items: [{ id: 'a', scenario: 'Reformat a table.', suggested: 'full-ai', rationale: 'Mechanical.' }],
+      takeaway: { title: 'T', body: 'B' },
+    };
+    expect(validateLabConfigJson(valid).ok).toBe(true);
+    expect(validateLabConfigJson({ ...valid, items: [] }).ok).toBe(false);
+    expect(validateLabConfigJson({ ...valid, categories: [] }).ok).toBe(false);
+    expect(
+      validateLabConfigJson({ ...valid, items: [{ id: 'a', scenario: '', suggested: 'full-ai', rationale: 'r' }] }).ok,
+    ).toBe(false);
+  });
+
   test('glat: passThreshold in (0,1] + well-formed sections', () => {
     const good = {
       kind: 'glat',

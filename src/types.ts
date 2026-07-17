@@ -275,6 +275,59 @@ export interface ScenarioExerciseConfig {
 }
 
 /**
+ * 1.01 prediction-sort (Course 1, Week 1): an intuition-then-reveal two-bucket
+ * sort. The learner places each task by what it FEELS like — "looking it up" vs
+ * "making it up" — then every item reveals the same truth: it was all prediction,
+ * never lookup. There is deliberately no `correct` field: placement is never graded.
+ * Records a lab_submissions row (`transcript` = { placements, items }); the
+ * participation seam auto-completes the module (`via='lab'`). No quiz gate.
+ */
+export interface PredictionSortItem {
+  id: string;
+  /** The task/prompt shown on the card. */
+  prompt: string;
+  /** One-line note revealed after submit; every note reaffirms prediction-not-lookup. */
+  reveal: string;
+}
+
+export interface PredictionSortConfig {
+  kind: 'prediction-sort';
+  introMd: string;
+  /** The two drop-target labels shown to the learner. */
+  bucketLabels: { lookup: string; predict: string };
+  items: PredictionSortItem[];
+  /** The uniform payoff card shown after submit. */
+  takeaway: { title: string; body: string };
+}
+
+/**
+ * 1.03 delegation-sort (Course 1, Week 2): a participation-based delegation sort.
+ * The learner places each scenario into one of the `categories` buckets (Full-AI /
+ * AI-assisted / Human-only); on submit each card reveals a SUGGESTED categorization +
+ * rationale, framed as a defensible call — never scored or gated. Records a
+ * lab_submissions row; the participation seam auto-completes the module (via='lab').
+ */
+export interface DelegationSortItem {
+  id: string;
+  /** The task/scenario shown on the card. */
+  scenario: string;
+  /** id of the categories[] entry this is a defensible fit for — shown on reveal as
+   *  guidance; NEVER used to score or gate. */
+  suggested: string;
+  /** One-sentence rationale revealed after submit. */
+  rationale: string;
+}
+
+export interface DelegationSortConfig {
+  kind: 'delegation-sort';
+  introMd: string;
+  /** The category buckets, in display order. */
+  categories: { id: string; label: string; desc: string }[];
+  items: DelegationSortItem[];
+  takeaway: { title: string; body: string };
+}
+
+/**
  * 1.8 / 1.11 reflection (P3.10): an UNGRADED written reflection (no right
  * answer). The learner reads a prompt + guidance and writes a free-text
  * response; `minWords` is a soft target shown in a live word counter. On submit
@@ -754,6 +807,8 @@ export type LabConfig =
   | FailureLogConfig
   | ChatCompareConfig
   | DecisionScenarioConfig
+  | PredictionSortConfig
+  | DelegationSortConfig
   | GlatConfig;
 
 export interface UserProgress {

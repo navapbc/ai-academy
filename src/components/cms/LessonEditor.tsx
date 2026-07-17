@@ -184,7 +184,7 @@ export default function LessonEditor({
             onChange={(e) => setVideoUrl(e.target.value)}
             placeholder="https://…"
             aria-invalid={!videoOk}
-            className={`w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-nava-green focus:outline-none ${
+            className={`w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-nava-plum focus:outline-none ${
               videoOk ? 'border-gray-300' : 'border-red-400'
             }`}
           />
@@ -210,7 +210,7 @@ export default function LessonEditor({
             value={tutorRef}
             onChange={(e) => setTutorRef(e.target.value)}
             rows={3}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-nava-green focus:outline-none"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-nava-plum focus:outline-none"
           />
         </div>
 
@@ -233,7 +233,7 @@ export default function LessonEditor({
               onChange={(e) => setBodyMd(e.target.value)}
               rows={18}
               spellCheck
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono leading-relaxed focus:ring-2 focus:ring-nava-green focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono leading-relaxed focus:ring-2 focus:ring-nava-plum focus:outline-none"
             />
             <div
               className="rounded-lg border border-gray-200 bg-gray-50 p-4 overflow-auto max-h-[28rem]"
@@ -267,7 +267,7 @@ export default function LessonEditor({
           maxLength={NOTE_MAX_LENGTH + 100}
           placeholder="e.g. Fixed the reflection prompt wording"
           aria-invalid={noteTooLong}
-          className={`w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-nava-green focus:outline-none ${
+          className={`w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-nava-plum focus:outline-none ${
             noteTooLong ? 'border-red-400' : 'border-gray-300'
           }`}
         />
@@ -289,7 +289,7 @@ export default function LessonEditor({
               setResetProgress(e.target.checked);
               setConfirmingReset(false);
             }}
-            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-nava-green focus:ring-nava-green"
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-nava-green focus:ring-nava-plum"
           />
           <div>
             <label htmlFor="cms-reset-progress" className="text-sm font-semibold text-gray-800">
@@ -347,7 +347,7 @@ export default function LessonEditor({
         <button
           onClick={() => handlePublish()}
           disabled={busy !== null || !videoOk || noteTooLong}
-          className="inline-flex items-center gap-2 rounded-xl bg-nava-green px-5 py-2 text-sm font-bold text-white hover:bg-nava-plum disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          className="inline-flex items-center gap-2 rounded-xl bg-nava-green px-5 py-2 text-sm font-bold text-white hover:bg-nava-green/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {busy === 'publish' ? (
             <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />

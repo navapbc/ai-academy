@@ -145,7 +145,7 @@ export default function CreateLessonModal({
                     aria-invalid={showWarning}
                     aria-describedby={showWarning ? 'new-lesson-title-warning' : undefined}
                     className={`w-full bg-gray-50 border-2 rounded-xl px-4 py-3 focus:ring-2 outline-none transition-all text-sm ${
-                      showWarning ? 'border-red-100 focus:ring-red-200' : 'border-gray-50 focus:ring-nava-green'
+                      showWarning ? 'border-red-100 focus:ring-red-200' : 'border-gray-50 focus:ring-nava-plum'
                     }`}
                     placeholder="e.g. Prompt patterns for case workers"
                   />
@@ -159,7 +159,7 @@ export default function CreateLessonModal({
                     id="new-lesson-type"
                     value={type}
                     onChange={(e) => setType(e.target.value as ModuleType)}
-                    className="w-full bg-gray-50 border-2 border-gray-50 rounded-xl px-4 py-3 focus:ring-2 focus:ring-nava-green outline-none transition-all text-sm"
+                    className="w-full bg-gray-50 border-2 border-gray-50 rounded-xl px-4 py-3 focus:ring-2 focus:ring-nava-plum outline-none transition-all text-sm"
                   >
                     {LESSON_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>
@@ -180,7 +180,7 @@ export default function CreateLessonModal({
                       value="custom"
                       checked={origin === 'custom'}
                       onChange={() => setOrigin('custom')}
-                      className="mt-0.5 border-gray-300 text-nava-green focus:ring-nava-green"
+                      className="mt-0.5 border-gray-300 text-nava-green focus:ring-nava-plum"
                     />
                     <div className="text-sm text-gray-700">
                       <label htmlFor="new-lesson-origin-custom" className="font-semibold">
@@ -200,7 +200,7 @@ export default function CreateLessonModal({
                       value="course"
                       checked={origin === 'course'}
                       onChange={() => setOrigin('course')}
-                      className="mt-0.5 border-gray-300 text-nava-green focus:ring-nava-green"
+                      className="mt-0.5 border-gray-300 text-nava-green focus:ring-nava-plum"
                     />
                     <div className="text-sm text-gray-700">
                       <label htmlFor="new-lesson-origin-course" className="font-semibold">
@@ -227,7 +227,7 @@ export default function CreateLessonModal({
                   type="button"
                   onClick={submit}
                   disabled={submitting}
-                  className="flex-1 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all bg-nava-green text-white hover:bg-nava-plum disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="flex-1 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all bg-nava-green text-white hover:bg-nava-green/90 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />

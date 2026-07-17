@@ -124,6 +124,60 @@ describe('validateLabConfig — per kind', () => {
     ).toBe(false);
   });
 
+  test('prediction-sort requires introMd, bucketLabels, items, and a takeaway', () => {
+    const good = {
+      kind: 'prediction-sort',
+      introMd: 'Sort each task into lookup or predict.',
+      bucketLabels: { lookup: 'Lookup', predict: 'Predict' },
+      items: [{ id: 'i1', prompt: 'Summarize this memo', reveal: 'Predict — the wording varies.' }],
+      takeaway: { title: 'Takeaway', body: 'Prediction beats lookup for open-ended tasks.' },
+    };
+    expect(validateLabConfig(good).ok).toBe(true);
+    // Missing items entirely.
+    const missingItems: Record<string, unknown> = { ...good };
+    delete missingItems.items;
+    expect(validateLabConfig(missingItems).ok).toBe(false);
+    // bucketLabels missing `predict`.
+    expect(
+      validateLabConfig({ ...good, bucketLabels: { lookup: 'Lookup' } }).ok,
+    ).toBe(false);
+  });
+
+  test('delegation-sort: accepts a well-formed config', () => {
+    expect(
+      validateLabConfig({
+        kind: 'delegation-sort',
+        introMd: 'Sort these.',
+        categories: [
+          { id: 'full-ai', label: 'Full-AI', desc: 'end to end' },
+          { id: 'human-only', label: 'Human-only', desc: 'person owns it' },
+        ],
+        items: [{ id: 'a', scenario: 'Reformat a table.', suggested: 'full-ai', rationale: 'Mechanical.' }],
+        takeaway: { title: 'T', body: 'B' },
+      }).ok,
+    ).toBe(true);
+  });
+
+  test('delegation-sort: rejects missing items and incomplete categories', () => {
+    expect(
+      validateLabConfig({
+        kind: 'delegation-sort',
+        introMd: 'x',
+        categories: [{ id: 'full-ai', label: 'Full-AI', desc: '' }],
+        takeaway: { title: 'T', body: 'B' },
+      }).ok,
+    ).toBe(false); // items missing
+    expect(
+      validateLabConfig({
+        kind: 'delegation-sort',
+        introMd: 'x',
+        categories: [{ id: '', label: 'Full-AI', desc: 'd' }],
+        items: [{ id: 'a', scenario: 's', suggested: 'full-ai', rationale: 'r' }],
+        takeaway: { title: 'T', body: 'B' },
+      }).ok,
+    ).toBe(false); // category id blank
+  });
+
   test('glat threshold + sections', () => {
     const good = {
       kind: 'glat',

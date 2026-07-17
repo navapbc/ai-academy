@@ -30,7 +30,7 @@ export default function LearnerDetail({
       <div>
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-nava-green hover:text-nava-plum transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-nava-plum hover:text-nava-plum transition-colors"
         >
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           Back to cohorts
@@ -67,7 +67,7 @@ export default function LearnerDetail({
 
       {loading && (
         <div className="flex items-center justify-center py-12" role="status">
-          <Loader2 className="w-6 h-6 text-nava-green animate-spin" aria-hidden="true" />
+          <Loader2 className="w-6 h-6 text-nava-plum animate-spin" aria-hidden="true" />
           <span className="sr-only">Loading learner detail…</span>
         </div>
       )}
@@ -78,7 +78,7 @@ export default function LearnerDetail({
           <p className="text-sm text-gray-700">{error}</p>
           <button
             onClick={reload}
-            className="px-5 py-2 bg-nava-green hover:bg-nava-plum text-white rounded-xl font-bold transition-all"
+            className="px-5 py-2 bg-nava-green hover:bg-nava-green/90 text-white rounded-xl font-bold transition-all"
           >
             Retry
           </button>

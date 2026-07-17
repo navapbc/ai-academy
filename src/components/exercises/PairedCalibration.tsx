@@ -177,13 +177,13 @@ export default function PairedCalibration({ config, labId }: Props) {
   };
 
   return (
-    <div className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-6" id="paired-calibration">
+    <div className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-6" id="paired-calibration">
       {/* D-09: audible phase transitions for screen readers. */}
       <p role="status" aria-live="polite" className="sr-only">
         {PHASE_ANNOUNCEMENT[phase]}
       </p>
-      <div className="flex items-center gap-3 border-b border-nava-mint pb-6">
-        <div className="w-10 h-10 bg-nava-mint rounded-xl flex items-center justify-center text-nava-green">
+      <div className="flex items-center gap-3 border-b border-nava-plum/20 pb-6">
+        <div className="w-10 h-10 bg-nava-plum/10 rounded-xl flex items-center justify-center text-nava-plum">
           <Timer className="w-5 h-5" />
         </div>
         <div>
@@ -214,7 +214,7 @@ export default function PairedCalibration({ config, labId }: Props) {
             <button
               type="button"
               onClick={() => startPhase('off')}
-              className="flex items-center gap-2 px-8 py-3 bg-nava-green text-white rounded-xl font-bold shadow-lg shadow-nava-green/20 hover:bg-nava-plum transition-all active:scale-95"
+              className="flex items-center gap-2 px-8 py-3 bg-nava-green text-white rounded-xl font-bold shadow-lg shadow-nava-green/20 hover:bg-nava-green/90 transition-all active:scale-95"
             >
               <Play className="w-4 h-4" /> Start without AI
             </button>
@@ -235,7 +235,7 @@ export default function PairedCalibration({ config, labId }: Props) {
             value={offOutput}
             onChange={(e) => setOffOutput(e.target.value)}
             placeholder="Do the task here — no AI."
-            className="w-full h-40 bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-nava-green resize-none"
+            className="w-full h-40 bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-nava-plum resize-none"
           />
           <div className="flex justify-end">
             <button
@@ -262,7 +262,7 @@ export default function PairedCalibration({ config, labId }: Props) {
             <button
               type="button"
               onClick={() => startPhase('on')}
-              className="flex items-center gap-2 px-8 py-3 bg-nava-green text-white rounded-xl font-bold shadow-lg shadow-nava-green/20 hover:bg-nava-plum transition-all active:scale-95"
+              className="flex items-center gap-2 px-8 py-3 bg-nava-green text-white rounded-xl font-bold shadow-lg shadow-nava-green/20 hover:bg-nava-green/90 transition-all active:scale-95"
             >
               <Play className="w-4 h-4" /> Start with Claude
             </button>
@@ -284,14 +284,14 @@ export default function PairedCalibration({ config, labId }: Props) {
             value={onPrompt}
             onChange={(e) => setOnPrompt(e.target.value)}
             placeholder="Prompt Claude to help you do the task…"
-            className="w-full h-28 bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-nava-green resize-none"
+            className="w-full h-28 bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-nava-plum resize-none"
           />
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={handleRun}
               disabled={isStreaming || !onPrompt.trim()}
-              className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm hover:bg-nava-plum disabled:opacity-50 transition-all active:scale-95"
+              className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm hover:bg-nava-green/90 disabled:opacity-50 transition-all active:scale-95"
             >
               {isStreaming ? (
                 <><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Sparkles className="w-4 h-4" /></motion.div> Running…</>
@@ -334,17 +334,17 @@ export default function PairedCalibration({ config, labId }: Props) {
             <label className="text-xs font-bold text-gray-600 space-y-1">
               Your estimated speedup (%)
               <input type="number" value={estimate} onChange={(e) => setEstimate(e.target.value)}
-                className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-nava-green outline-none text-sm" />
+                className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-nava-plum outline-none text-sm" />
             </label>
             <label className="text-xs font-bold text-gray-600 space-y-1">
               Defects — no-AI output
               <input type="number" min="0" value={offDefects} onChange={(e) => setOffDefects(e.target.value)}
-                className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-nava-green outline-none text-sm" />
+                className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-nava-plum outline-none text-sm" />
             </label>
             <label className="text-xs font-bold text-gray-600 space-y-1">
               Defects — Claude output
               <input type="number" min="0" value={onDefects} onChange={(e) => setOnDefects(e.target.value)}
-                className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-nava-green outline-none text-sm" />
+                className="w-full mt-1 px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-nava-plum outline-none text-sm" />
             </label>
           </div>
           <div className="flex justify-end">
@@ -384,7 +384,7 @@ export default function PairedCalibration({ config, labId }: Props) {
                 type="button"
                 onClick={() => saveSubmission(result)}
                 disabled={saving}
-                className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm hover:bg-nava-plum disabled:opacity-50 transition-all active:scale-95"
+                className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm hover:bg-nava-green/90 disabled:opacity-50 transition-all active:scale-95"
               >
                 {saving ? (
                   <><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Sparkles className="w-4 h-4" /></motion.div> Saving…</>

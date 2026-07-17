@@ -190,7 +190,7 @@ export default function CmsLessonDetail({
             </button>
             <button
               onClick={onEdit}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-plum transition-all"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-green/90 transition-all"
             >
               <Pencil className="w-4 h-4" aria-hidden="true" />
               Edit

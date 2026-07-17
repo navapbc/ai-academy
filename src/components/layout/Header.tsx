@@ -44,7 +44,7 @@ export default function Header({
         )}
         <nav className="flex items-center text-sm text-gray-500 gap-2">
           {currentPhase && (
-            <span className="text-nava-green font-bold uppercase tracking-wider text-[10px]">{currentPhase.week}</span>
+            <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">{currentPhase.week}</span>
           )}
           <ChevronRight className="w-4 h-4 text-gray-500" />
           <span className="text-gray-900 font-semibold truncate max-w-[200px]">{currentModule.title}</span>
