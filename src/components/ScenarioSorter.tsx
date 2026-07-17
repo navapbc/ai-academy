@@ -48,8 +48,8 @@ export default function ScenarioSorter({
   };
 
   return (
-    <div className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-8" id="scenario-sorter">
-      <div className="border-b border-nava-mint pb-6">
+    <div className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-8" id="scenario-sorter">
+      <div className="border-b border-nava-plum/20 pb-6">
         <h3 className="font-bold text-lg">Scenario Sorter</h3>
         {config?.intro && <p className="text-sm text-gray-500 mt-1">{config.intro}</p>}
       </div>

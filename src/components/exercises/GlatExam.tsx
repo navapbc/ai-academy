@@ -67,7 +67,7 @@ export default function GlatExam({
   if (result) {
     const byId = new Map(result.perItem.map((i) => [i.id, i]));
     return (
-      <div className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-8">
+      <div className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-8">
         <div role="status" aria-live="polite" className="text-center space-y-3">
           <div
             className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center ${
@@ -151,7 +151,7 @@ export default function GlatExam({
   }
 
   return (
-    <div className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-10" id="glat-exam">
+    <div className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-10" id="glat-exam">
       <header className="space-y-1">
         <h3 className="text-xl font-bold text-gray-900">GLAT — objective gate</h3>
         <p className="text-sm text-gray-600">

@@ -178,7 +178,7 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
         >
           <div className="p-6 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <BarChart3 className="w-6 h-6 text-nava-green" aria-hidden="true" />
+              <BarChart3 className="w-6 h-6 text-nava-plum" aria-hidden="true" />
               {/* A logo/wordmark, not the page heading — kept out of the heading
                   outline so the lesson title is the single page-level h1 (A11Y-09). */}
               <span className="font-bold text-xl tracking-tight">{BRANDING.name}</span>
