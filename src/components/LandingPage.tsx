@@ -20,7 +20,7 @@ const STRUCTURE: StructureItem[] = [
   {
     icon: GraduationCap,
     title: 'Course weeks',
-    desc: 'The champion-led cohort path — a guided, sequenced program (Course 1, Weeks 0–8) that builds your AI judgment step by step.',
+    desc: 'The champion-led cohort path — a guided, sequenced Course 1 program that builds your AI judgment step by step.',
     chipClass: 'bg-nava-mint text-nava-green',
   },
   {
