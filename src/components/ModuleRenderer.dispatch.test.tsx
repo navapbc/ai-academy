@@ -36,6 +36,7 @@ vi.mock('./exercises/IterationLab', () => ({ default: () => <div>STUB:IterationL
 vi.mock('./exercises/ChatCompare', () => ({ default: () => <div>STUB:ChatCompare</div> }));
 vi.mock('./exercises/DecisionScenario', () => ({ default: () => <div>STUB:DecisionScenario</div> }));
 vi.mock('./exercises/PredictionSort', () => ({ default: () => <div>STUB:PredictionSort</div> }));
+vi.mock('./exercises/DelegationSort', () => ({ default: () => <div>STUB:DelegationSort</div> }));
 vi.mock('./exercises/GlatExam', () => ({ default: () => <div>STUB:GlatExam objective gate</div> }));
 
 const base: Module = {
@@ -107,6 +108,7 @@ describe('renderExercise — dispatch by labConfig.kind', () => {
     ['chat-compare', 'STUB:ChatCompare'],
     ['decision-scenario', 'STUB:DecisionScenario'],
     ['prediction-sort', 'STUB:PredictionSort'],
+    ['delegation-sort', 'STUB:DelegationSort'],
     ['glat', 'STUB:GlatExam objective gate'],
   ];
   test.each(kinds)('kind %s renders %s', (kind, marker) => {

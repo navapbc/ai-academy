@@ -75,7 +75,7 @@ export default function Login() {
           disabled={googleSubmitting}
           aria-label="Sign in with Google"
           aria-busy={googleSubmitting}
-          className="w-full py-3.5 bg-nava-green text-white rounded-xl font-bold shadow-lg shadow-nava-green/20 hover:bg-nava-plum disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-2"
+          className="w-full py-3.5 bg-nava-green text-white rounded-xl font-bold shadow-lg shadow-nava-green/20 hover:bg-nava-green/90 disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-2"
         >
           {googleSubmitting ? (
             <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
@@ -104,7 +104,7 @@ export default function Login() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-nava-green focus:outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none transition-colors"
                 />
               </div>
 
@@ -119,7 +119,7 @@ export default function Login() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-nava-green focus:outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none transition-colors"
                 />
               </div>
 

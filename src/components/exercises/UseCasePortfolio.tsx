@@ -45,7 +45,7 @@ function VerdictButton({
       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-all ${
         active
           ? verdict === 'helps'
-            ? 'border-nava-green bg-nava-mint text-nava-green'
+            ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
             : 'border-orange-400 bg-orange-50 text-orange-700'
           : 'border-gray-100 text-gray-500 hover:border-nava-green/30'
       }`}
@@ -118,9 +118,9 @@ export default function UseCasePortfolio({ config, labId }: Props) {
   };
 
   return (
-    <div className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-8" id="use-case-portfolio">
-      <div className="flex items-center gap-3 border-b border-nava-mint pb-6">
-        <div className="w-10 h-10 bg-nava-mint rounded-xl flex items-center justify-center text-nava-green">
+    <div className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-8" id="use-case-portfolio">
+      <div className="flex items-center gap-3 border-b border-nava-plum/20 pb-6">
+        <div className="w-10 h-10 bg-nava-plum/10 rounded-xl flex items-center justify-center text-nava-plum">
           <Library className="w-5 h-5" />
         </div>
         <div>
@@ -200,7 +200,7 @@ export default function UseCasePortfolio({ config, labId }: Props) {
                   onChange={(e) => updateEntry(i, { task: e.target.value })}
                   aria-label={`Use case ${i + 1}: the task`}
                   placeholder={library.taskPlaceholder}
-                  className="w-full rounded-xl border-2 border-gray-100 focus:border-nava-green focus:outline-none p-3 text-sm text-gray-700 transition-colors"
+                  className="w-full rounded-xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none p-3 text-sm text-gray-700 transition-colors"
                 />
                 <textarea
                   value={entry.approach}
@@ -208,7 +208,7 @@ export default function UseCasePortfolio({ config, labId }: Props) {
                   rows={2}
                   aria-label={`Use case ${i + 1}: the prompt or approach`}
                   placeholder={library.approachPlaceholder}
-                  className="w-full rounded-xl border-2 border-gray-100 focus:border-nava-green focus:outline-none p-3 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
+                  className="w-full rounded-xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none p-3 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
                 />
                 <textarea
                   value={entry.watch}
@@ -216,7 +216,7 @@ export default function UseCasePortfolio({ config, labId }: Props) {
                   rows={2}
                   aria-label={`Use case ${i + 1}: the failure mode to watch`}
                   placeholder={library.watchPlaceholder}
-                  className="w-full rounded-xl border-2 border-gray-100 focus:border-nava-green focus:outline-none p-3 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
+                  className="w-full rounded-xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none p-3 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
                 />
               </div>
             ))}
@@ -248,7 +248,7 @@ export default function UseCasePortfolio({ config, labId }: Props) {
                   value={statement[d.id] ?? ''}
                   onChange={(e) => setDimension(d.id, e.target.value)}
                   rows={3}
-                  className="w-full rounded-xl border-2 border-gray-100 focus:border-nava-green focus:outline-none p-3 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
+                  className="w-full rounded-xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none p-3 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
                 />
               </div>
             ))}

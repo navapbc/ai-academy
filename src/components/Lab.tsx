@@ -228,14 +228,14 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
                   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleRun();
                 }}
                 placeholder={'Write your prompt here.\n\nLead with the role and core task, state your constraints up front (length · reading level · tone · no jargon · one next step), and describe what a finished note looks like.'}
-                className="w-full h-56 bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-nava-green focus:border-transparent outline-none transition-all resize-none"
+                className="w-full h-56 bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-nava-plum focus:border-transparent outline-none transition-all resize-none"
               />
             </div>
 
             <button
               onClick={handleRun}
               disabled={isLoading || !prompt.trim()}
-              className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg hover:bg-nava-plum disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
+              className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg hover:bg-nava-green/90 disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
             >
               {isLoading
                 ? <><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Sparkles className="w-4 h-4" /></motion.div> Running…</>
@@ -328,7 +328,7 @@ export default function Lab({ onComplete, labId, config }: LabProps) {
           <div className="flex justify-end">
             <button
               onClick={onComplete}
-              className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm hover:bg-nava-plum transition-all active:scale-95"
+              className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm hover:bg-nava-green/90 transition-all active:scale-95"
             >
               Continue
               <CheckCircle className="w-4 h-4" />

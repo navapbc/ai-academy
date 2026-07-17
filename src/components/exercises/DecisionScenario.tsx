@@ -225,7 +225,7 @@ export default function DecisionScenario({ config, labId }: Props) {
                 type="button"
                 onClick={() => checkAnswer(index)}
                 disabled={a.selected.length === 0}
-                className="flex items-center gap-2 px-5 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg shadow-nava-green/20 hover:bg-nava-plum disabled:opacity-50 transition-all active:scale-95"
+                className="flex items-center gap-2 px-5 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg shadow-nava-green/20 hover:bg-nava-green/90 disabled:opacity-50 transition-all active:scale-95"
               >
                 <Check className="w-4 h-4" aria-hidden="true" />
                 Check answer
@@ -276,11 +276,11 @@ export default function DecisionScenario({ config, labId }: Props) {
 
   return (
     <div
-      className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-6"
+      className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-6"
       id="decision-scenario"
     >
-      <div className="flex items-center gap-3 border-b border-nava-mint pb-6">
-        <div className="w-10 h-10 bg-nava-mint rounded-xl flex items-center justify-center text-nava-green">
+      <div className="flex items-center gap-3 border-b border-nava-plum/20 pb-6">
+        <div className="w-10 h-10 bg-nava-plum/10 rounded-xl flex items-center justify-center text-nava-plum">
           <Footprints className="w-5 h-5" />
         </div>
         <div>
@@ -353,7 +353,7 @@ export default function DecisionScenario({ config, labId }: Props) {
             <button
               type="button"
               onClick={handleContinue}
-              className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg shadow-nava-green/20 hover:bg-nava-plum transition-all active:scale-95"
+              className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg shadow-nava-green/20 hover:bg-nava-green/90 transition-all active:scale-95"
             >
               Start the scenario
               <ChevronRight className="w-4 h-4" aria-hidden="true" />
@@ -377,7 +377,7 @@ export default function DecisionScenario({ config, labId }: Props) {
               type="button"
               onClick={handleContinue}
               disabled={!answers[step].revealed}
-              className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg shadow-nava-green/20 hover:bg-nava-plum disabled:opacity-50 transition-all active:scale-95"
+              className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg shadow-nava-green/20 hover:bg-nava-green/90 disabled:opacity-50 transition-all active:scale-95"
             >
               {step < total - 1 ? 'Continue' : 'Finish'}
               <ChevronRight className="w-4 h-4" aria-hidden="true" />

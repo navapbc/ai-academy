@@ -2,37 +2,36 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Shuffle, Check, Sparkles, ClipboardCheck } from 'lucide-react';
-import type { PredictionSortConfig } from '../../types';
+import { ListChecks, Check, Sparkles, ClipboardCheck } from 'lucide-react';
+import type { DelegationSortConfig } from '../../types';
 import { useAuth } from '../../lib/auth';
 import { recordLabSubmission } from '../../lib/progress';
 
 interface Props {
-  config: PredictionSortConfig;
+  config: DelegationSortConfig;
   labId: string;
 }
 
-type Bucket = 'lookup' | 'predict';
-
-// Course 1, Week 1 intuition-then-reveal sort (1.01). The learner places each task
-// into one of two buckets by what it FEELS like; on submit every card reveals the
-// same truth — it was all prediction, never lookup. No score, no wrong answer. The
-// recorded submission auto-completes the module via the participation seam (via='lab'),
-// so there is no onComplete prop (matches chat-compare / decision-scenario).
-export default function PredictionSort({ config, labId }: Props) {
+// Course 1, Week 2 delegation sort (1.03). The learner sorts each scenario into a
+// category bucket (Full-AI / AI-assisted / Human-only); on submit every card reveals a
+// SUGGESTED categorization + rationale, framed as a defensible call (never scored or
+// gated). The recorded submission auto-completes the module via the participation seam
+// (via='lab'), so there is no onComplete prop (matches prediction-sort / chat-compare).
+export default function DelegationSort({ config, labId }: Props) {
   const { user } = useAuth();
-  const { items, bucketLabels, takeaway } = config;
+  const { categories, items, takeaway } = config;
 
-  const [placements, setPlacements] = useState<Record<string, Bucket>>({});
+  const [placements, setPlacements] = useState<Record<string, string>>({});
   const [graded, setGraded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const labelFor = (id: string) => categories.find((c) => c.id === id)?.label ?? id;
   const allPlaced = items.every((it) => placements[it.id] !== undefined);
 
-  const place = (id: string, bucket: Bucket) => {
+  const place = (id: string, categoryId: string) => {
     if (graded) return;
-    setPlacements((prev) => ({ ...prev, [id]: bucket }));
+    setPlacements((prev) => ({ ...prev, [id]: categoryId }));
   };
 
   const handleSubmit = async () => {
@@ -41,7 +40,7 @@ export default function PredictionSort({ config, labId }: Props) {
     setSaveError(null);
 
     if (!user) {
-      setSaveError('Sign in to record your work — the reveal is shown below.');
+      setSaveError('Sign in to record your work — the suggested calls are shown below.');
       return;
     }
 
@@ -51,7 +50,7 @@ export default function PredictionSort({ config, labId }: Props) {
         labId,
         transcript: {
           placements,
-          items: items.map((it) => ({ id: it.id, prompt: it.prompt })),
+          items: items.map((it) => ({ id: it.id, scenario: it.scenario, suggested: it.suggested })),
         },
         status: 'submitted',
       });
@@ -69,14 +68,14 @@ export default function PredictionSort({ config, labId }: Props) {
   };
 
   return (
-    <div className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-8" id="prediction-sort">
+    <div className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-8" id="delegation-sort">
       <div className="flex items-center gap-3 border-b border-nava-plum/20 pb-6">
         <div className="w-10 h-10 bg-nava-plum/10 rounded-xl flex items-center justify-center text-nava-plum">
-          <Shuffle className="w-5 h-5" />
+          <ListChecks className="w-5 h-5" />
         </div>
         <div>
-          <h3 className="font-bold">Lookup or Predict?</h3>
-          <p className="text-xs text-gray-500">Sort by gut feel — there is no wrong answer here.</p>
+          <h3 className="font-bold">Full-AI, Assisted, or Human-Only?</h3>
+          <p className="text-xs text-gray-500">Sort each task, then see a defensible call — gray areas are worth debating.</p>
         </div>
       </div>
 
@@ -85,6 +84,14 @@ export default function PredictionSort({ config, labId }: Props) {
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{config.introMd}</ReactMarkdown>
         </div>
       )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {categories.map((c) => (
+          <div key={c.id} className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3 leading-relaxed">
+            <span className="font-bold text-nava-plum">{c.label}</span> — {c.desc}
+          </div>
+        ))}
+      </div>
 
       <div className="space-y-6">
         {items.map((item) => {
@@ -96,25 +103,25 @@ export default function PredictionSort({ config, labId }: Props) {
                 graded ? 'border-nava-plum/20 bg-nava-plum/5' : 'border-gray-100'
               }`}
             >
-              <p className="text-sm font-semibold text-gray-800 leading-relaxed">{item.prompt}</p>
+              <p className="text-sm font-semibold text-gray-800 leading-relaxed">{item.scenario}</p>
 
-              <div className="flex flex-col sm:flex-row gap-2" role="radiogroup" aria-label={item.prompt}>
-                {(['lookup', 'predict'] as Bucket[]).map((bucket) => {
-                  const selected = chosen === bucket;
+              <div className="flex flex-col sm:flex-row gap-2" role="radiogroup" aria-label={item.scenario}>
+                {categories.map((c) => {
+                  const selected = chosen === c.id;
                   return (
                     <button
-                      key={bucket}
+                      key={c.id}
                       role="radio"
                       aria-checked={selected}
                       disabled={graded}
-                      onClick={() => place(item.id, bucket)}
+                      onClick={() => place(item.id, c.id)}
                       className={`flex-1 text-left text-sm font-medium rounded-xl px-4 py-2.5 border-2 transition-all ${
                         selected
                           ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
                           : 'border-gray-100 text-gray-700 hover:border-nava-green/30'
                       }`}
                     >
-                      {bucketLabels[bucket]}
+                      {c.label}
                     </button>
                   );
                 })}
@@ -132,7 +139,9 @@ export default function PredictionSort({ config, labId }: Props) {
                     <div className="w-7 h-7 rounded-full bg-nava-mint flex items-center justify-center shrink-0">
                       <Check className="w-4 h-4 text-nava-green" />
                     </div>
-                    <p className="text-xs leading-relaxed text-gray-700">{item.reveal}</p>
+                    <p className="text-xs leading-relaxed text-gray-700">
+                      <span className="font-bold">A defensible call: {labelFor(item.suggested)}.</span> {item.rationale}
+                    </p>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -154,9 +163,6 @@ export default function PredictionSort({ config, labId }: Props) {
               <ClipboardCheck className="w-5 h-5 text-nava-plum" />
               <h4 className="font-bold text-nava-plum">{takeaway.title}</h4>
             </div>
-            <p className="text-sm font-semibold text-gray-800">
-              Every one of these was Claude predicting the next word — it never looked anything up.
-            </p>
             <p className="text-sm text-gray-600 leading-relaxed">{takeaway.body}</p>
           </motion.div>
         )}

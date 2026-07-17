@@ -37,6 +37,7 @@ export const LAB_KINDS: LabConfig['kind'][] = [
   'chat-compare',
   'decision-scenario',
   'prediction-sort',
+  'delegation-sort',
   'glat',
 ];
 
@@ -72,6 +73,7 @@ export const LAB_KIND_LABELS: Record<LabConfig['kind'], string> = {
   'chat-compare': 'Chat compare',
   'decision-scenario': 'Decision scenario',
   'prediction-sort': 'Prediction sort',
+  'delegation-sort': 'Delegation sort',
   glat: 'GLAT exam',
 };
 
@@ -508,6 +510,30 @@ const LAB_VALIDATORS: Record<string, (c: Obj) => string | null> = {
         isObj(it) && isNonEmptyStr(it.id) && isNonEmptyStr(it.prompt) && isNonEmptyStr(it.reveal)
           ? null
           : `\`${p}\` must be { id, prompt, reveal } (all non-empty strings).`,
+      ),
+      isObj(c.takeaway) &&
+      isNonEmptyStr((c.takeaway as Obj).title) &&
+      isNonEmptyStr((c.takeaway as Obj).body)
+        ? null
+        : '`takeaway` must be { title, body } (both non-empty strings).',
+    ),
+
+  'delegation-sort': (c) =>
+    firstError(
+      isNonEmptyStr(c.introMd) ? null : '`introMd` must be a non-empty string.',
+      checkArray(c.categories, 'categories', (cat, p) =>
+        isObj(cat) && isNonEmptyStr(cat.id) && isNonEmptyStr(cat.label) && typeof cat.desc === 'string'
+          ? null
+          : `\`${p}\` must be { id, label, desc }.`,
+      ),
+      checkArray(c.items, 'items', (it, p) =>
+        isObj(it) &&
+        isNonEmptyStr(it.id) &&
+        isNonEmptyStr(it.scenario) &&
+        isNonEmptyStr(it.suggested) &&
+        isNonEmptyStr(it.rationale)
+          ? null
+          : `\`${p}\` must be { id, scenario, suggested, rationale } (all non-empty strings).`,
       ),
       isObj(c.takeaway) &&
       isNonEmptyStr((c.takeaway as Obj).title) &&

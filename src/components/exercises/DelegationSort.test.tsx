@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, within, act } from '@testing-library/react';
-import PredictionSort from './PredictionSort';
-import type { PredictionSortConfig } from '../../types';
+import DelegationSort from './DelegationSort';
+import type { DelegationSortConfig } from '../../types';
 
 const { recordLabSubmission, useAuth } = vi.hoisted(() => ({
   recordLabSubmission: vi.fn(async () => 'sub-1'),
@@ -16,55 +16,63 @@ beforeEach(() => {
   useAuth.mockReturnValue({ user: { id: 'u1' } });
 });
 
-const config: PredictionSortConfig = {
-  kind: 'prediction-sort',
-  introMd: 'Sort each task by what it feels like.',
-  bucketLabels: { lookup: 'Feels like looking it up', predict: 'Feels like making it up' },
-  items: [
-    { id: 'a', prompt: "What's the capital of France?", reveal: 'Predicted Paris.' },
-    { id: 'b', prompt: 'Give me three offsite ideas.', reveal: 'Plainly generated.' },
+const config: DelegationSortConfig = {
+  kind: 'delegation-sort',
+  introMd: 'Sort each task.',
+  categories: [
+    { id: 'full-ai', label: 'Full-AI', desc: 'end to end' },
+    { id: 'assisted', label: 'AI-assisted', desc: 'person checks' },
+    { id: 'human-only', label: 'Human-only', desc: 'person owns it' },
   ],
-  takeaway: { title: 'The twist', body: 'It was all prediction.' },
+  items: [
+    { id: 'a', scenario: 'Reformat a table.', suggested: 'full-ai', rationale: 'Mechanical.' },
+    { id: 'b', scenario: "Write a teammate's PIP.", suggested: 'human-only', rationale: 'Accountability.' },
+  ],
+  takeaway: { title: 'Who owns the call?', body: 'Ask first.' },
 };
 
-// Places every item into its lookup bucket by clicking the lookup-labelled button
-// inside each item's radiogroup.
+// Places every item into its first category (choice is irrelevant — nothing is scored).
 function placeAll() {
   for (const item of config.items) {
-    const group = screen.getByRole('radiogroup', { name: item.prompt });
-    fireEvent.click(within(group).getByRole('radio', { name: config.bucketLabels.lookup }));
+    const group = screen.getByRole('radiogroup', { name: item.scenario });
+    fireEvent.click(within(group).getAllByRole('radio')[0]);
   }
 }
 
-describe('PredictionSort', () => {
-  test('renders each item prompt and both bucket labels', () => {
-    render(<PredictionSort config={config} labId="c1-w1-lookup-vs-predict" />);
-    expect(screen.getByText("What's the capital of France?")).toBeTruthy();
-    expect(screen.getByText('Give me three offsite ideas.')).toBeTruthy();
-    // Bucket labels appear as radio options inside each item.
-    expect(screen.getAllByRole('radio', { name: 'Feels like looking it up' }).length).toBe(2);
+describe('DelegationSort', () => {
+  test('renders each scenario and all category labels as radios', () => {
+    render(<DelegationSort config={config} labId="c1-w2-delegation-sort" />);
+    expect(screen.getByText('Reformat a table.')).toBeTruthy();
+    expect(screen.getByText("Write a teammate's PIP.")).toBeTruthy();
+    // 3 categories × 2 items → each label appears as a radio twice
+    expect(screen.getAllByRole('radio', { name: 'Full-AI' }).length).toBe(2);
+    expect(screen.getAllByRole('radio', { name: 'Human-only' }).length).toBe(2);
   });
 
-  test('submit is disabled until every item is placed', () => {
-    render(<PredictionSort config={config} labId="c1-w1-lookup-vs-predict" />);
+  test('submit is disabled until every scenario is placed', () => {
+    render(<DelegationSort config={config} labId="c1-w2-delegation-sort" />);
     const submit = screen.getByRole('button', { name: /submit/i });
     expect((submit as HTMLButtonElement).disabled).toBe(true);
     placeAll();
     expect((submit as HTMLButtonElement).disabled).toBe(false);
   });
 
-  test('on submit: reveals notes + takeaway and records one submission', async () => {
-    render(<PredictionSort config={config} labId="c1-w1-lookup-vs-predict" />);
+  test('on submit: reveals the suggested call + rationale + takeaway and records once', async () => {
+    render(<DelegationSort config={config} labId="c1-w2-delegation-sort" />);
     placeAll();
     fireEvent.click(screen.getByRole('button', { name: /submit/i }));
     await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledTimes(1));
     expect(recordLabSubmission).toHaveBeenCalledWith('u1', expect.objectContaining({
-      labId: 'c1-w1-lookup-vs-predict',
+      labId: 'c1-w2-delegation-sort',
       status: 'submitted',
     }));
-    expect(screen.getByText(/it never looked anything up/i)).toBeTruthy();
-    expect(screen.getByText('Predicted Paris.')).toBeTruthy();
-    expect(screen.getByText('The twist')).toBeTruthy();
+    // Two reveals; the first item (full-ai) shows its label + rationale.
+    const reveals = screen.getAllByText(/A defensible call:/i);
+    expect(reveals).toHaveLength(2);
+    const firstReveal = reveals[0].closest('p');
+    expect(firstReveal?.textContent).toContain('Full-AI');
+    expect(firstReveal?.textContent).toContain('Mechanical.');
+    expect(screen.getByText('Who owns the call?')).toBeTruthy();
   });
 
   test('while the save is in flight: shows "Submitting…" and withholds "Try again"', async () => {
@@ -72,14 +80,14 @@ describe('PredictionSort', () => {
     recordLabSubmission.mockImplementationOnce(
       () => new Promise<string>((resolve) => { resolveSave = resolve; }),
     );
-    render(<PredictionSort config={config} labId="c1-w1-lookup-vs-predict" />);
+    render(<DelegationSort config={config} labId="c1-w2-delegation-sort" />);
     placeAll();
     fireEvent.click(screen.getByRole('button', { name: /submit/i }));
 
     // Reveal is instant, but the footer reflects the in-flight save: the "Submitting…"
     // spinner shows and "Try again" (and "Submit") are absent, so a reset can't race it.
     expect(await screen.findByText(/submitting/i)).toBeTruthy();
-    expect(screen.getByText('The twist')).toBeTruthy();
+    expect(screen.getByText('Who owns the call?')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /try again/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /^submit$/i })).toBeNull();
 
@@ -90,19 +98,19 @@ describe('PredictionSort', () => {
   });
 
   test('try again resets placements and hides the reveal', async () => {
-    render(<PredictionSort config={config} labId="c1-w1-lookup-vs-predict" />);
+    render(<DelegationSort config={config} labId="c1-w2-delegation-sort" />);
     placeAll();
     fireEvent.click(screen.getByRole('button', { name: /submit/i }));
-    await waitFor(() => expect(screen.getByText('The twist')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Who owns the call?')).toBeTruthy());
     // Wait for the save to settle so "Try again" has replaced the in-flight spinner.
     fireEvent.click(await screen.findByRole('button', { name: /try again/i }));
-    expect(screen.queryByText('The twist')).toBeNull();
+    expect(screen.queryByText('Who owns the call?')).toBeNull();
     expect((screen.getByRole('button', { name: /submit/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   test('signed-out: shows the sign-in prompt and does not record', async () => {
     useAuth.mockReturnValue({ user: null });
-    render(<PredictionSort config={config} labId="c1-w1-lookup-vs-predict" />);
+    render(<DelegationSort config={config} labId="c1-w2-delegation-sort" />);
     placeAll();
     fireEvent.click(screen.getByRole('button', { name: /submit/i }));
     expect(await screen.findByRole('alert')).toBeTruthy();

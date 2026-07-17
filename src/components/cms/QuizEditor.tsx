@@ -239,7 +239,7 @@ export default function QuizEditor({
                 value={q.question}
                 onChange={(e) => patchQuestion(qIdx, { question: e.target.value })}
                 rows={2}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-nava-green focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-nava-plum focus:outline-none"
               />
             </div>
 
@@ -255,7 +255,7 @@ export default function QuizEditor({
                     checked={q.correctIndex === oIdx}
                     onChange={() => patchQuestion(qIdx, { correctIndex: oIdx })}
                     aria-label={`Mark question ${qIdx + 1} option ${oIdx + 1} correct`}
-                    className="text-nava-green focus:ring-nava-green shrink-0"
+                    className="text-nava-green focus:ring-nava-plum shrink-0"
                   />
                   <input
                     type="text"
@@ -263,7 +263,7 @@ export default function QuizEditor({
                     onChange={(e) => setOption(qIdx, oIdx, e.target.value)}
                     aria-label={`Question ${qIdx + 1} option ${oIdx + 1}`}
                     placeholder={`Option ${oIdx + 1}`}
-                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-nava-green focus:outline-none"
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-nava-plum focus:outline-none"
                   />
                 </div>
               ))}
@@ -281,7 +281,7 @@ export default function QuizEditor({
                 value={q.explanation}
                 onChange={(e) => patchQuestion(qIdx, { explanation: e.target.value })}
                 rows={2}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-nava-green focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-nava-plum focus:outline-none"
               />
             </div>
           </fieldset>
@@ -319,7 +319,7 @@ export default function QuizEditor({
         <button
           onClick={handlePublish}
           disabled={busy !== null || !valid}
-          className="inline-flex items-center gap-2 rounded-xl bg-nava-green px-5 py-2 text-sm font-bold text-white hover:bg-nava-plum disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          className="inline-flex items-center gap-2 rounded-xl bg-nava-green px-5 py-2 text-sm font-bold text-white hover:bg-nava-green/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {busy === 'publish' ? (
             <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />

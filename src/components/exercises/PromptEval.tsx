@@ -150,10 +150,10 @@ export default function PromptEval({ config, labId }: Props) {
   };
 
   return (
-    <div className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-6" id="prompt-eval">
-      <div className="flex items-center justify-between gap-3 border-b border-nava-mint pb-6">
+    <div className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-6" id="prompt-eval">
+      <div className="flex items-center justify-between gap-3 border-b border-nava-plum/20 pb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-nava-mint rounded-xl flex items-center justify-center text-nava-green">
+          <div className="w-10 h-10 bg-nava-plum/10 rounded-xl flex items-center justify-center text-nava-plum">
             <FlaskConical className="w-5 h-5" />
           </div>
           <div>
@@ -248,13 +248,13 @@ export default function PromptEval({ config, labId }: Props) {
           rows={8}
           aria-label="Your reusable prompt"
           placeholder="Rules first (length · format · must-include · must-not-invent), then the task…"
-          className="w-full rounded-2xl border-2 border-gray-100 focus:border-nava-green focus:outline-none p-4 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
+          className="w-full rounded-2xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none p-4 text-sm text-gray-700 leading-relaxed resize-y transition-colors"
         />
 
         <button
           onClick={handleRun}
           disabled={!canRun}
-          className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg shadow-nava-green/20 hover:bg-nava-plum disabled:opacity-50 transition-all active:scale-95"
+          className="flex items-center gap-2 px-6 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg shadow-nava-green/20 hover:bg-nava-green/90 disabled:opacity-50 transition-all active:scale-95"
         >
           {running ? (
             <>

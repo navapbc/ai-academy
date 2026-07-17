@@ -77,7 +77,7 @@ export default function StaffArea({ role }: { role: Role }) {
   return (
     <div className="max-w-5xl mx-auto space-y-10">
       <header className="space-y-2">
-        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-green">
+        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-plum">
           {isAdmin ? 'Admin' : 'Champion'} area
         </span>
         <h1 className="text-2xl font-bold text-gray-900" tabIndex={-1}>
@@ -97,7 +97,7 @@ export default function StaffArea({ role }: { role: Role }) {
             onClick={() => setShowCohorts(true)}
             className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
           >
-            <Users className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+            <Users className="w-5 h-5 text-nava-plum shrink-0 mt-0.5" aria-hidden="true" />
             <div className="min-w-0 flex-1">
               <h2 className="font-semibold text-gray-900">Cohort management</h2>
               <p className="mt-1 text-sm text-gray-600">
@@ -121,7 +121,7 @@ export default function StaffArea({ role }: { role: Role }) {
             onClick={() => setShowCms(true)}
             className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
           >
-            <FileText className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+            <FileText className="w-5 h-5 text-nava-plum shrink-0 mt-0.5" aria-hidden="true" />
             <div className="min-w-0 flex-1">
               <h2 className="font-semibold text-gray-900">Content management</h2>
               <p className="mt-1 text-sm text-gray-600">
@@ -145,7 +145,7 @@ export default function StaffArea({ role }: { role: Role }) {
             onClick={() => setShowCourses(true)}
             className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
           >
-            <BookOpen className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+            <BookOpen className="w-5 h-5 text-nava-plum shrink-0 mt-0.5" aria-hidden="true" />
             <div className="min-w-0 flex-1">
               <h2 className="font-semibold text-gray-900">Course management</h2>
               <p className="mt-1 text-sm text-gray-600">
@@ -170,7 +170,7 @@ export default function StaffArea({ role }: { role: Role }) {
             onClick={() => setShowUsage(true)}
             className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
           >
-            <Activity className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+            <Activity className="w-5 h-5 text-nava-plum shrink-0 mt-0.5" aria-hidden="true" />
             <div className="min-w-0 flex-1">
               <h2 className="font-semibold text-gray-900">Usage monitoring</h2>
               <p className="mt-1 text-sm text-gray-600">
@@ -193,7 +193,7 @@ export default function StaffArea({ role }: { role: Role }) {
           onClick={() => setShowReviewQueue(true)}
           className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
         >
-          <ClipboardList className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+          <ClipboardList className="w-5 h-5 text-nava-plum shrink-0 mt-0.5" aria-hidden="true" />
           <div className="min-w-0 flex-1">
             <h2 className="font-semibold text-gray-900">Review queue</h2>
             <p className="mt-1 text-sm text-gray-600">
@@ -220,7 +220,7 @@ function ComingSoon({
 }) {
   return (
     <div className="flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-4">
-      <Icon className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+      <Icon className="w-5 h-5 text-nava-plum shrink-0 mt-0.5" aria-hidden="true" />
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <h2 className="font-semibold text-gray-900">{title}</h2>

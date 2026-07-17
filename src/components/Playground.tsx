@@ -180,7 +180,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
             <select
               value={model}
               onChange={e => setModel(e.target.value)}
-              className="bg-transparent border-none outline-none text-xs font-bold text-nava-green cursor-pointer"
+              className="bg-transparent border-none outline-none text-xs font-bold text-gray-100 cursor-pointer"
             >
               {CLAUDE_MODELS.map(m => (
                 <option key={m.id} value={m.id} className="text-gray-900">{m.label}</option>
@@ -240,7 +240,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
                   value={systemPrompt}
                   onChange={e => setSystemPrompt(e.target.value)}
                   rows={4}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs font-mono text-gray-700 focus:ring-2 focus:ring-nava-green focus:border-transparent outline-none transition-all resize-none"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs font-mono text-gray-700 focus:ring-2 focus:ring-nava-plum focus:border-transparent outline-none transition-all resize-none"
                   aria-label="System prompt"
                   placeholder="Enter a system prompt…"
                 />
@@ -277,9 +277,9 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
                   <button
                     key={p.label}
                     onClick={() => handleSend(p.text)}
-                    className="text-left p-3 bg-gray-50 hover:bg-nava-mint border border-gray-100 hover:border-nava-green/20 rounded-2xl transition-all group"
+                    className="text-left p-3 bg-gray-50 hover:bg-nava-plum/10 border border-gray-100 hover:border-nava-plum/20 rounded-2xl transition-all group"
                   >
-                    <span className="text-[10px] font-bold text-nava-plum/60 group-hover:text-nava-green uppercase tracking-wider block mb-1">{p.label}</span>
+                    <span className="text-[10px] font-bold text-nava-plum/60 group-hover:text-nava-plum uppercase tracking-wider block mb-1">{p.label}</span>
                     <span className="text-xs text-gray-600 leading-relaxed line-clamp-2">{p.text}</span>
                   </button>
                 ))}
@@ -343,7 +343,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
             rows={3}
             aria-label="Message"
             placeholder="Type a message… (⌘↵ to send)"
-            className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 pr-16 text-sm focus:ring-2 focus:ring-nava-green focus:border-transparent outline-none transition-all resize-none"
+            className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 pr-16 text-sm focus:ring-2 focus:ring-nava-plum focus:border-transparent outline-none transition-all resize-none"
           />
           {isLoading ? (
             <button
@@ -358,7 +358,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
               onClick={() => handleSend()}
               disabled={!userInput.trim()}
               aria-label="Send message"
-              className="absolute bottom-4 right-4 p-3 bg-nava-green text-white rounded-xl shadow-lg hover:bg-nava-plum disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
+              className="absolute bottom-4 right-4 p-3 bg-nava-green text-white rounded-xl shadow-lg hover:bg-nava-green/90 disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
             >
               <Send className="w-4 h-4" />
             </button>
