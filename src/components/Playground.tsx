@@ -180,7 +180,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
             <select
               value={model}
               onChange={e => setModel(e.target.value)}
-              className="bg-transparent border-none outline-none text-xs font-bold text-nava-plum cursor-pointer"
+              className="bg-transparent border-none outline-none text-xs font-bold text-gray-100 cursor-pointer"
             >
               {CLAUDE_MODELS.map(m => (
                 <option key={m.id} value={m.id} className="text-gray-900">{m.label}</option>
