@@ -8,7 +8,7 @@
 -- Copy source: the AI Academy Outline (program design doc) — Week 0 set-up,
 -- Week 1 "Break Claude on Purpose" (pre-reveal: says "Claude", never "LLM"),
 -- Week 2 "Ground & Scope", Weeks 3–4 pod activities incl. the "Walk the
--- Workflow" Marina delivery scenario, plus one public custom resource lesson.
+-- Workflow" Marina delivery scenario, plus three public custom resource lessons.
 --
 -- Mechanics:
 --   - modules: INSERT … ON CONFLICT (cell_id) DO NOTHING (idempotent, D-25).
@@ -939,8 +939,8 @@ on conflict (cell_id) do nothing;
 
 -- ---------------------------------------------------------------------------
 -- Week membership (fixed week uuids from 20260715000000_course_structure.sql).
--- The custom resource lesson is deliberately NOT assigned — it renders in the
--- "Resources & additional lessons" group (R13).
+-- The custom resource lessons are deliberately NOT assigned — they render in
+-- the "Resources & additional lessons" group (R13).
 -- ---------------------------------------------------------------------------
 insert into public.course_week_modules (week_id, cell_id, sort_order)
 values
