@@ -25,7 +25,7 @@ export default function App() {
 
   // Page Title
   useEffect(() => {
-    document.title = `${BRANDING.name} AI Training`;
+    document.title = `${BRANDING.name} — Training`;
   }, []);
 
   if (loading) {
