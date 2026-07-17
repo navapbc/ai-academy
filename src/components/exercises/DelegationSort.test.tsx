@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within, act } from '@testing-library/react';
 import DelegationSort from './DelegationSort';
 import type { DelegationSortConfig } from '../../types';
 
@@ -75,12 +75,35 @@ describe('DelegationSort', () => {
     expect(screen.getByText('Who owns the call?')).toBeTruthy();
   });
 
+  test('while the save is in flight: shows "Submitting…" and withholds "Try again"', async () => {
+    let resolveSave!: (v: string) => void;
+    recordLabSubmission.mockImplementationOnce(
+      () => new Promise<string>((resolve) => { resolveSave = resolve; }),
+    );
+    render(<DelegationSort config={config} labId="c1-w2-delegation-sort" />);
+    placeAll();
+    fireEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    // Reveal is instant, but the footer reflects the in-flight save: the "Submitting…"
+    // spinner shows and "Try again" (and "Submit") are absent, so a reset can't race it.
+    expect(await screen.findByText(/submitting/i)).toBeTruthy();
+    expect(screen.getByText('Who owns the call?')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /try again/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^submit$/i })).toBeNull();
+
+    // Once the save settles, "Try again" appears and the spinner is gone.
+    await act(async () => { resolveSave('sub-1'); });
+    expect(await screen.findByRole('button', { name: /try again/i })).toBeTruthy();
+    expect(screen.queryByText(/submitting/i)).toBeNull();
+  });
+
   test('try again resets placements and hides the reveal', async () => {
     render(<DelegationSort config={config} labId="c1-w2-delegation-sort" />);
     placeAll();
     fireEvent.click(screen.getByRole('button', { name: /submit/i }));
     await waitFor(() => expect(screen.getByText('Who owns the call?')).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+    // Wait for the save to settle so "Try again" has replaced the in-flight spinner.
+    fireEvent.click(await screen.findByRole('button', { name: /try again/i }));
     expect(screen.queryByText('Who owns the call?')).toBeNull();
     expect((screen.getByRole('button', { name: /submit/i }) as HTMLButtonElement).disabled).toBe(true);
   });

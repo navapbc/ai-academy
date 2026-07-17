@@ -162,7 +162,24 @@ export default function PredictionSort({ config, labId }: Props) {
         )}
       </AnimatePresence>
 
-      {graded ? (
+      {/* The reveal (graded) shows immediately on submit, but the footer reflects the
+          save state: while the submission is in flight we show the "Submitting…" spinner
+          and withhold "Try again", so a reset can't race the async save (DATA-04). */}
+      {saving ? (
+        <div className="flex justify-end border-t border-gray-100 pt-6">
+          <button
+            type="button"
+            disabled
+            aria-busy="true"
+            className="flex items-center gap-2 px-10 py-3 bg-nava-green text-white rounded-xl font-bold shadow-lg shadow-nava-green/20 opacity-50 transition-all"
+          >
+            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+              <Sparkles className="w-4 h-4" />
+            </motion.div>
+            Submitting…
+          </button>
+        </div>
+      ) : graded ? (
         <div className="flex justify-end border-t border-gray-100 pt-6">
           <button
             onClick={handleRetry}
@@ -175,19 +192,10 @@ export default function PredictionSort({ config, labId }: Props) {
         <div className="flex justify-end border-t border-gray-100 pt-6">
           <button
             onClick={handleSubmit}
-            disabled={!allPlaced || saving}
+            disabled={!allPlaced}
             className="flex items-center gap-2 px-10 py-3 bg-nava-green text-white rounded-xl font-bold shadow-lg shadow-nava-green/20 disabled:opacity-50 transition-all active:scale-95"
           >
-            {saving ? (
-              <>
-                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
-                  <Sparkles className="w-4 h-4" />
-                </motion.div>
-                Submitting…
-              </>
-            ) : (
-              'Submit'
-            )}
+            Submit
           </button>
         </div>
       )}
