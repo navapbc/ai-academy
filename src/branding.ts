@@ -1,6 +1,6 @@
 export const BRANDING = {
-  name: "Nava Local AI Academy",
-  fullName: "Nava Local AI Academy",
+  name: "Nava AI Academy",
+  fullName: "Nava AI Academy",
   tagline: "Control the Model, Own the Data",
   mission: "In this sprint, we aren't just learning *about* AI—we are learning to control it.",
   slug: "local-harness",

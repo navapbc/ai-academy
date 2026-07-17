@@ -21,13 +21,13 @@ const STRUCTURE: StructureItem[] = [
     icon: GraduationCap,
     title: 'Course weeks',
     desc: 'The champion-led cohort path — a guided, sequenced Course 1 program that builds your AI judgment step by step.',
-    chipClass: 'bg-nava-mint text-nava-green',
+    chipClass: 'bg-nava-plum/10 text-nava-plum',
   },
   {
     icon: BookOpen,
     title: 'Supplemental coursework',
     desc: 'The AI Literacy Skills Matrix — focused lessons you can explore any time, in any order. Nothing is locked.',
-    chipClass: 'bg-nava-mint text-nava-plum',
+    chipClass: 'bg-nava-plum/10 text-nava-plum',
   },
   {
     icon: Library,
@@ -52,7 +52,7 @@ export default function LandingPage({ onEnter }: Props) {
           <div className="relative mx-auto h-20 w-20">
             {/* Offset mint tile behind the badge for a bit of layered depth. */}
             <div
-              className="absolute inset-0 translate-x-2 translate-y-2 rounded-2xl bg-nava-mint"
+              className="absolute inset-0 translate-x-2 translate-y-2 rounded-2xl bg-nava-plum/10"
               aria-hidden="true"
             />
             <div className="relative flex h-20 w-20 -rotate-3 items-center justify-center rounded-2xl border-2 border-nava-gold bg-nava-navy text-nava-gold shadow-lg">
@@ -78,22 +78,22 @@ export default function LandingPage({ onEnter }: Props) {
           style={{ animationDelay: '120ms' }}
         >
           <div className="flex items-center justify-center gap-4">
-            <span className="h-px w-10 bg-nava-mint" aria-hidden="true" />
+            <span className="h-px w-10 bg-nava-plum/10" aria-hidden="true" />
             <h2 className="text-xs font-bold uppercase tracking-[0.25em] text-gray-500">
               How it&apos;s organized
             </h2>
-            <span className="h-px w-10 bg-nava-mint" aria-hidden="true" />
+            <span className="h-px w-10 bg-nava-plum/10" aria-hidden="true" />
           </div>
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             {STRUCTURE.map(({ icon: Icon, title, desc, chipClass }, i) => (
               <div
                 key={title}
-                className="animate-fade-up-in group relative space-y-4 rounded-3xl border-2 border-nava-mint bg-white p-6 pt-9 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-nava-green hover:shadow-xl"
+                className="animate-fade-up-in group relative space-y-4 rounded-3xl border-2 border-nava-plum/20 bg-white p-6 pt-9 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-nava-plum hover:shadow-xl"
                 style={{ animationDelay: `${200 + i * 90}ms` }}
               >
                 <span
-                  className="pointer-events-none absolute -top-3 left-6 select-none font-serif text-5xl font-bold text-nava-mint"
+                  className="pointer-events-none absolute -top-3 left-6 select-none font-serif text-5xl font-bold text-nava-plum/20"
                   aria-hidden="true"
                 >
                   0{i + 1}
@@ -111,7 +111,7 @@ export default function LandingPage({ onEnter }: Props) {
         </section>
 
         <section
-          className="animate-fade-up-in rounded-3xl border-2 border-nava-mint bg-white p-6 sm:p-8"
+          className="animate-fade-up-in rounded-3xl border-2 border-nava-plum/20 bg-white p-6 sm:p-8"
           style={{ animationDelay: '480ms' }}
         >
           <div className="mb-6 flex items-center gap-2">
@@ -121,7 +121,7 @@ export default function LandingPage({ onEnter }: Props) {
           <ol className="list-none space-y-5">
             <li className="flex items-start gap-4">
               <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-nava-mint font-serif text-sm font-bold text-nava-green"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-nava-plum/10 font-serif text-sm font-bold text-nava-plum"
                 aria-hidden="true"
               >
                 1
@@ -133,7 +133,7 @@ export default function LandingPage({ onEnter }: Props) {
             </li>
             <li className="flex items-start gap-4">
               <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-nava-mint font-serif text-sm font-bold text-nava-green"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-nava-plum/10 font-serif text-sm font-bold text-nava-plum"
                 aria-hidden="true"
               >
                 2
@@ -145,7 +145,7 @@ export default function LandingPage({ onEnter }: Props) {
             </li>
             <li className="flex items-start gap-4">
               <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-nava-mint font-serif text-sm font-bold text-nava-green"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-nava-plum/10 font-serif text-sm font-bold text-nava-plum"
                 aria-hidden="true"
               >
                 3
