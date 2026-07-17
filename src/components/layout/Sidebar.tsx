@@ -100,18 +100,18 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
         onClick={() => onModuleSelect(module.id)}
         className={`
           w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all group cursor-pointer
-          ${isActive ? 'bg-nava-mint text-nava-green border-l-4 border-nava-green shadow-sm' : 'hover:bg-gray-50 text-gray-600'}
+          ${isActive ? 'bg-nava-plum/10 text-nava-plum border-l-4 border-nava-plum shadow-sm' : 'hover:bg-gray-50 text-gray-600'}
         `}
         id={`module-${module.id}`}
       >
         <div className={`
           flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border transition-colors
-          ${isCompleted ? 'bg-nava-green border-nava-green' : 'border-gray-300 group-hover:border-nava-green/30'}
+          ${isCompleted ? 'bg-nava-green border-nava-green' : 'border-gray-300 group-hover:border-nava-plum/40'}
         `}>
           {isCompleted ? (
             <CheckCircle2 className="w-3.5 h-3.5 text-white" />
           ) : (
-            <div className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-nava-green/20" />
+            <div className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-nava-plum/20" />
           )}
         </div>
         {/* Matrix cell ids ("1.4") are meaningful learner-facing shorthand; course/custom
@@ -145,7 +145,7 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
             className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-gray-50 transition-colors"
           >
             <span className="min-w-0">
-              <span className="block text-[10px] font-bold text-nava-green tracking-widest uppercase">{section.week}</span>
+              <span className="block text-[10px] font-bold text-gray-500 tracking-widest uppercase">{section.week}</span>
               <span className="block font-semibold text-sm text-gray-900 truncate">{section.title}</span>
             </span>
             <span className="flex items-center gap-2 shrink-0">
@@ -199,7 +199,7 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
                 onClick={() => onViewChange('playground')}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all
                   ${activeView === 'playground'
-                    ? 'bg-nava-mint text-nava-green border-l-4 border-nava-green shadow-sm font-bold'
+                    ? 'bg-nava-plum/10 text-nava-plum border-l-4 border-nava-plum shadow-sm font-bold'
                     : 'hover:bg-gray-50 text-gray-600'
                   }`}
               >
@@ -213,7 +213,7 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
                 onClick={() => onViewChange('learning')}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all
                   ${activeView === 'learning'
-                    ? 'bg-nava-mint text-nava-green border-l-4 border-nava-green shadow-sm font-bold'
+                    ? 'bg-nava-plum/10 text-nava-plum border-l-4 border-nava-plum shadow-sm font-bold'
                     : 'hover:bg-gray-50 text-gray-600'
                   }`}
               >
@@ -229,7 +229,7 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
                 onClick={() => onViewChange('progress')}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all
                   ${activeView === 'progress'
-                    ? 'bg-nava-mint text-nava-green border-l-4 border-nava-green shadow-sm font-bold'
+                    ? 'bg-nava-plum/10 text-nava-plum border-l-4 border-nava-plum shadow-sm font-bold'
                     : 'hover:bg-gray-50 text-gray-600'
                   }`}
               >
@@ -247,7 +247,7 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
                   onClick={() => onViewChange('staff')}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all
                     ${activeView === 'staff'
-                      ? 'bg-nava-mint text-nava-green border-l-4 border-nava-green shadow-sm font-bold'
+                      ? 'bg-nava-plum/10 text-nava-plum border-l-4 border-nava-plum shadow-sm font-bold'
                       : 'hover:bg-gray-50 text-gray-600'
                     }`}
                 >

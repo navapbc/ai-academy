@@ -246,7 +246,7 @@ export default function LocalTutorFAB({ currentModule, phases }: Props) {
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.94 }}
         className={`relative w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl transition-colors ${
-          isOpen ? 'bg-gray-800 shadow-gray-900/30' : 'bg-nava-green hover:bg-nava-plum shadow-nava-green/40'
+          isOpen ? 'bg-gray-800 shadow-gray-900/30' : 'bg-nava-plum hover:opacity-90 shadow-nava-plum/40'
         }`}
       >
         <AnimatePresence mode="wait">
