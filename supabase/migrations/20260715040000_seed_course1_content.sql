@@ -184,7 +184,7 @@ values
    ARRAY['Description', 'Diligence']::text[], 'performance-task', 'na', 903,
    $md$Part of the Week 2 live session — you'll run this in breakout rooms with your group.
 
-One of the best ways to understand foundational prompting strategies is to test them in realistic scenarios. You'll run the same task two ways and compare the answers: the two Claude chats below get the **same prompt**, but only the second one is given the source material shown here.
+This activity is about the first habit — **grounding**. You'll run the same task two ways and compare the answers: the two Claude chats below get the **same prompt**, but only the second one is given the source material shown here. (Scoping, the companion habit, comes up in the live session — and the *Reusing context: Claude Projects* resource shows how to save grounding and scoping together.)
 
 ## Source material
 
@@ -222,7 +222,7 @@ Use this policy summary to verify the responses. (It's a realistic but fictional
     "Summarize what changed in Meridian State's rule for reporting part-time earnings while on unemployment benefits, in plain language for claimants.",
     "List every specific number a Meridian State claimant needs to know under the updated part-time earnings rule, and what each one means."
   ],
-  "reflectionMd": "**Reflect on or discuss with your group:**\n\n1. What's different about the two responses?\n2. Verify a few critical pieces of content in both responses against the source material in the lesson above. What do you notice about the accuracy between the responses?\n3. What was different about what each pane had to work from, and how do you think that impacted the responses?\n\nIf you have time, feel free to try some of the other suggested prompts or make up your own. Direct discussion of foundational prompting strategies will be discussed later in the Week 2 full-cohort live training."
+  "reflectionMd": "**Reflect on or discuss with your group:**\n\n1. What's different about the two responses?\n2. Verify a few critical pieces of content in both responses against the source material in the lesson above. What do you notice about the accuracy between the responses?\n3. What was different about what each pane had to work from, and how do you think that impacted the responses?\n\n**Keep in mind:** Grounding lowers the odds of a wrong answer — it doesn't remove the need to verify. A grounded answer is still an unverified answer until you check it against the source.\n\nIf you have time, feel free to try some of the other suggested prompts or make up your own. Direct discussion of foundational prompting strategies will be discussed later in the Week 2 full-cohort live training."
 }$json$::jsonb)
 on conflict (cell_id) do nothing;
 
@@ -625,6 +625,65 @@ When in doubt about what's appropriate on a given Nava program or contract, chec
    null)
 on conflict (cell_id) do nothing;
 
+-- custom-grounding-with-connectors — Grounding with connectors
+insert into public.modules
+  (cell_id, stage, origin, visibility, status, title, type, dimension,
+   evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
+values
+  ('custom-grounding-with-connectors', null, 'custom', 'public', 'published', 'Grounding with connectors', 'content',
+   ARRAY[]::text[], 'reflection', 'na', 953,
+   $md$Grounding means giving Claude curated source material to predict from — the single most effective way to lower the odds of a confident wrong answer. Pasting text into the chat is one way to ground; **connectors** are another, for when the source already lives in a system you use.
+
+## What connectors do
+
+Instead of copying everything into the chat yourself, a connector lets Claude pull from a connected space you've granted access to — for example **Confluence, Slack, or your Google Drive**. On Nava's Claude, connectors let you ground a conversation in real content without hunting it down and pasting it in first.
+
+## Choosing good sources
+
+Grounding only helps if the source is worth grounding on. Aim for sources that are:
+
+- **Safe to share** with AI — check Nava's AI Tool Policy and any program-level restrictions first.
+- **Accurate** — you're anchoring the prediction to this, so a wrong source produces a confidently wrong answer.
+- **Narrow** — point Claude at the specific document or space that matters, not "everything." Aiming it at an entire wiki or drive gives it too much to sift and weakens the grounding.
+
+## Retrieval isn't fact-checking
+
+A connector grounds the prediction — it does not turn Claude into a fact-checker. Claude can still misread a source, pull the wrong passage, or lean on a source that is itself out of date. Retrieval lowers the odds of a bad answer; it doesn't remove the need to verify what matters against the source of truth.
+
+You also control which tools and connectors Claude may use on its own versus which need your approval — see **Controlling what Claude can do: tools & permissions**.$md$,
+   null)
+on conflict (cell_id) do nothing;
+
+-- custom-reusing-context-claude-projects — Reusing context: Claude Projects
+insert into public.modules
+  (cell_id, stage, origin, visibility, status, title, type, dimension,
+   evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
+values
+  ('custom-reusing-context-claude-projects', null, 'custom', 'public', 'published', 'Reusing context: Claude Projects', 'content',
+   ARRAY[]::text[], 'reflection', 'na', 954,
+   $md$When the same context comes up again and again — the same source documents, the same standing instructions — you don't have to set it up in every new chat. **Projects** let you save that context once and reuse it.
+
+## What a Project is
+
+A Project is a saved workspace that keeps instructions and reference files attached. Every chat you start inside the Project already has your context, so you're not re-pasting sources or re-explaining what you want each time.
+
+## When to use one
+
+Reach for a Project when:
+
+- You do a **recurring task** — the same kind of drafting, review, or analysis on a regular basis.
+- The **same grounding and scoping apply across many chats** — one set of sources and instructions you'd otherwise repeat.
+
+## Grounding and scoping, saved once
+
+A Project is where the two habits come together. Put your curated sources (grounding) and your standing instructions — tone, format, what to avoid (scoping) — into the Project once, and every new chat inside it starts from that footing.
+
+## Still start fresh chats per task
+
+A Project doesn't change how the context window works. Each chat inside it still fills up as it goes, so keep the habit of starting a new chat at each logical breakpoint — you just won't lose your saved sources and instructions when you do. For why that matters, see **How Claude works: tokens & context windows**.$md$,
+   null)
+on conflict (cell_id) do nothing;
+
 -- c1-w1-lookup-vs-predict — Lookup or Predict?
 insert into public.modules
   (cell_id, stage, origin, visibility, status, title, type, dimension,
@@ -759,21 +818,23 @@ insert into public.modules
 values
   ('c1-w5-classify-route', null, 'course', 'program', 'published', 'Classify & Route: What Goes Where?', 'lab',
    ARRAY['Diligence']::text[], 'performance-task', 'na', 941,
-   $md$Part of the Week 5 live session — run this in breakout rooms with your group. Before you route anything to a tool, you have to classify it. For each artifact below, pick its **data class**, then pick the **right tool** for that class (or no external tool at all). Be ready to defend each call in a sentence or two.$md$,
+   $md$Part of the Week 5 live session — run this in breakout rooms with your group. Before you route anything to a tool, you have to classify it. For each artifact below, pick its **data class**, then pick the **right tool** for that class (or no external tool at all). Be ready to defend each call in a sentence or two.
+
+**A note on this guidance:** Nava's data-class guidance is still being developed — treat it as a way to reason about what's safe to share, not as published policy. Your contract's rules always supersede it, and when you're unsure what class something is, the safe move is **no external tool** until you confirm with your program lead.$md$,
    $json${
   "kind": "data-classifier",
   "tools": [
     {
       "id": "enterprise",
-      "label": "Enterprise Claude (Nava-contracted, data-protected)"
+      "label": "Managed all-staff tool (Claude / Gemini / Copilot)"
     },
     {
       "id": "local",
-      "label": "Local / no external AI tool"
+      "label": "No tool / local (no external AI)"
     },
     {
       "id": "consumer",
-      "label": "Consumer chatbot (e.g., personal ChatGPT)"
+      "label": "Unsanctioned / consumer tool (e.g., personal ChatGPT)"
     }
   ],
   "classes": [
@@ -787,13 +848,13 @@ values
       "text": "A Slack message that includes a client's name and a detail from their case.",
       "dataClass": "Regulated (PII/PHI/CUI)",
       "tool": "local",
-      "why": "A client's name plus a case detail is regulated PII/PHI. It doesn't belong in any external tool — use a local/no-external path, or fully redact the identifiers first."
+      "why": "A client's name plus a case detail is regulated PII/PHI. It doesn't belong in any external tool — keep it in a local/no-external path unless you have fully and verifiably de-identified it yourself first (a redaction you didn't do and can't verify doesn't count — see the next item)."
     },
     {
       "text": "A benefits determination letter with the name, address, and case number already redacted.",
-      "dataClass": "Confidential",
-      "tool": "enterprise",
-      "why": "With the identifiers redacted, this drops to confidential program content. The Nava-contracted, data-protected tool is cleared for it; a consumer chatbot is not."
+      "dataClass": "Regulated (PII/PHI/CUI)",
+      "tool": "local",
+      "why": "Redaction is not reclassification. A redaction already stamped on a document you received isn't something you can trust — visible redactions can be reversed by a determined actor, and details beyond the obvious identifiers can still be linkable. Treat it as regulated: no external tool by default, and check the contract before using even a managed tool."
     },
     {
       "text": "A comment you're drafting on a public open-source pull request.",
@@ -815,9 +876,9 @@ values
     },
     {
       "text": "A blog post draft written for publication on Nava's public site.",
-      "dataClass": "Public",
+      "dataClass": "Internal",
       "tool": "enterprise",
-      "why": "A draft written for Nava's public site is destined to be public — safe for the approved tool."
+      "why": "A draft isn't public until it's actually posted — \"will be public\" is not \"is public.\" It's Internal for now (low sensitivity), so the managed all-staff tool is fine, but don't treat unpublished work as already cleared."
     }
   ]
 }$json$::jsonb)

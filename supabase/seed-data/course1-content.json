@@ -110,7 +110,7 @@
       "dimension": ["Description", "Diligence"],
       "evidence_type": "performance-task",
       "sort_order": 903,
-      "body_md": "Part of the Week 2 live session — you'll run this in breakout rooms with your group.\n\nOne of the best ways to understand foundational prompting strategies is to test them in realistic scenarios. You'll run the same task two ways and compare the answers: the two Claude chats below get the **same prompt**, but only the second one is given the source material shown here.\n\n## Source material\n\nUse this policy summary to verify the responses. (It's a realistic but fictional example written for this exercise, so it is safe to share with AI.)\n\n> ### Meridian State Department of Labor — Policy Bulletin 26-04\n> **Subject:** Change to how claimants report part-time earnings while receiving unemployment benefits\n> **Effective:** August 1, 2026\n>\n> **What changed**\n>\n> 1. **Earnings disregard.** Under the old rule, the first $50 of weekly gross earnings was disregarded before benefits were reduced. Under the new rule, the disregard is **30% of the claimant's weekly benefit amount (WBA)**, rounded to the nearest dollar.\n> 2. **Benefit reduction.** Earnings above the disregard reduce the weekly benefit **dollar for dollar** (unchanged).\n> 3. **When to report.** Claimants must now report gross earnings **for the week the work was performed**, not the week they are paid.\n> 4. **Eligibility ceiling.** A claimant earning **more than 1.5× their WBA** in a week is ineligible for benefits for that week (previously 1.25×).\n> 5. **How to report.** Earnings are reported in the claimant portal during the weekly certification. Paper and phone reporting remain available.\n>\n> Claimants who under-report or late-report earnings may have to repay benefits. Honest mistakes corrected within 30 days are not treated as fraud.",
+      "body_md": "Part of the Week 2 live session — you'll run this in breakout rooms with your group.\n\nThis activity is about the first habit — **grounding**. You'll run the same task two ways and compare the answers: the two Claude chats below get the **same prompt**, but only the second one is given the source material shown here. (Scoping, the companion habit, comes up in the live session — and the *Reusing context: Claude Projects* resource shows how to save grounding and scoping together.)\n\n## Source material\n\nUse this policy summary to verify the responses. (It's a realistic but fictional example written for this exercise, so it is safe to share with AI.)\n\n> ### Meridian State Department of Labor — Policy Bulletin 26-04\n> **Subject:** Change to how claimants report part-time earnings while receiving unemployment benefits\n> **Effective:** August 1, 2026\n>\n> **What changed**\n>\n> 1. **Earnings disregard.** Under the old rule, the first $50 of weekly gross earnings was disregarded before benefits were reduced. Under the new rule, the disregard is **30% of the claimant's weekly benefit amount (WBA)**, rounded to the nearest dollar.\n> 2. **Benefit reduction.** Earnings above the disregard reduce the weekly benefit **dollar for dollar** (unchanged).\n> 3. **When to report.** Claimants must now report gross earnings **for the week the work was performed**, not the week they are paid.\n> 4. **Eligibility ceiling.** A claimant earning **more than 1.5× their WBA** in a week is ineligible for benefits for that week (previously 1.25×).\n> 5. **How to report.** Earnings are reported in the claimant portal during the weekly certification. Paper and phone reporting remain available.\n>\n> Claimants who under-report or late-report earnings may have to repay benefits. Honest mistakes corrected within 30 days are not treated as fraud.",
       "lab_config_json": {
         "kind": "chat-compare",
         "title": "Ground & scope for improvement",
@@ -130,7 +130,7 @@
           "Summarize what changed in Meridian State's rule for reporting part-time earnings while on unemployment benefits, in plain language for claimants.",
           "List every specific number a Meridian State claimant needs to know under the updated part-time earnings rule, and what each one means."
         ],
-        "reflectionMd": "**Reflect on or discuss with your group:**\n\n1. What's different about the two responses?\n2. Verify a few critical pieces of content in both responses against the source material in the lesson above. What do you notice about the accuracy between the responses?\n3. What was different about what each pane had to work from, and how do you think that impacted the responses?\n\nIf you have time, feel free to try some of the other suggested prompts or make up your own. Direct discussion of foundational prompting strategies will be discussed later in the Week 2 full-cohort live training."
+        "reflectionMd": "**Reflect on or discuss with your group:**\n\n1. What's different about the two responses?\n2. Verify a few critical pieces of content in both responses against the source material in the lesson above. What do you notice about the accuracy between the responses?\n3. What was different about what each pane had to work from, and how do you think that impacted the responses?\n\n**Keep in mind:** Grounding lowers the odds of a wrong answer — it doesn't remove the need to verify. A grounded answer is still an unverified answer until you check it against the source.\n\nIf you have time, feel free to try some of the other suggested prompts or make up your own. Direct discussion of foundational prompting strategies will be discussed later in the Week 2 full-cohort live training."
       }
     },
     {
@@ -426,6 +426,34 @@
       "lab_config_json": null
     },
     {
+      "cell_id": "custom-grounding-with-connectors",
+      "week": null,
+      "week_sort_order": null,
+      "origin": "custom",
+      "visibility": "public",
+      "title": "Grounding with connectors",
+      "type": "content",
+      "dimension": [],
+      "evidence_type": "reflection",
+      "sort_order": 953,
+      "body_md": "Grounding means giving Claude curated source material to predict from — the single most effective way to lower the odds of a confident wrong answer. Pasting text into the chat is one way to ground; **connectors** are another, for when the source already lives in a system you use.\n\n## What connectors do\n\nInstead of copying everything into the chat yourself, a connector lets Claude pull from a connected space you've granted access to — for example **Confluence, Slack, or your Google Drive**. On Nava's Claude, connectors let you ground a conversation in real content without hunting it down and pasting it in first.\n\n## Choosing good sources\n\nGrounding only helps if the source is worth grounding on. Aim for sources that are:\n\n- **Safe to share** with AI — check Nava's AI Tool Policy and any program-level restrictions first.\n- **Accurate** — you're anchoring the prediction to this, so a wrong source produces a confidently wrong answer.\n- **Narrow** — point Claude at the specific document or space that matters, not \"everything.\" Aiming it at an entire wiki or drive gives it too much to sift and weakens the grounding.\n\n## Retrieval isn't fact-checking\n\nA connector grounds the prediction — it does not turn Claude into a fact-checker. Claude can still misread a source, pull the wrong passage, or lean on a source that is itself out of date. Retrieval lowers the odds of a bad answer; it doesn't remove the need to verify what matters against the source of truth.\n\nYou also control which tools and connectors Claude may use on its own versus which need your approval — see **Controlling what Claude can do: tools & permissions**.",
+      "lab_config_json": null
+    },
+    {
+      "cell_id": "custom-reusing-context-claude-projects",
+      "week": null,
+      "week_sort_order": null,
+      "origin": "custom",
+      "visibility": "public",
+      "title": "Reusing context: Claude Projects",
+      "type": "content",
+      "dimension": [],
+      "evidence_type": "reflection",
+      "sort_order": 954,
+      "body_md": "When the same context comes up again and again — the same source documents, the same standing instructions — you don't have to set it up in every new chat. **Projects** let you save that context once and reuse it.\n\n## What a Project is\n\nA Project is a saved workspace that keeps instructions and reference files attached. Every chat you start inside the Project already has your context, so you're not re-pasting sources or re-explaining what you want each time.\n\n## When to use one\n\nReach for a Project when:\n\n- You do a **recurring task** — the same kind of drafting, review, or analysis on a regular basis.\n- The **same grounding and scoping apply across many chats** — one set of sources and instructions you'd otherwise repeat.\n\n## Grounding and scoping, saved once\n\nA Project is where the two habits come together. Put your curated sources (grounding) and your standing instructions — tone, format, what to avoid (scoping) — into the Project once, and every new chat inside it starts from that footing.\n\n## Still start fresh chats per task\n\nA Project doesn't change how the context window works. Each chat inside it still fills up as it goes, so keep the habit of starting a new chat at each logical breakpoint — you just won't lose your saved sources and instructions when you do. For why that matters, see **How Claude works: tokens & context windows**.",
+      "lab_config_json": null
+    },
+    {
       "cell_id": "c1-w1-lookup-vs-predict",
       "week": "week1",
       "week_sort_order": 2,
@@ -557,13 +585,13 @@
       "dimension": ["Diligence"],
       "evidence_type": "performance-task",
       "sort_order": 941,
-      "body_md": "Part of the Week 5 live session — run this in breakout rooms with your group. Before you route anything to a tool, you have to classify it. For each artifact below, pick its **data class**, then pick the **right tool** for that class (or no external tool at all). Be ready to defend each call in a sentence or two.",
+      "body_md": "Part of the Week 5 live session — run this in breakout rooms with your group. Before you route anything to a tool, you have to classify it. For each artifact below, pick its **data class**, then pick the **right tool** for that class (or no external tool at all). Be ready to defend each call in a sentence or two.\n\n**A note on this guidance:** Nava's data-class guidance is still being developed — treat it as a way to reason about what's safe to share, not as published policy. Your contract's rules always supersede it, and when you're unsure what class something is, the safe move is **no external tool** until you confirm with your program lead.",
       "lab_config_json": {
         "kind": "data-classifier",
         "tools": [
-          { "id": "enterprise", "label": "Enterprise Claude (Nava-contracted, data-protected)" },
-          { "id": "local", "label": "Local / no external AI tool" },
-          { "id": "consumer", "label": "Consumer chatbot (e.g., personal ChatGPT)" }
+          { "id": "enterprise", "label": "Managed all-staff tool (Claude / Gemini / Copilot)" },
+          { "id": "local", "label": "No tool / local (no external AI)" },
+          { "id": "consumer", "label": "Unsanctioned / consumer tool (e.g., personal ChatGPT)" }
         ],
         "classes": ["Public", "Internal", "Confidential", "Regulated (PII/PHI/CUI)"],
         "items": [
@@ -571,13 +599,13 @@
             "text": "A Slack message that includes a client's name and a detail from their case.",
             "dataClass": "Regulated (PII/PHI/CUI)",
             "tool": "local",
-            "why": "A client's name plus a case detail is regulated PII/PHI. It doesn't belong in any external tool — use a local/no-external path, or fully redact the identifiers first."
+            "why": "A client's name plus a case detail is regulated PII/PHI. It doesn't belong in any external tool — keep it in a local/no-external path unless you have fully and verifiably de-identified it yourself first (a redaction you didn't do and can't verify doesn't count — see the next item)."
           },
           {
             "text": "A benefits determination letter with the name, address, and case number already redacted.",
-            "dataClass": "Confidential",
-            "tool": "enterprise",
-            "why": "With the identifiers redacted, this drops to confidential program content. The Nava-contracted, data-protected tool is cleared for it; a consumer chatbot is not."
+            "dataClass": "Regulated (PII/PHI/CUI)",
+            "tool": "local",
+            "why": "Redaction is not reclassification. A redaction already stamped on a document you received isn't something you can trust — visible redactions can be reversed by a determined actor, and details beyond the obvious identifiers can still be linkable. Treat it as regulated: no external tool by default, and check the contract before using even a managed tool."
           },
           {
             "text": "A comment you're drafting on a public open-source pull request.",
@@ -599,9 +627,9 @@
           },
           {
             "text": "A blog post draft written for publication on Nava's public site.",
-            "dataClass": "Public",
+            "dataClass": "Internal",
             "tool": "enterprise",
-            "why": "A draft written for Nava's public site is destined to be public — safe for the approved tool."
+            "why": "A draft isn't public until it's actually posted — \"will be public\" is not \"is public.\" It's Internal for now (low sensitivity), so the managed all-staff tool is fine, but don't treat unpublished work as already cleared."
           }
         ]
       }
