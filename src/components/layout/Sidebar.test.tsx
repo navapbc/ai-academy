@@ -73,11 +73,12 @@ function renderSidebar({
   isStaff = false,
   onViewChange = vi.fn(),
   onModuleSelect = vi.fn(),
+  onClose = vi.fn(),
 } = {}) {
   const view = render(
     <Sidebar
       isOpen
-      onClose={() => {}}
+      onClose={onClose}
       sections={sections}
       progress={progress}
       onModuleSelect={onModuleSelect}
@@ -88,7 +89,7 @@ function renderSidebar({
       isStaff={isStaff}
     />,
   );
-  return { view, onViewChange, onModuleSelect };
+  return { view, onViewChange, onModuleSelect, onClose };
 }
 
 const sectionToggle = (name: RegExp) => screen.getByRole('button', { name });
@@ -173,6 +174,17 @@ describe('Sidebar course tree (U2)', () => {
     });
     // 5 visible modules across the fixtures; only 1.3 counts.
     expect(screen.getByText('1 of 5 complete')).toBeInTheDocument();
+  });
+});
+
+describe('Sidebar collapse control', () => {
+  test('renders a "Collapse sidebar" button that calls onClose', async () => {
+    const { onClose } = renderSidebar();
+    const user = userEvent.setup();
+    const btn = screen.getByRole('button', { name: 'Collapse sidebar' });
+    expect(btn).toBeInTheDocument();
+    await user.click(btn);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -119,7 +119,13 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
   const { role, loading: roleLoading, isStaff } = useRole();
 
   const [view, setView] = useState<View>('learning');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    try {
+      return localStorage.getItem('sidebar-collapsed') !== '1';
+    } catch {
+      return true;
+    }
+  });
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<AIPersona>('default');
 
@@ -160,6 +166,30 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
     }
   };
 
+  // Desktop-scoped sidebar persistence: an explicit collapse/expand at >=1024px
+  // records the preference; the mobile drawer auto-close in handleModuleSelect stays
+  // transient and never writes it.
+  const handleCloseSidebar = () => {
+    setIsSidebarOpen(false);
+    if (window.innerWidth >= 1024) {
+      try {
+        localStorage.setItem('sidebar-collapsed', '1');
+      } catch {
+        /* storage disabled — collapse still works for this session */
+      }
+    }
+  };
+  const handleOpenSidebar = () => {
+    setIsSidebarOpen(true);
+    if (window.innerWidth >= 1024) {
+      try {
+        localStorage.removeItem('sidebar-collapsed');
+      } catch {
+        /* storage disabled */
+      }
+    }
+  };
+
   const handleComplete = (moduleId: string, via: CompletedVia) => {
     // Auto-advance moves the learner to the next module — focus should follow.
     // (Only EXPLICIT completions route here; participation-event completions
@@ -187,7 +217,7 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
     <div className="flex h-screen bg-nava-grey text-[#1A1A1A] font-sans overflow-hidden" id="app-container">
       <Sidebar
         isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
+        onClose={handleCloseSidebar}
         sections={sections}
         progress={progress}
         onModuleSelect={handleModuleSelect}
@@ -201,7 +231,7 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
       <main className="flex-1 flex flex-col min-w-0 relative h-full">
         <Header
           isSidebarOpen={isSidebarOpen}
-          onOpenSidebar={() => setIsSidebarOpen(true)}
+          onOpenSidebar={handleOpenSidebar}
           currentModule={currentModule}
           currentPhase={currentSection}
           selectedPersona={selectedPersona}

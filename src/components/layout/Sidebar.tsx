@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BarChart3, X, CheckCircle2, ChevronDown, LifeBuoy, Terminal, ShieldCheck, GraduationCap } from 'lucide-react';
+import { BarChart3, PanelLeftClose, CheckCircle2, ChevronDown, LifeBuoy, Terminal, ShieldCheck, GraduationCap } from 'lucide-react';
 import { CurriculumSection, Module, UserProgress, View } from '../../types';
 import { isModuleLive } from '../../lib/modules';
 import { BRANDING } from '../../branding';
@@ -185,10 +185,10 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
             </div>
             <button
               onClick={onClose}
-              aria-label="Close menu"
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-500"
+              aria-label="Collapse sidebar"
+              className="p-2 hover:bg-gray-100 rounded-lg text-gray-500"
             >
-              <X className="w-5 h-5" aria-hidden="true" />
+              <PanelLeftClose className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
 
