@@ -156,7 +156,8 @@ describe.skipIf(!RUN)('course structure schema + seed (U1)', () => {
     expect(weeks?.[4].subtitle).toBeNull();
 
     // U8 assigns the authored Course 1 content: Week 0 (public set-up), the
-    // two Week-1 experiments, Week 2, and the four Weeks-3–4 pod activities.
+    // two Week-1 experiments + the Lookup-vs-Predict sort, Week 2 (Ground &
+    // Scope + the Delegation sort), and the four Weeks-3–4 pod activities.
     // Weeks 5+ stay empty shells (authored later via the CMS).
     const { data: members } = await svc
       .from('course_week_modules')
@@ -169,7 +170,9 @@ describe.skipIf(!RUN)('course structure schema + seed (U1)', () => {
         'Week 0:c1-w0-claude-setup',
         'Week 1:c1-w1-same-prompt-3x',
         'Week 1:c1-w1-confidently-wrong',
+        'Week 1:c1-w1-lookup-vs-predict',
         'Week 2:c1-w2-ground-and-scope',
+        'Week 2:c1-w2-delegation-sort',
         'Weeks 3–4:c1-w34-pod-kickoff',
         'Weeks 3–4:c1-w34-walk-the-workflow-delivery',
         'Weeks 3–4:c1-w34-walk-the-workflow-general',
