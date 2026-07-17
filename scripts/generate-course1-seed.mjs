@@ -8,7 +8,7 @@
 // This is a SEPARATE pipeline from the matrix one (curriculum-content.json →
 // *_load_curriculum_content.sql). Differences are deliberate:
 //   - the matrix pipeline UPDATEs 28 pre-existing rows by cell_id;
-//   - this pipeline INSERTs brand-new `origin='course'` (and one
+//   - this pipeline INSERTs brand-new `origin='course'` (and
 //     `origin='custom'` resource) rows with ON CONFLICT (cell_id) DO NOTHING
 //     (idempotent, D-25) and assigns course-week membership by the FIXED week
 //     uuids minted in 20260715000000_course_structure.sql.
@@ -128,12 +128,13 @@ const sql = `-- seed_course1_content (cohort-restructure U8): Course 1 Weeks 0�
 -- Copy source: the AI Academy Outline (program design doc) — Week 0 set-up,
 -- Week 1 "Break Claude on Purpose" (pre-reveal: says "Claude", never "LLM"),
 -- Week 2 "Ground & Scope", Weeks 3–4 pod activities incl. the "Walk the
--- Workflow" Marina delivery scenario, plus one public custom resource lesson.
+-- Workflow" Marina delivery scenario, plus three public custom resource lessons.
 --
 -- Mechanics:
 --   - modules: INSERT … ON CONFLICT (cell_id) DO NOTHING (idempotent, D-25).
---     origin='course', stage=null, status='published'; visibility='public' for
---     Week 0 (the R8 getting-started exemption), 'program' for everything else.
+--     stage=null, status='published'; visibility='public' for Week 0 (the R8
+--     getting-started exemption) and the origin='custom' resource lessons,
+--     'program' for the rest of the course modules.
 --   - membership: INSERT into course_week_modules resolving weeks BY the FIXED
 --     uuids minted in 20260715000000_course_structure.sql; ON CONFLICT DO
 --     NOTHING keeps re-runs (and the unique(cell_id) invariant) clean.
@@ -142,8 +143,8 @@ const sql = `-- seed_course1_content (cohort-restructure U8): Course 1 Weeks 0�
 ${data.modules.map(moduleInsert).join('\n')}
 -- ---------------------------------------------------------------------------
 -- Week membership (fixed week uuids from 20260715000000_course_structure.sql).
--- The custom resource lesson is deliberately NOT assigned — it renders in the
--- "Resources & additional lessons" group (R13).
+-- The custom resource lessons are deliberately NOT assigned — they render in
+-- the "Resources & additional lessons" group (R13).
 -- ---------------------------------------------------------------------------
 insert into public.course_week_modules (week_id, cell_id, sort_order)
 values

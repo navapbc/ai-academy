@@ -8,12 +8,13 @@
 -- Copy source: the AI Academy Outline (program design doc) — Week 0 set-up,
 -- Week 1 "Break Claude on Purpose" (pre-reveal: says "Claude", never "LLM"),
 -- Week 2 "Ground & Scope", Weeks 3–4 pod activities incl. the "Walk the
--- Workflow" Marina delivery scenario, plus one public custom resource lesson.
+-- Workflow" Marina delivery scenario, plus three public custom resource lessons.
 --
 -- Mechanics:
 --   - modules: INSERT … ON CONFLICT (cell_id) DO NOTHING (idempotent, D-25).
---     origin='course', stage=null, status='published'; visibility='public' for
---     Week 0 (the R8 getting-started exemption), 'program' for everything else.
+--     stage=null, status='published'; visibility='public' for Week 0 (the R8
+--     getting-started exemption) and the origin='custom' resource lessons,
+--     'program' for the rest of the course modules.
 --   - membership: INSERT into course_week_modules resolving weeks BY the FIXED
 --     uuids minted in 20260715000000_course_structure.sql; ON CONFLICT DO
 --     NOTHING keeps re-runs (and the unique(cell_id) invariant) clean.
@@ -183,7 +184,7 @@ values
    ARRAY['Description', 'Diligence']::text[], 'performance-task', 'na', 903,
    $md$Part of the Week 2 live session — you'll run this in breakout rooms with your group.
 
-One of the best ways to understand foundational prompting strategies is to test them in realistic scenarios. You'll run the same task two ways and compare the answers: the two Claude chats below get the **same prompt**, but only the second one is given the source material shown here.
+This activity is about the first habit — **grounding**. You'll run the same task two ways and compare the answers: the two Claude chats below get the **same prompt**, but only the second one is given the source material shown here. (Scoping, the companion habit, comes up in the live session — and the *Reusing context: Claude Projects* resource shows how to save grounding and scoping together.)
 
 ## Source material
 
@@ -221,7 +222,7 @@ Use this policy summary to verify the responses. (It's a realistic but fictional
     "Summarize what changed in Meridian State's rule for reporting part-time earnings while on unemployment benefits, in plain language for claimants.",
     "List every specific number a Meridian State claimant needs to know under the updated part-time earnings rule, and what each one means."
   ],
-  "reflectionMd": "**Reflect on or discuss with your group:**\n\n1. What's different about the two responses?\n2. Verify a few critical pieces of content in both responses against the source material in the lesson above. What do you notice about the accuracy between the responses?\n3. What was different about what each pane had to work from, and how do you think that impacted the responses?\n\nIf you have time, feel free to try some of the other suggested prompts or make up your own. Direct discussion of foundational prompting strategies will be discussed later in the Week 2 full-cohort live training."
+  "reflectionMd": "**Reflect on or discuss with your group:**\n\n1. What's different about the two responses?\n2. Verify a few critical pieces of content in both responses against the source material in the lesson above. What do you notice about the accuracy between the responses?\n3. What was different about what each pane had to work from, and how do you think that impacted the responses?\n\n**Keep in mind:** Grounding lowers the odds of a wrong answer — it doesn't remove the need to verify. A grounded answer is still an unverified answer until you check it against the source.\n\nIf you have time, feel free to try some of the other suggested prompts or make up your own. Direct discussion of foundational prompting strategies will be discussed later in the Week 2 full-cohort live training."
 }$json$::jsonb)
 on conflict (cell_id) do nothing;
 
@@ -556,6 +557,133 @@ Drop-in sessions with people who spend a lot of time with these tools. Bring a t
    null)
 on conflict (cell_id) do nothing;
 
+-- custom-how-claude-works-tokens — How Claude works: tokens & context windows
+insert into public.modules
+  (cell_id, stage, origin, visibility, status, title, type, dimension,
+   evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
+values
+  ('custom-how-claude-works-tokens', null, 'custom', 'public', 'published', 'How Claude works: tokens & context windows', 'content',
+   ARRAY[]::text[], 'reflection', 'na', 951,
+   $md$A little about what's happening under the hood when you use Claude — the same ideas the Week 1 live session covered, here for reference any time.
+
+## What a token is
+
+Claude doesn't look answers up in a database. When you send a prompt, your words are broken into small chunks called **tokens**. Claude then predicts the next most likely token, then the next, and the next — assembling its reply one chunk at a time from the patterns it learned during training. It's a very good autocomplete.
+
+That's why the same prompt can produce different answers, and why a confident-sounding reply isn't automatically a correct one: Claude is completing a plausible pattern, not retrieving a verified fact.
+
+## The context window (working memory)
+
+Everything Claude can "see" for your conversation — your messages, its replies, and anything you've attached — lives in its **context window**. Think of it as working memory for that one chat. Two things to know:
+
+- **It's limited.** Picture a long document open on your screen: you can only see so much at once. As the conversation grows, the earliest material scrolls off the top — and unlike a scrollbar, Claude can't scroll back to reread it.
+- **It only knows the current conversation.** Without anything you provide, Claude doesn't remember you from yesterday or from another chat.
+
+When a chat gets very long, Claude may **compact** earlier context to make room. That always loses some detail, and you don't get to pick what stays.
+
+**Start a new chat when:**
+
+- Replies get forgetful or quality starts to slip.
+- You see the context filling up, or get a warning that the conversation is being compacted.
+- You're moving on to a new topic or a new chunk of work. One chat per workstream keeps conversations from getting muddled.
+
+## Token budget and cost
+
+Longer conversations don't just risk quality — they cost more, and the cost climbs steeply as the context window fills. For most people, Nava's monthly budget is plenty for everyday work, so you don't need to optimize every token. The simplest habit that helps both quality and cost is the same one above: start fresh chats at natural breakpoints instead of letting one conversation run forever.$md$,
+   null)
+on conflict (cell_id) do nothing;
+
+-- custom-controlling-claude-tools-permissions — Controlling what Claude can do: tools & permissions
+insert into public.modules
+  (cell_id, stage, origin, visibility, status, title, type, dimension,
+   evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
+values
+  ('custom-controlling-claude-tools-permissions', null, 'custom', 'public', 'published', 'Controlling what Claude can do: tools & permissions', 'content',
+   ARRAY[]::text[], 'reflection', 'na', 952,
+   $md$Claude can do more than answer from what it already knows — it can use **tools** to go get information or take action. Knowing what those are, and how to control them, helps you get better results and stay in control.
+
+## Tools: how Claude gathers its own context
+
+Beyond the prompt you type, Claude can reach for tools to pull in what it needs — for example:
+
+- **Web search and fetching a page**, to get current information it wasn't trained on.
+- **Reading files** you share, so it can work from your actual documents.
+- **Connected apps and data** you've given it access to.
+
+This is why a modern answer can feel up-to-date or specific: Claude gathered extra context first, then predicted its reply from that fuller picture — rather than relying only on what you pasted in.
+
+## What you control
+
+You decide how much Claude can do on its own:
+
+- Some tools Claude may use **automatically**, without stopping to ask.
+- Others require your **approval** each time before Claude acts.
+
+You can adjust which tools are available and which need a check-in from Claude's settings. If you're doing something sensitive, tightening these is a good habit; if you're doing routine research, letting Claude gather context on its own saves time.
+
+When in doubt about what's appropriate on a given Nava program or contract, check with your manager or project lead and Nava's AI Tool Policy — see the **AI Support at Nava** resource.$md$,
+   null)
+on conflict (cell_id) do nothing;
+
+-- custom-grounding-with-connectors — Grounding with connectors
+insert into public.modules
+  (cell_id, stage, origin, visibility, status, title, type, dimension,
+   evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
+values
+  ('custom-grounding-with-connectors', null, 'custom', 'public', 'published', 'Grounding with connectors', 'content',
+   ARRAY[]::text[], 'reflection', 'na', 953,
+   $md$Grounding means giving Claude curated source material to predict from — the single most effective way to lower the odds of a confident wrong answer. Pasting text into the chat is one way to ground; **connectors** are another, for when the source already lives in a system you use.
+
+## What connectors do
+
+Instead of copying everything into the chat yourself, a connector lets Claude pull from a connected space you've granted access to — for example **Confluence, Slack, or your Google Drive**. On Nava's Claude, connectors let you ground a conversation in real content without hunting it down and pasting it in first.
+
+## Choosing good sources
+
+Grounding only helps if the source is worth grounding on. Aim for sources that are:
+
+- **Safe to share** with AI — check Nava's AI Tool Policy and any program-level restrictions first.
+- **Accurate** — you're anchoring the prediction to this, so a wrong source produces a confidently wrong answer.
+- **Narrow** — point Claude at the specific document or space that matters, not "everything." Aiming it at an entire wiki or drive gives it too much to sift and weakens the grounding.
+
+## Retrieval isn't fact-checking
+
+A connector grounds the prediction — it does not turn Claude into a fact-checker. Claude can still misread a source, pull the wrong passage, or lean on a source that is itself out of date. Retrieval lowers the odds of a bad answer; it doesn't remove the need to verify what matters against the source of truth.
+
+You also control which tools and connectors Claude may use on its own versus which need your approval — see **Controlling what Claude can do: tools & permissions**.$md$,
+   null)
+on conflict (cell_id) do nothing;
+
+-- custom-reusing-context-claude-projects — Reusing context: Claude Projects
+insert into public.modules
+  (cell_id, stage, origin, visibility, status, title, type, dimension,
+   evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
+values
+  ('custom-reusing-context-claude-projects', null, 'custom', 'public', 'published', 'Reusing context: Claude Projects', 'content',
+   ARRAY[]::text[], 'reflection', 'na', 954,
+   $md$When the same context comes up again and again — the same source documents, the same standing instructions — you don't have to set it up in every new chat. **Projects** let you save that context once and reuse it.
+
+## What a Project is
+
+A Project is a saved workspace that keeps instructions and reference files attached. Every chat you start inside the Project already has your context, so you're not re-pasting sources or re-explaining what you want each time.
+
+## When to use one
+
+Reach for a Project when:
+
+- You do a **recurring task** — the same kind of drafting, review, or analysis on a regular basis.
+- The **same grounding and scoping apply across many chats** — one set of sources and instructions you'd otherwise repeat.
+
+## Grounding and scoping, saved once
+
+A Project is where the two habits come together. Put your curated sources (grounding) and your standing instructions — tone, format, what to avoid (scoping) — into the Project once, and every new chat inside it starts from that footing.
+
+## Still start fresh chats per task
+
+A Project doesn't change how the context window works. Each chat inside it still fills up as it goes, so keep the habit of starting a new chat at each logical breakpoint — you just won't lose your saved sources and instructions when you do. For why that matters, see **How Claude works: tokens & context windows**.$md$,
+   null)
+on conflict (cell_id) do nothing;
+
 -- c1-w1-lookup-vs-predict — Lookup or Predict?
 insert into public.modules
   (cell_id, stage, origin, visibility, status, title, type, dimension,
@@ -583,24 +711,24 @@ values
       "reveal": "Obviously generated on the spot — there's no \"right\" answer to retrieve. But the capital of France worked the exact same way."
     },
     {
+      "id": "pto",
+      "prompt": "What's our company's PTO policy?",
+      "reveal": "Feels like Claude is checking an HR page — but it has no access to Nava's policies unless you give them to it. It predicts a plausible-sounding policy that can be wrong in exactly the ways that matter. High-stakes at Nava."
+    },
+    {
       "id": "summary",
       "prompt": "Summarize this paragraph I just pasted.",
       "reveal": "It's grounded in the text you gave it, yet Claude still predicts the summary word by word — it isn't copying sentences straight out."
     },
     {
+      "id": "medicaid",
+      "prompt": "What were the Q3 2025 Medicaid enrollment numbers for New Jersey?",
+      "reveal": "Nothing to look up here — Claude predicts plausible-looking numbers that can be entirely fabricated. This is the confident-wrong pattern from Experiment 2, aimed straight at the kind of data we work with."
+    },
+    {
       "id": "worldcup",
       "prompt": "Who won the 2043 World Cup?",
       "reveal": "There's nothing to look up — the match hasn't happened. Claude predicts a plausible-sounding answer anyway. That's how the confident wrong answers in Experiment 2 happen."
-    },
-    {
-      "id": "mockingbird",
-      "prompt": "What page of To Kill a Mockingbird is the trial on?",
-      "reveal": "Claude has no book to flip through; it predicts a page number that sounds right."
-    },
-    {
-      "id": "translate",
-      "prompt": "Translate 'good morning' into Spanish.",
-      "reveal": "Feels like a dictionary lookup, but Claude is predicting the words \"buenos días\" from patterns it has seen."
     }
   ],
   "takeaway": {
@@ -690,21 +818,23 @@ insert into public.modules
 values
   ('c1-w5-classify-route', null, 'course', 'program', 'published', 'Classify & Route: What Goes Where?', 'lab',
    ARRAY['Diligence']::text[], 'performance-task', 'na', 941,
-   $md$Part of the Week 5 live session — run this in breakout rooms with your group. Before you route anything to a tool, you have to classify it. For each artifact below, pick its **data class**, then pick the **right tool** for that class (or no external tool at all). Be ready to defend each call in a sentence or two.$md$,
+   $md$Part of the Week 5 live session — run this in breakout rooms with your group. Before you route anything to a tool, you have to classify it. For each artifact below, pick its **data class**, then pick the **right tool** for that class (or no external tool at all). Be ready to defend each call in a sentence or two.
+
+**A note on this guidance:** Nava's data-class guidance is still being developed — treat it as a way to reason about what's safe to share, not as published policy. Your contract's rules always supersede it, and when you're unsure what class something is, the safe move is **no external tool** until you confirm with your program lead.$md$,
    $json${
   "kind": "data-classifier",
   "tools": [
     {
       "id": "enterprise",
-      "label": "Enterprise Claude (Nava-contracted, data-protected)"
+      "label": "Managed all-staff tool (Claude / Gemini / Copilot)"
     },
     {
       "id": "local",
-      "label": "Local / no external AI tool"
+      "label": "No tool / local (no external AI)"
     },
     {
       "id": "consumer",
-      "label": "Consumer chatbot (e.g., personal ChatGPT)"
+      "label": "Unsanctioned / consumer tool (e.g., personal ChatGPT)"
     }
   ],
   "classes": [
@@ -718,13 +848,13 @@ values
       "text": "A Slack message that includes a client's name and a detail from their case.",
       "dataClass": "Regulated (PII/PHI/CUI)",
       "tool": "local",
-      "why": "A client's name plus a case detail is regulated PII/PHI. It doesn't belong in any external tool — use a local/no-external path, or fully redact the identifiers first."
+      "why": "A client's name plus a case detail is regulated PII/PHI. It doesn't belong in any external tool — keep it in a local/no-external path unless you have fully and verifiably de-identified it yourself first (a redaction you didn't do and can't verify doesn't count — see the next item)."
     },
     {
       "text": "A benefits determination letter with the name, address, and case number already redacted.",
-      "dataClass": "Confidential",
-      "tool": "enterprise",
-      "why": "With the identifiers redacted, this drops to confidential program content. The Nava-contracted, data-protected tool is cleared for it; a consumer chatbot is not."
+      "dataClass": "Regulated (PII/PHI/CUI)",
+      "tool": "local",
+      "why": "Redaction is not reclassification. A redaction already stamped on a document you received isn't something you can trust — visible redactions can be reversed by a determined actor, and details beyond the obvious identifiers can still be linkable. Treat it as regulated: no external tool by default, and check the contract before using even a managed tool."
     },
     {
       "text": "A comment you're drafting on a public open-source pull request.",
@@ -746,9 +876,9 @@ values
     },
     {
       "text": "A blog post draft written for publication on Nava's public site.",
-      "dataClass": "Public",
+      "dataClass": "Internal",
       "tool": "enterprise",
-      "why": "A draft written for Nava's public site is destined to be public — safe for the approved tool."
+      "why": "A draft isn't public until it's actually posted — \"will be public\" is not \"is public.\" It's Internal for now (low sensitivity), so the managed all-staff tool is fine, but don't treat unpublished work as already cleared."
     }
   ]
 }$json$::jsonb)
@@ -871,8 +1001,8 @@ on conflict (cell_id) do nothing;
 
 -- ---------------------------------------------------------------------------
 -- Week membership (fixed week uuids from 20260715000000_course_structure.sql).
--- The custom resource lesson is deliberately NOT assigned — it renders in the
--- "Resources & additional lessons" group (R13).
+-- The custom resource lessons are deliberately NOT assigned — they render in
+-- the "Resources & additional lessons" group (R13).
 -- ---------------------------------------------------------------------------
 insert into public.course_week_modules (week_id, cell_id, sort_order)
 values
