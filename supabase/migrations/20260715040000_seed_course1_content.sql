@@ -556,6 +556,74 @@ Drop-in sessions with people who spend a lot of time with these tools. Bring a t
    null)
 on conflict (cell_id) do nothing;
 
+-- custom-how-claude-works-tokens — How Claude works: tokens & context windows
+insert into public.modules
+  (cell_id, stage, origin, visibility, status, title, type, dimension,
+   evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
+values
+  ('custom-how-claude-works-tokens', null, 'custom', 'public', 'published', 'How Claude works: tokens & context windows', 'content',
+   ARRAY[]::text[], 'reflection', 'na', 951,
+   $md$A little about what's happening under the hood when you use Claude — the same ideas the Week 1 live session covered, here for reference any time.
+
+## What a token is
+
+Claude doesn't look answers up in a database. When you send a prompt, your words are broken into small chunks called **tokens**. Claude then predicts the next most likely token, then the next, and the next — assembling its reply one chunk at a time from the patterns it learned during training. It's a very good autocomplete.
+
+That's why the same prompt can produce different answers, and why a confident-sounding reply isn't automatically a correct one: Claude is completing a plausible pattern, not retrieving a verified fact.
+
+## The context window (working memory)
+
+Everything Claude can "see" for your conversation — your messages, its replies, and anything you've attached — lives in its **context window**. Think of it as working memory for that one chat. Two things to know:
+
+- **It's limited.** Picture a long document open on your screen: you can only see so much at once. As the conversation grows, the earliest material scrolls off the top — and unlike a scrollbar, Claude can't scroll back to reread it.
+- **It only knows the current conversation.** Without anything you provide, Claude doesn't remember you from yesterday or from another chat.
+
+When a chat gets very long, Claude may **compact** earlier context to make room. That always loses some detail, and you don't get to pick what stays.
+
+**Start a new chat when:**
+
+- Replies get forgetful or quality starts to slip.
+- You see the context filling up, or get a warning that the conversation is being compacted.
+- You're moving on to a new topic or a new chunk of work. One chat per workstream keeps conversations from getting muddled.
+
+## Token budget and cost
+
+Longer conversations don't just risk quality — they cost more, and the cost climbs steeply as the context window fills. For most people, Nava's monthly budget is plenty for everyday work, so you don't need to optimize every token. The simplest habit that helps both quality and cost is the same one above: start fresh chats at natural breakpoints instead of letting one conversation run forever.$md$,
+   null)
+on conflict (cell_id) do nothing;
+
+-- custom-controlling-claude-tools-permissions — Controlling what Claude can do: tools & permissions
+insert into public.modules
+  (cell_id, stage, origin, visibility, status, title, type, dimension,
+   evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
+values
+  ('custom-controlling-claude-tools-permissions', null, 'custom', 'public', 'published', 'Controlling what Claude can do: tools & permissions', 'content',
+   ARRAY[]::text[], 'reflection', 'na', 952,
+   $md$Claude can do more than answer from what it already knows — it can use **tools** to go get information or take action. Knowing what those are, and how to control them, helps you get better results and stay in control.
+
+## Tools: how Claude gathers its own context
+
+Beyond the prompt you type, Claude can reach for tools to pull in what it needs — for example:
+
+- **Web search and fetching a page**, to get current information it wasn't trained on.
+- **Reading files** you share, so it can work from your actual documents.
+- **Connected apps and data** you've given it access to.
+
+This is why a modern answer can feel up-to-date or specific: Claude gathered extra context first, then predicted its reply from that fuller picture — rather than relying only on what you pasted in.
+
+## What you control
+
+You decide how much Claude can do on its own:
+
+- Some tools Claude may use **automatically**, without stopping to ask.
+- Others require your **approval** each time before Claude acts.
+
+You can adjust which tools are available and which need a check-in from Claude's settings. If you're doing something sensitive, tightening these is a good habit; if you're doing routine research, letting Claude gather context on its own saves time.
+
+When in doubt about what's appropriate on a given Nava program or contract, check with your manager or project lead and Nava's AI Tool Policy — see the **AI Support at Nava** resource.$md$,
+   null)
+on conflict (cell_id) do nothing;
+
 -- c1-w1-lookup-vs-predict — Lookup or Predict?
 insert into public.modules
   (cell_id, stage, origin, visibility, status, title, type, dimension,
