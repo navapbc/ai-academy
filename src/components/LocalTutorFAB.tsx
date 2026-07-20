@@ -18,7 +18,7 @@ interface Props {
 
 /**
  * Builds the grounding corpus from the loaded curriculum: for every PUBLISHED
- * module a header line ("[Stage …] Cell {id} — {title}") followed by its authored
+ * module a header line ("[Section …] Cell {id} — {title}") followed by its authored
  * `content` and, when present, its `tutorReference` (R7) — concatenated into one
  * string handed to Claude as the cached system context. The corpus only changes
  * when the curriculum changes.
@@ -36,7 +36,9 @@ export function buildGroundingContext(phases: Phase[]): string {
           const reference = m.tutorReference
             ? `\n\n[Tutor reference for Cell ${m.id}]\n${m.tutorReference}`
             : '';
-          return `[Stage ${phase.title}] Cell ${m.id} — ${m.title}\n${m.content}${reference}`;
+          // U13: the grouping label is a curriculum SECTION (course week /
+          // Supplemental coursework / Resources) since the restructure.
+          return `[Section ${phase.title}] Cell ${m.id} — ${m.title}\n${m.content}${reference}`;
         }),
     )
     .join('\n\n');
@@ -135,7 +137,7 @@ export default function LocalTutorFAB({ currentModule, phases }: Props) {
             {/* Header */}
             <div className="bg-gray-900 px-5 py-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-nava-green rounded-xl flex items-center justify-center shadow-lg shadow-nava-green/30">
+                <div className="w-9 h-9 bg-nava-plum rounded-xl flex items-center justify-center shadow-lg shadow-nava-plum/30">
                   <Sparkles className="w-4 h-4 text-white" aria-hidden="true" />
                 </div>
                 <div className="min-w-0">
@@ -163,8 +165,8 @@ export default function LocalTutorFAB({ currentModule, phases }: Props) {
             >
               {isEmpty && (
                 <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6">
-                  <div className="w-12 h-12 bg-nava-green/10 rounded-2xl flex items-center justify-center">
-                    <Bot className="w-5 h-5 text-nava-green" aria-hidden="true" />
+                  <div className="w-12 h-12 bg-nava-plum/10 rounded-2xl flex items-center justify-center">
+                    <Bot className="w-5 h-5 text-nava-plum" aria-hidden="true" />
                   </div>
                   <p className="text-xs font-semibold text-gray-600 leading-relaxed">
                     Ask me anything about the curriculum. I answer using only the
@@ -178,7 +180,7 @@ export default function LocalTutorFAB({ currentModule, phases }: Props) {
                   <div
                     className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
                       m.role === 'user'
-                        ? 'bg-nava-green text-white rounded-br-sm'
+                        ? 'bg-nava-plum text-white rounded-br-sm'
                         : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                     }`}
                   >
@@ -207,7 +209,7 @@ export default function LocalTutorFAB({ currentModule, phases }: Props) {
             {/* Composer */}
             <div className="border-t border-gray-100 p-3 shrink-0 space-y-2">
               <PiiNotice />
-              <div className="flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-nava-green focus-within:border-transparent transition-all">
+              <div className="flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-nava-plum focus-within:border-transparent transition-all">
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -226,7 +228,7 @@ export default function LocalTutorFAB({ currentModule, phases }: Props) {
                   onClick={handleSend}
                   disabled={isLoading || !input.trim()}
                   aria-label="Send"
-                  className="w-9 h-9 shrink-0 bg-nava-green text-white rounded-xl flex items-center justify-center hover:bg-nava-plum disabled:opacity-40 disabled:grayscale transition-all active:scale-95"
+                  className="w-9 h-9 shrink-0 bg-nava-green text-white rounded-xl flex items-center justify-center hover:bg-nava-green/90 disabled:opacity-40 disabled:grayscale transition-all active:scale-95"
                 >
                   <Send className="w-4 h-4" aria-hidden="true" />
                 </button>
@@ -244,7 +246,7 @@ export default function LocalTutorFAB({ currentModule, phases }: Props) {
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.94 }}
         className={`relative w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl transition-colors ${
-          isOpen ? 'bg-gray-800 shadow-gray-900/30' : 'bg-nava-green hover:bg-nava-plum shadow-nava-green/40'
+          isOpen ? 'bg-gray-800 shadow-gray-900/30' : 'bg-nava-plum hover:opacity-90 shadow-nava-plum/40'
         }`}
       >
         <AnimatePresence mode="wait">

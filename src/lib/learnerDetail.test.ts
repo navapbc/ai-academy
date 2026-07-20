@@ -1,8 +1,11 @@
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
+import { getSupabaseClient } from './supabaseClient';
+import { createSupabaseMock } from '../test/supabaseMock';
 import {
   buildLearnerRoster,
   buildLearnerModuleRows,
   buildLearnerLabRows,
+  fetchLearnerDetail,
   type LearnerSummaryRow,
   type ProfileNameRow,
   type PublishedModuleRow,
@@ -10,6 +13,8 @@ import {
   type QuizAttemptRow,
   type LabSubmissionRow,
 } from './learnerDetail';
+
+vi.mock('./supabaseClient');
 
 describe('buildLearnerRoster', () => {
   const rows: LearnerSummaryRow[] = [
@@ -59,9 +64,9 @@ describe('buildLearnerRoster', () => {
 
 describe('buildLearnerModuleRows', () => {
   const modules: PublishedModuleRow[] = [
-    { cell_id: '1.1', title: 'Intro', stage: '1a' },
-    { cell_id: '1.2', title: 'Data', stage: '1a' },
-    { cell_id: '2.1', title: 'Prompting', stage: '2' },
+    { cell_id: '1.1', title: 'Intro', origin: 'matrix' },
+    { cell_id: '1.2', title: 'Data', origin: 'matrix' },
+    { cell_id: '2.1', title: 'Prompting', origin: 'matrix' },
   ];
 
   test('marks completion, picks the best quiz fraction, and keeps module order', () => {
@@ -82,6 +87,25 @@ describe('buildLearnerModuleRows', () => {
     expect(out[2]).toMatchObject({ completed: false, bestQuizPct: 0.6, quizPassed: true });
   });
 
+  test('groups by curriculum section: course first, then supplemental, then resources (U13)', () => {
+    const mixed: PublishedModuleRow[] = [
+      { cell_id: '1.1', title: 'Intro', origin: 'matrix' },
+      { cell_id: 'custom-x', title: 'Extra', origin: 'custom' },
+      { cell_id: 'c1-w0-setup', title: 'Setup', origin: 'course' },
+      { cell_id: '1.2', title: 'Data', origin: 'matrix' },
+    ];
+    const out = buildLearnerModuleRows(mixed, [], []);
+
+    // Section order matches the learner nav; sort_order preserved within.
+    expect(out.map((r) => r.cellId)).toEqual(['c1-w0-setup', '1.1', '1.2', 'custom-x']);
+    expect(out.map((r) => r.section)).toEqual([
+      'Course lessons',
+      'Supplemental coursework',
+      'Supplemental coursework',
+      'Resources & additional lessons',
+    ]);
+  });
+
   test('ignores attempts with no usable max_score', () => {
     const quizzes: QuizAttemptRow[] = [
       { module_id: '1.1', score: 5, max_score: 0, passed: true },
@@ -89,6 +113,31 @@ describe('buildLearnerModuleRows', () => {
     ];
     const out = buildLearnerModuleRows(modules, [], quizzes);
     expect(out[0].bestQuizPct).toBeNull();
+  });
+});
+
+describe('fetchLearnerDetail (fetch-path invariant, U13)', () => {
+  const supa = createSupabaseMock();
+
+  beforeEach(() => {
+    supa.reset();
+    supa.setResult({ data: [], error: null });
+    vi.mocked(getSupabaseClient).mockReturnValue(supa.client);
+  });
+
+  test('reads only the owner/champion-RLS base tables — never the staff learner_progress_summary view', async () => {
+    await fetchLearnerDetail('me');
+
+    // The learner self-view (LearnerDashboard) shares this data path, so it
+    // must stay off the staff aggregation views (denominator semantics differ
+    // by design — plan U13).
+    expect([...supa.fromCalls].sort()).toEqual([
+      'lab_submissions',
+      'module_progress',
+      'modules',
+      'quiz_attempts',
+    ]);
+    expect(supa.fromCalls).not.toContain('learner_progress_summary');
   });
 });
 

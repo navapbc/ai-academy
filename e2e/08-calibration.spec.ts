@@ -1,15 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { signInAsDemo, openModule, completeStage1a, SUPABASE_URL, ANON_KEY } from './helpers';
+import { signInAsDemo, openModule, SUPABASE_URL, ANON_KEY } from './helpers';
 
 // Cell 2.8 renders the auto-graded calibration exercise after the lesson. The
 // learner picks a verification posture for each output from the same tool; on
 // submit it auto-grades against the answer key and shows an over-/under-reliance
-// summary. No LLM call (deterministic), so no grade stub. 2.8 is Stage 2, so we
-// complete Stage 1a first to unlock it. The exercise records a lab_submission
+// summary. No LLM call (deterministic), so no grade stub. Nothing is gated
+// (restructure U2), so 2.8 opens directly. The exercise records a lab_submission
 // but is NOT the completion gate — the inline quiz still owns completion.
 test('run the 2.8 calibration end to end (set a posture per item, submit, see summary); quiz still gates', async ({ page }) => {
   await signInAsDemo(page);
-  await completeStage1a(page);
   await openModule(page, '2.8');
 
   const exercise = page.locator('#calibration');
@@ -57,8 +56,9 @@ test('run the 2.8 calibration end to end (set a posture per item, submit, see su
   await expect(exercise.getByText(/Under-reliance · 0/)).toBeVisible();
   await expect(exercise.getByRole('button', { name: 'Try again' })).toBeVisible();
 
-  // The inline quiz remains the completion gate: still present, and the audit
-  // did not advance the learner past the cell.
+  // U9: the recorded submission auto-completes the cell (via='lab') but never
+  // moves the cursor — the inline practice quiz is still present and the
+  // learner was not advanced past the cell.
   await expect(page.locator('#module-quiz')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Continue to Next Sprint' })).toHaveCount(0);
 });

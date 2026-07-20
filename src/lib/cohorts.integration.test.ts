@@ -10,8 +10,10 @@ import { isSupabaseConfigured } from './supabaseClient';
 //
 // Proves the baseline RLS: cohorts readable by any authed user; enrollments /
 // cohort_champions owner-read-own; clients cannot write any of the three; the
-// service_role path (the future admin write path) can; and one-cohort-per-learner
-// is DB-enforced. Admin/champion cross-user reads are P5.1c (not tested here).
+// service_role path (the future admin write path) can; and one-enrollment-per-
+// (learner, cohort) is DB-enforced (U5 multi-enrollment — a learner may join
+// several cohorts, once each). Admin/champion cross-user reads are P5.1c (not
+// tested here); the U5 lifecycle/scoping suite is multiEnrollment.integration.
 
 const URL = import.meta.env.VITE_SUPABASE_URL as string;
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -156,7 +158,7 @@ describe.skipIf(!RUN)('cohort substrate RLS (P5.1b)', () => {
     expect(outsiderRead.data?.some((r) => r.user_id === champ.uid)).toBe(false);
   });
 
-  test('a learner can be enrolled in only one cohort (unique user_id)', async () => {
+  test('a learner holds one enrollment PER COHORT (unique(user_id, cohort_id), U5)', async () => {
     const svc = serviceClient();
     const c1 = await svc.from('cohorts').insert({ name: 'Cohort One' }).select('id').single();
     const c2 = await svc.from('cohorts').insert({ name: 'Cohort Two' }).select('id').single();
@@ -165,7 +167,15 @@ describe.skipIf(!RUN)('cohort substrate RLS (P5.1b)', () => {
     const first = await svc.from('enrollments').insert({ cohort_id: c1.data!.id, user_id: learner.uid });
     expect(first.error).toBeNull();
 
+    // A second cohort is a second row (multi-enrollment).
     const second = await svc.from('enrollments').insert({ cohort_id: c2.data!.id, user_id: learner.uid });
-    expect(second.error).toBeTruthy(); // unique(user_id) violation — one cohort per learner
+    expect(second.error).toBeNull();
+
+    // …but the same (user, cohort) pair cannot be enrolled twice.
+    const dup = await svc.from('enrollments').insert({ cohort_id: c1.data!.id, user_id: learner.uid });
+    expect(dup.error).toBeTruthy(); // unique(user_id, cohort_id) violation
+
+    const { data: rows } = await svc.from('enrollments').select('cohort_id').eq('user_id', learner.uid);
+    expect(rows).toHaveLength(2);
   });
 });

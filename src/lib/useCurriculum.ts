@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Phase } from '../types';
+import type { Curriculum } from '../types';
 import { fetchCurriculum } from './modules';
 
 // Loads the curriculum from Supabase once after sign-in. The app gates its main
@@ -8,8 +8,8 @@ import { fetchCurriculum } from './modules';
 // per mount (no per-user reconciliation like progress needs).
 
 interface UseCurriculumResult {
-  /** The fetched curriculum, or null until the first load resolves. */
-  phases: Phase[] | null;
+  /** The fetched curriculum (sections + raw row count), or null until the first load resolves. */
+  curriculum: Curriculum | null;
   /** True while the initial fetch is in flight. */
   loading: boolean;
   /** Non-null when the fetch failed; the app shows a retry-able error. */
@@ -17,14 +17,14 @@ interface UseCurriculumResult {
 }
 
 export function useCurriculum(): UseCurriculumResult {
-  const [phases, setPhases] = useState<Phase[] | null>(null);
+  const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetchCurriculum()
       .then((loaded) => {
-        if (!cancelled) setPhases(loaded);
+        if (!cancelled) setCurriculum(loaded);
       })
       .catch(() => {
         if (!cancelled) {
@@ -36,5 +36,5 @@ export function useCurriculum(): UseCurriculumResult {
     };
   }, []);
 
-  return { phases, loading: phases === null && error === null, error };
+  return { curriculum, loading: curriculum === null && error === null, error };
 }

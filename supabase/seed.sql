@@ -120,6 +120,10 @@ update public.profiles
 -- dashboard have something to show. Lives here (not a migration) because it
 -- references the seed-only demo auth user. Fixed UUIDs + ON CONFLICT make it
 -- idempotent across `supabase db reset`.
+-- NOTE (cohort-restructure U4): this enrollment is load-bearing for the
+-- enrollment-visibility RLS — demo@navapbc.com is the ENROLLED e2e identity
+-- (has_program_access() = true, sees visibility='program' modules); the
+-- demo-unenrolled user below is its deliberately-unenrolled counterpart.
 insert into public.cohorts (id, name, created_by)
 values (
   '00000000-0000-0000-0000-0000000000c0',
@@ -134,7 +138,7 @@ values (
   '00000000-0000-0000-0000-000000000001',
   '00000000-0000-0000-0000-000000000001'
 )
-on conflict (user_id) do nothing;
+on conflict (user_id, cohort_id) do nothing;
 
 -- Mark the demo ADMIN's Stage 1a complete so the admin can preview the gated
 -- Stage 2 content (incl. the GLAT objective gate, cell 2.14) without grinding
@@ -147,3 +151,52 @@ where not exists (
   select 1 from public.module_progress mp
   where mp.user_id = '00000000-0000-0000-0000-000000000002' and mp.module_id = m
 );
+
+-- ---------------------------------------------------------------------------
+-- Demo UNENROLLED learner (cohort-restructure U4): a second seeded user with a
+-- profiles row and deliberately NO enrollments, so e2e specs can assert the
+-- enrollment-visibility boundary from the unenrolled side (program modules
+-- never reach this user's browser; the spec itself lands with U8, once program
+-- content exists to hide). Same auth.users insert pattern as the demo learner;
+-- ON CONFLICT keeps it safe to re-run live.
+-- Demo credentials: demo-unenrolled@navapbc.com / demo-password
+-- ---------------------------------------------------------------------------
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, created_at, updated_at,
+  raw_app_meta_data, raw_user_meta_data,
+  confirmation_token, recovery_token, email_change_token_new, email_change
+)
+values (
+  '00000000-0000-0000-0000-000000000000',
+  '00000000-0000-0000-0000-000000000003',
+  'authenticated',
+  'authenticated',
+  'demo-unenrolled@navapbc.com',
+  extensions.crypt('demo-password', extensions.gen_salt('bf')),
+  now(), now(), now(),
+  '{"provider":"email","providers":["email"]}',
+  '{}',
+  '', '', '', ''
+)
+on conflict (id) do nothing;
+
+insert into auth.identities (
+  provider_id, user_id, identity_data, provider, last_sign_in_at,
+  created_at, updated_at
+)
+values (
+  '00000000-0000-0000-0000-000000000003',
+  '00000000-0000-0000-0000-000000000003',
+  '{"sub":"00000000-0000-0000-0000-000000000003","email":"demo-unenrolled@navapbc.com","email_verified":true}',
+  'email',
+  now(), now(), now()
+)
+on conflict (provider_id, provider) do nothing;
+
+-- The profiles row already exists (created by the trigger); fill in full_name.
+-- Deliberately NO enrollments row and NO sample progress: this user must stay
+-- outside the program (has_program_access() = false, role 'learner').
+update public.profiles
+   set full_name = 'Demo Unenrolled'
+ where id = '00000000-0000-0000-0000-000000000003';

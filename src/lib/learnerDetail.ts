@@ -107,11 +107,31 @@ export async function fetchCohortLearners(): Promise<LearnerRosterEntry[]> {
 // Detail — one learner's best-per-module rollup + lab submission statuses.
 // ---------------------------------------------------------------------------
 
+/**
+ * Section grouping (restructure U13): the rollup groups by the curriculum
+ * sections the app renders — course lessons, then "Supplemental coursework"
+ * (matrix), then "Resources & additional lessons" (custom) — replacing the
+ * retired stage grouping. This surface has only module rows (no course/week
+ * structure fetch), so course lessons share one "Course lessons" heading
+ * rather than per-week titles; deliberately NO extra DB round-trip here.
+ */
+const SECTION_BY_ORIGIN: Record<string, { label: string; rank: number }> = {
+  course: { label: 'Course lessons', rank: 0 },
+  matrix: { label: 'Supplemental coursework', rank: 1 },
+  custom: { label: 'Resources & additional lessons', rank: 2 },
+};
+
+/** Display section (group heading) for a module's origin. */
+export function sectionForOrigin(origin: string): string {
+  return SECTION_BY_ORIGIN[origin]?.label ?? origin;
+}
+
 /** One published module's status for a learner (best-per-module rollup). */
 export interface LearnerModuleRow {
   cellId: string;
   title: string;
-  stage: string;
+  /** Display section the row groups under (see SECTION_BY_ORIGIN). */
+  section: string;
   completed: boolean;
   /** Best quiz score as a 0..1 fraction, or null if never attempted. */
   bestQuizPct: number | null;
@@ -136,7 +156,7 @@ export interface LearnerDetailData {
 export interface PublishedModuleRow {
   cell_id: string;
   title: string;
-  stage: string;
+  origin: string;
 }
 export interface ModuleProgressRow {
   module_id: string;
@@ -160,7 +180,9 @@ export interface LabSubmissionRow {
  * published-module list (so not-yet-started modules still show, surfacing gaps),
  * marking completion from module_progress and the best quiz fraction per module.
  * Best = highest score/max_score over that module's attempts (ties keep the first
- * seen); attempts with no usable max_score are ignored.
+ * seen); attempts with no usable max_score are ignored. Rows are ordered by
+ * section (course → supplemental → resources, matching the learner nav) with
+ * the fetch order (sort_order) preserved within each section.
  */
 export function buildLearnerModuleRows(
   modules: PublishedModuleRow[],
@@ -182,17 +204,24 @@ export function buildLearnerModuleRows(
     }
   }
 
-  return modules.map((m) => {
-    const b = best.get(m.cell_id);
-    return {
-      cellId: m.cell_id,
-      title: m.title,
-      stage: m.stage,
-      completed: completedIds.has(m.cell_id),
-      bestQuizPct: b ? b.pct : null,
-      quizPassed: b ? b.passed : null,
-    };
-  });
+  return modules
+    .map((m): { rank: number; row: LearnerModuleRow } => {
+      const b = best.get(m.cell_id);
+      return {
+        rank: SECTION_BY_ORIGIN[m.origin]?.rank ?? Number.MAX_SAFE_INTEGER,
+        row: {
+          cellId: m.cell_id,
+          title: m.title,
+          section: sectionForOrigin(m.origin),
+          completed: completedIds.has(m.cell_id),
+          bestQuizPct: b ? b.pct : null,
+          quizPassed: b ? b.passed : null,
+        },
+      };
+    })
+    // Stable sort: section rank first (unknown origins last), fetch order within.
+    .sort((a, b) => a.rank - b.rank)
+    .map((entry) => entry.row);
 }
 
 /** Pure: map raw lab rows to display rows (newest first). */
@@ -207,12 +236,18 @@ export function buildLearnerLabRows(rows: LabSubmissionRow[]): LearnerLabRow[] {
  * the published-module list. Champion/admin SELECT (P5.1c) scopes the activity
  * reads to learners the caller can see; an out-of-cohort id returns empty rows
  * (RLS-filtered), never an error.
+ *
+ * INVARIANT (U13): this is also the LEARNER self-view's data path
+ * (LearnerDashboard → useLearnerDetail(own id) → here), so it must read only
+ * the base tables under owner/champion RLS — NEVER the staff
+ * `learner_progress_summary` view, whose viewer-independent denominator has
+ * deliberately different semantics. Asserted by learnerDetail.test.ts.
  */
 export async function fetchLearnerDetail(userId: string): Promise<LearnerDetailData> {
   const sb = getSupabaseClient();
 
   const [modulesRes, progressRes, quizRes, labRes] = await Promise.all([
-    sb.from('modules').select('cell_id, title, stage').eq('status', 'published').order('sort_order', { ascending: true }),
+    sb.from('modules').select('cell_id, title, origin').eq('status', 'published').order('sort_order', { ascending: true }),
     sb.from('module_progress').select('module_id, status').eq('user_id', userId),
     sb.from('quiz_attempts').select('module_id, score, max_score, passed').eq('user_id', userId),
     sb.from('lab_submissions').select('id, lab_id, status, created_at').eq('user_id', userId),

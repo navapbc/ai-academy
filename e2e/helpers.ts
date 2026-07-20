@@ -9,9 +9,19 @@ export const ANON_KEY =
   process.env.VITE_SUPABASE_ANON_KEY ?? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
 
 // The seeded local dev user (see supabase/seed.sql). @navapbc.com so it passes
-// the domain trigger.
+// the domain trigger. Enrolled in the seeded Demo Cohort, so it has program
+// access (sees visibility='program' modules — cohort-restructure U4).
 export const DEMO_EMAIL = 'demo@navapbc.com';
 export const DEMO_PASSWORD = 'demo-password';
+
+// Second seeded user (supabase/seed.sql) with a profiles row and deliberately
+// NO enrollments (cohort-restructure U4). The enrollment-visibility spec
+// (lands with U8, once program content exists) signs in as this user to prove
+// program-visibility modules never reach an unenrolled browser, while the
+// enrolled DEMO_EMAIL user sees them. Sign in via
+// `signInAsDemo(page, UNENROLLED_EMAIL, UNENROLLED_PASSWORD)`.
+export const UNENROLLED_EMAIL = 'demo-unenrolled@navapbc.com';
+export const UNENROLLED_PASSWORD = 'demo-password';
 
 /** Signs in via the dev email/password form and waits for the academy to load. */
 export async function signInAsDemo(page: Page, email = DEMO_EMAIL, password = DEMO_PASSWORD) {
@@ -24,21 +34,47 @@ export async function signInAsDemo(page: Page, email = DEMO_EMAIL, password = DE
 }
 
 /**
+ * One canned chat response: a plain-text success body (a string), or an
+ * explicit status + JSON body (to simulate a per-call failure — the client
+ * reads `{ error }` from non-2xx responses).
+ */
+export type StubChatReply = string | { status: number; body: string };
+
+/**
  * Intercepts the chat Edge Function and returns a canned PLAIN-TEXT body — the
  * same shape src/lib/llm.ts reads (the real function strips Anthropic's SSE and
  * streams text deltas). No ANTHROPIC_API_KEY needed.
+ *
+ * Pass a single string to answer EVERY call with the same body (the original
+ * behavior — existing single-call specs are unaffected). Pass an ARRAY for
+ * per-call sequential responses (restructure U6's chat-compare fans out one
+ * call per pane): call 1 gets replies[0], call 2 replies[1], …; calls beyond
+ * the array repeat the last entry. An `{ status, body }` entry fulfills that
+ * one call with a non-2xx JSON error (pane-local failure).
  */
-export async function stubClaude(page: Page, reply: string) {
+export async function stubClaude(page: Page, reply: StubChatReply | StubChatReply[]) {
+  const replies: StubChatReply[] = Array.isArray(reply) ? reply : [reply];
+  let call = 0;
   await page.route('**/functions/v1/chat', async (route) => {
     if (route.request().method() === 'OPTIONS') {
       await route.fulfill({ status: 200, body: 'ok' });
       return;
     }
-    await route.fulfill({
-      status: 200,
-      contentType: 'text/plain; charset=utf-8',
-      body: reply,
-    });
+    const r = replies[Math.min(call, replies.length - 1)];
+    call += 1;
+    if (typeof r === 'string') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/plain; charset=utf-8',
+        body: r,
+      });
+    } else {
+      await route.fulfill({
+        status: r.status,
+        contentType: 'application/json',
+        body: r.body,
+      });
+    }
   });
 }
 
@@ -110,25 +146,44 @@ export async function fetchQuiz(page: Page, cellId: string): Promise<QuizQ[]> {
 export async function openModule(page: Page, cellId: string) {
   // Cell ids contain dots (e.g. "1.4"), so use an attribute selector rather
   // than a CSS #id selector (where the dot would be read as a class).
-  await page.locator(`[id="module-${cellId}"]`).click();
+  const row = page.locator(`[id="module-${cellId}"]`);
+  // Sidebar sections start collapsed unless they contain the current module
+  // (U2 UX), and post-U8 the cursor can start inside a course week — so the
+  // target row may not be in the DOM yet. Expand collapsed sections (week /
+  // supplemental / resources headers are the only aria-expanded buttons in
+  // the sidebar) until the row exists; expansion never collapses others.
+  const collapsed = page.locator('#sidebar [aria-expanded="false"]');
+  while ((await row.count()) === 0 && (await collapsed.count()) > 0) {
+    await collapsed.first().click();
+  }
+  await row.click();
 }
 
 /**
- * Drives the inline quiz of the currently-open module to a 100% pass by
- * clicking the correct option text for each question. Stops at the results
- * screen (does NOT click "Continue") so callers can assert on it.
+ * Drives the inline quiz of the currently-open module to the results screen by
+ * answering every question (U9: FINISHING at any score is what counts — the
+ * recorded attempt auto-completes the module via the participation seam).
+ * `missFirst` answers the first question wrong (a deliberate sub-100% run);
+ * otherwise every answer is correct. Stops at the results screen so callers
+ * can assert on it.
  */
-export async function passQuiz(page: Page, cellId: string) {
+export async function finishQuiz(
+  page: Page,
+  cellId: string,
+  opts: { missFirst?: boolean } = {},
+) {
   const questions = await fetchQuiz(page, cellId);
   expect(questions.length).toBeGreaterThan(0);
   const quiz = page.locator('#module-quiz');
   await expect(quiz).toBeVisible();
 
   for (let i = 0; i < questions.length; i++) {
-    const correctText = questions[i].options[questions[i].correctIndex];
+    const { options, correctIndex } = questions[i];
+    const pickIndex =
+      opts.missFirst && i === 0 ? (correctIndex + 1) % options.length : correctIndex;
     // Options are a radiogroup (A11Y-01) → role="radio". Only the current
     // question is in the DOM, so the option text is unique.
-    await quiz.getByRole('radio', { name: correctText, exact: true }).click();
+    await quiz.getByRole('radio', { name: options[pickIndex], exact: true }).click();
     await quiz.getByRole('button', { name: 'Submit Answer' }).click();
     const next = i + 1 < questions.length ? 'Next Question' : 'See Results';
     await quiz.getByRole('button', { name: next }).click();
@@ -136,11 +191,19 @@ export async function passQuiz(page: Page, cellId: string) {
   await expect(page.getByText(/You scored \d+ out of \d+/i)).toBeVisible();
 }
 
-/** Opens a quiz-gated content module, passes its quiz, and clicks Continue. */
+/** Finishes the inline quiz at a 100% score. */
+export async function passQuiz(page: Page, cellId: string) {
+  await finishQuiz(page, cellId);
+}
+
+/**
+ * Opens a content module with an inline quiz and finishes the quiz. Under U9
+ * the recorded attempt itself completes the module (quizzes never gate) —
+ * there is no Continue button to click.
+ */
 export async function completeQuizModule(page: Page, cellId: string) {
   await openModule(page, cellId);
   await passQuiz(page, cellId);
-  await page.getByRole('button', { name: 'Continue to Next Sprint' }).click();
 }
 
 interface SorterScenario {
@@ -182,10 +245,8 @@ export async function completeSorter(page: Page, cellId: string) {
   await sorter.getByRole('button', { name: 'Continue' }).click();
 }
 
-/** Completes ALL of Stage 1a (the 7 cells) so Stage 2 unlocks. */
-export async function completeStage1a(page: Page) {
-  for (const cell of ['1.4', '1.5', '1.6', '1.9', '1.10', '1.13']) {
-    await completeQuizModule(page, cell);
-  }
-  await completeSorter(page, '1.3');
-}
+// NOTE (restructure U2): the former `completeStage1a` unlock helper is gone —
+// stage gating is behaviorally off, so every module (including the old Stage-2
+// cells) is directly openable. Specs open their target module without any
+// unlock preamble. `completeQuizModule` / `completeSorter` above remain as
+// generic completion drivers.

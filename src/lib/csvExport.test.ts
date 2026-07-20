@@ -97,6 +97,13 @@ describe('serializeEvidenceCsv', () => {
     expect(dataLine).toContain('"Delegation | Discernment"');
   });
 
+  it('renders a dual-enrolled learner’s joined cohort label verbatim (U5 dedup upstream)', () => {
+    const row = makeRow({ cohortId: 'c1 | c2', cohortName: 'Cohort A | Cohort B' });
+    const csv = serializeEvidenceCsv([row]);
+    const dataLine = csv.slice(BOM.length).split('\r\n')[1];
+    expect(dataLine).toContain('"Cohort A | Cohort B"');
+  });
+
   it('quizScore and labOverallScore render as percent strings', () => {
     const row = makeRow({ quizScore: 0.857, labOverallScore: 0.5 });
     const csv = serializeEvidenceCsv([row]);

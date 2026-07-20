@@ -30,6 +30,44 @@ describe('progressCache', () => {
     expect(readProgressCache(USER_A)).toEqual(progress);
   });
 
+  // U10: per-completion reset epochs ride the cache so the NEXT session can
+  // detect completions a publish-time reset deleted while the tab was away.
+  test('round-trips completionEpochs (U10)', () => {
+    const progress = {
+      completedModuleIds: ['1.4', '1.5'],
+      currentModuleId: '1.6',
+      completionEpochs: { '1.4': '2026-07-10T00:00:00.000Z', '1.5': null },
+    };
+    writeProgressCache(USER_A, progress);
+    expect(readProgressCache(USER_A)).toEqual(progress);
+  });
+
+  // U10 shape-change migration: a v2 (pre-epoch) cache carries completions with
+  // no captured epoch — it is discarded once (CACHE_VERSION 2→3) and Supabase
+  // re-hydrates the truth, so a stale pre-reset completion can't paint.
+  test('a v2 cache is discarded (CACHE_VERSION bumped to 3 for the epoch shape)', () => {
+    globalThis.localStorage.setItem(
+      `sprint_progress:${USER_A}`,
+      JSON.stringify({ v: 2, progress: { completedModuleIds: ['1.4'], currentModuleId: '1.5' } }),
+    );
+    expect(readProgressCache(USER_A)).toBeNull();
+  });
+
+  test('a v3 envelope with a malformed completionEpochs shape is discarded', () => {
+    globalThis.localStorage.setItem(
+      `sprint_progress:${USER_A}`,
+      JSON.stringify({
+        v: 3,
+        progress: {
+          completedModuleIds: ['1.4'],
+          currentModuleId: '1.5',
+          completionEpochs: { '1.4': 42 },
+        },
+      }),
+    );
+    expect(readProgressCache(USER_A)).toBeNull();
+  });
+
   test('returns null when nothing is cached', () => {
     expect(readProgressCache(USER_A)).toBeNull();
   });

@@ -45,6 +45,11 @@ export default function LessonEditor({
   const [videoUrl, setVideoUrl] = useState(seed.videoUrl);
   const [tutorRef, setTutorRef] = useState(seed.tutorRef);
   const [note, setNote] = useState('');
+  // U10: publish may additionally reset every learner's progress for this
+  // module. Default OFF, and a checked box still requires an explicit confirm
+  // step before the publish fires — the reset is destructive and irreversible.
+  const [resetProgress, setResetProgress] = useState(false);
+  const [confirmingReset, setConfirmingReset] = useState(false);
   const [busy, setBusy] = useState<'save' | 'publish' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -85,8 +90,16 @@ export default function LessonEditor({
     }
   }
 
-  async function handlePublish() {
+  async function handlePublish(confirmed = false) {
     if (!videoOk || noteTooLong) return;
+    // U10 confirm step: a reset-flagged publish first switches into an explicit
+    // inline confirmation; ONLY the confirm button (confirmed=true) reaches the
+    // network call — re-clicking the main Publish button keeps the panel open.
+    if (resetProgress && !confirmed) {
+      setConfirmingReset(true);
+      return;
+    }
+    setConfirmingReset(false);
     setBusy('publish');
     setError(null);
     setNotice(null);
@@ -95,9 +108,14 @@ export default function LessonEditor({
       // live, then promote draft → live in the function (single server step).
       // The optional change-note rides on the publish call (X.2) → content_versions.
       await saveDraft(lesson.cellId, buildDraft());
-      await publishLesson(lesson.cellId, note);
+      await publishLesson(lesson.cellId, note, resetProgress);
       setNote('');
-      setNotice('Published. Learners now see this version — no redeploy needed.');
+      setNotice(
+        resetProgress
+          ? 'Published, and learner progress for this lesson was reset. Learners will see it as not yet completed.'
+          : 'Published. Learners now see this version — no redeploy needed.',
+      );
+      setResetProgress(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not publish the lesson.');
     } finally {
@@ -166,7 +184,7 @@ export default function LessonEditor({
             onChange={(e) => setVideoUrl(e.target.value)}
             placeholder="https://…"
             aria-invalid={!videoOk}
-            className={`w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-nava-green focus:outline-none ${
+            className={`w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-nava-plum focus:outline-none ${
               videoOk ? 'border-gray-300' : 'border-red-400'
             }`}
           />
@@ -192,7 +210,7 @@ export default function LessonEditor({
             value={tutorRef}
             onChange={(e) => setTutorRef(e.target.value)}
             rows={3}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-nava-green focus:outline-none"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-nava-plum focus:outline-none"
           />
         </div>
 
@@ -215,7 +233,7 @@ export default function LessonEditor({
               onChange={(e) => setBodyMd(e.target.value)}
               rows={18}
               spellCheck
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono leading-relaxed focus:ring-2 focus:ring-nava-green focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono leading-relaxed focus:ring-2 focus:ring-nava-plum focus:outline-none"
             />
             <div
               className="rounded-lg border border-gray-200 bg-gray-50 p-4 overflow-auto max-h-[28rem]"
@@ -249,7 +267,7 @@ export default function LessonEditor({
           maxLength={NOTE_MAX_LENGTH + 100}
           placeholder="e.g. Fixed the reflection prompt wording"
           aria-invalid={noteTooLong}
-          className={`w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-nava-green focus:outline-none ${
+          className={`w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-nava-plum focus:outline-none ${
             noteTooLong ? 'border-red-400' : 'border-gray-300'
           }`}
         />
@@ -257,6 +275,59 @@ export default function LessonEditor({
           <p className="text-xs text-red-600" role="alert">
             Keep the note to {NOTE_MAX_LENGTH} characters or fewer ({note.trim().length} now).
           </p>
+        )}
+      </div>
+
+      {/* U10: publish-time progress reset — checkbox (default off) + confirm step. */}
+      <div className="space-y-2">
+        <div className="flex items-start gap-2">
+          <input
+            id="cms-reset-progress"
+            type="checkbox"
+            checked={resetProgress}
+            onChange={(e) => {
+              setResetProgress(e.target.checked);
+              setConfirmingReset(false);
+            }}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-nava-green focus:ring-nava-plum"
+          />
+          <div>
+            <label htmlFor="cms-reset-progress" className="text-sm font-semibold text-gray-800">
+              Reset learner progress for this module
+            </label>
+            <p className="text-xs text-gray-500">
+              Clears every learner&apos;s completion for this lesson when it publishes. They will
+              need to do the updated activity again. Quiz attempts and lab submissions are kept.
+            </p>
+          </div>
+        </div>
+        {confirmingReset && (
+          <div
+            role="alertdialog"
+            aria-label="Confirm progress reset"
+            className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 space-y-3"
+          >
+            <p className="text-sm text-amber-900">
+              <span className="font-bold">This cannot be undone.</span> Publishing will permanently
+              clear every learner&apos;s completion for this lesson — including work saved offline.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => handlePublish(true)}
+                disabled={busy !== null}
+                className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                Publish and reset progress
+              </button>
+              <button
+                onClick={() => setConfirmingReset(false)}
+                disabled={busy !== null}
+                className="text-sm font-bold text-gray-600 hover:text-gray-900 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -274,9 +345,9 @@ export default function LessonEditor({
           Save draft
         </button>
         <button
-          onClick={handlePublish}
+          onClick={() => handlePublish()}
           disabled={busy !== null || !videoOk || noteTooLong}
-          className="inline-flex items-center gap-2 rounded-xl bg-nava-green px-5 py-2 text-sm font-bold text-white hover:bg-nava-plum disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          className="inline-flex items-center gap-2 rounded-xl bg-nava-green px-5 py-2 text-sm font-bold text-white hover:bg-nava-green/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {busy === 'publish' ? (
             <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />

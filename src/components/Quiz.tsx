@@ -10,21 +10,19 @@ function computeScore(answers: Record<string, number>, questions: QuizQuestion[]
   return questions.reduce((n, q, i) => n + (answers[String(i)] === q.correctIndex ? 1 : 0), 0);
 }
 
+// U9 (R15/R16): quizzes NEVER gate — every quiz is ungated practice. Finishing
+// a run (all questions answered, ANY score) records the attempt, and that
+// recorded attempt auto-completes the module through the data layer's
+// participation seam (progress.ts emits, useProgress completes with
+// via='quiz'). The former `gates`/`onComplete` props are gone: there is no
+// pass threshold and no advance button — the learner moves on with the module
+// pager whenever they're ready.
 export default function Quiz({
   moduleId,
   questions,
-  onComplete,
-  gates = true,
 }: {
   moduleId: string;
   questions: QuizQuestion[];
-  onComplete: () => void;
-  // Whether passing this quiz COMPLETES the module. Default true (the inline quiz
-  // is the gate for almost every cell). Set false where another instrument owns
-  // completion — cell 2.1, where the hands-on lab gates and the quiz is an
-  // ungated concept check (decision D8 / audit D-02): the attempt is still
-  // recorded, but passing shows practice copy and does not advance the module.
-  gates?: boolean;
 }) {
   const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -67,7 +65,9 @@ export default function Quiz({
       passed: score === questions.length,
       answers,
     }).catch(() => {
-      // Score persistence is best-effort; the unlock flow still works locally.
+      // Persistence is best-effort. The participation auto-complete (U9) only
+      // fires on a successful insert; if it fails, the footer "Mark as
+      // explored" button remains as the manual completion fallback.
     });
   }, [showResults, user, answers, questions, moduleId]);
 
@@ -102,7 +102,7 @@ export default function Quiz({
         animate={{ opacity: 1, scale: 1 }}
         role="status"
         aria-live="polite"
-        className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-8 text-center"
+        className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-8 text-center"
       >
          <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center ${passing ? 'bg-green-100' : 'bg-orange-100'}`}>
           {passing ? <ShieldCheck className="w-10 h-10 text-green-600" /> : <HelpCircle className="w-10 h-10 text-orange-600" />}
@@ -118,56 +118,40 @@ export default function Quiz({
           )}
         </div>
 
+        {/* Retake-friendly practice copy (U9): any finished run counts — there is
+            no score requirement, and a retake never un-completes the module. */}
         {passing ? (
-          gates ? (
-            <div className="space-y-6">
-              <p className="text-green-700 font-medium bg-green-50 p-4 rounded-xl">
-                Excellent! You have a firm grasp on these concepts. You are ready for the next phase.
-              </p>
-              <button
-                onClick={onComplete}
-                className="w-full py-4 bg-nava-green text-white rounded-2xl font-bold hover:bg-nava-plum transition-all shadow-lg"
-              >
-                Continue to Next Sprint
-              </button>
-            </div>
-          ) : (
-            // Practice concept check (e.g. 2.1) — passing is recorded but the hands-on
-            // lab is what completes the module, so there's no advance button here.
-            <p className="text-green-700 font-medium bg-green-50 p-4 rounded-xl">
-              Nice — you have a firm grasp on these concepts. Complete the hands-on lab above to
-              finish this section.
-            </p>
-          )
+          <p className="text-green-700 font-medium bg-green-50 p-4 rounded-xl">
+            Nice — a perfect run. You have a firm grasp on these concepts.
+          </p>
         ) : (
-          <div className="space-y-6">
-             <p className="text-orange-700 font-medium bg-orange-50 p-4 rounded-xl">
-              Please review the material and try again. We require a 100% score to move forward in the literacy path.
-            </p>
-            <button
-              onClick={() => {
-                setCurrentIndex(0);
-                setSelected(null);
-                setIsSubmitted(false);
-                setShowResults(false);
-                setAnswers({});
-                recordedRef.current = false;
-              }}
-              className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-black transition-all"
-            >
-              Restart Quiz
-            </button>
-          </div>
+          <p className="text-orange-700 font-medium bg-orange-50 p-4 rounded-xl">
+            This checkpoint is practice — your attempt counts at any score. Review the
+            explanations and retake it whenever you like.
+          </p>
         )}
+        <button
+          onClick={() => {
+            setCurrentIndex(0);
+            setSelected(null);
+            setIsSubmitted(false);
+            setShowResults(false);
+            setAnswers({});
+            recordedRef.current = false;
+          }}
+          className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-black transition-all"
+        >
+          Restart Quiz
+        </button>
       </motion.div>
     );
   }
 
   return (
-    <div className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-8" id="module-quiz">
-      <div className="flex items-center justify-between border-b border-nava-mint pb-6">
+    <div className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-8" id="module-quiz">
+      <div className="flex items-center justify-between border-b border-nava-plum/20 pb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-nava-mint rounded-xl flex items-center justify-center text-nava-green">
+          <div className="w-10 h-10 bg-nava-plum/10 rounded-xl flex items-center justify-center text-nava-plum">
             <HelpCircle className="w-5 h-5" />
           </div>
           <div>
@@ -208,7 +192,7 @@ export default function Quiz({
                 onClick={() => setSelected(idx)}
                 className={`
                   w-full p-4 rounded-xl text-left text-sm font-medium transition-all border-2
-                  ${selected === idx ? 'border-nava-green bg-nava-mint text-nava-green shadow-sm' : 'border-gray-100 hover:border-nava-green/30'}
+                  ${selected === idx ? 'border-nava-plum bg-nava-plum/10 text-nava-plum shadow-sm' : 'border-gray-100 hover:border-nava-green/30'}
                   ${isAnswer ? 'border-green-600 bg-green-50 text-green-900' : ''}
                   ${wrongPick ? 'border-red-600 bg-red-50 text-red-900' : ''}
                 `}

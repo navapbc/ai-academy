@@ -134,7 +134,7 @@ export default function PrivacySimulator({ onComplete }: { onComplete: () => voi
           {!isSimulating && steps < 3 && (
             <button
               onClick={startSimulation}
-              className="px-6 py-3 bg-nava-green text-white rounded-xl font-bold text-sm hover:bg-nava-plum transition-all flex items-center gap-2"
+              className="px-6 py-3 bg-nava-green text-white rounded-xl font-bold text-sm hover:bg-nava-green/90 transition-all flex items-center gap-2"
             >
               <Play className="w-4 h-4 fill-current" />
               Simulate Flow

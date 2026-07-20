@@ -1,4 +1,9 @@
 import type {
+  Course,
+  CourseWeek,
+  CourseWeekModule,
+  Curriculum,
+  CurriculumSection,
   Dimension,
   EvidenceType,
   LabConfig,
@@ -6,7 +11,7 @@ import type {
   ModuleOrigin,
   ModuleStatus,
   ModuleType,
-  Phase,
+  ModuleVisibility,
   QuizQuestion,
   SelfReportValidity,
   SorterConfig,
@@ -14,58 +19,60 @@ import type {
 } from '../types';
 import { getSupabaseClient } from './supabaseClient';
 
-// Content-as-data (P3.2.2): the curriculum is now read from the Supabase
-// `modules` table at runtime instead of the static src/data/phases.ts. Each row
-// is one matrix cell; this module maps rows -> the existing Module type and
-// groups them into the Phase[] shape the app already renders, so downstream
-// components barely change. Quizzes come from the row's quiz_json column
+// Content-as-data (P3.2.2): the curriculum is read from the Supabase `modules`
+// table at runtime. Cohort-restructure U2: rows are grouped into Course → Week
+// sections (from courses/course_weeks/course_week_modules), then a
+// "Supplemental coursework" section (matrix modules not in any visible week),
+// then "Resources & additional lessons" (custom lessons) — replacing the old
+// hardcoded 3-stage grouping. Quizzes come from the row's quiz_json column
 // (P3.2.3a) and lab config from lab_config_json (P3.2.3b).
 
-/** Stage-level metadata that lives in the app, not the modules table. */
-const STAGE_META: Record<Stage, Pick<Phase, 'id' | 'week' | 'title' | 'description'>> = {
-  '1a': {
-    id: 'stage-1a',
-    week: 'Stage 1a',
-    title: 'Rules & Access',
-    description: 'The gate: the rules, tools, and access every practitioner needs before using AI.',
-  },
-  '1b': {
-    id: 'stage-1b',
-    week: 'Stage 1b',
-    title: 'Orienting Frames',
-    description: 'The mental models and framings that shape how to think about AI.',
-  },
-  '2': {
-    id: 'stage-2',
-    week: 'Stage 2',
-    title: 'Active Practitioner',
-    description: 'The hands-on craft of working with AI as a literate practitioner.',
-  },
-};
-
-/** Stages in nav order. sort_order keeps cells ordered within each stage. */
-const STAGE_ORDER: Stage[] = ['1a', '1b', '2'];
+/** Valid matrix stages (assertModuleRow's stage allow-list). */
+const STAGES: Stage[] = ['1a', '1b', '2'];
 
 /**
- * Meta for the ungated "Additional lessons" group — the home for custom
- * (origin='custom') free-form lessons (P5.4-1). It is appended AFTER the three
- * matrix stages, and only when at least one custom lesson exists, so the matrix's
- * "always exactly 3 phases" shape is preserved for the default curriculum.
+ * Valid module types (assertModuleRow's type allow-list) — keep in lockstep
+ * with the ModuleType union in src/types.ts. Closed-enum, same style as the
+ * origin/status/visibility guards below: a row whose `type` drifts outside the
+ * union (e.g. the removed 'use-case') throws loudly at the mapping boundary
+ * instead of silently mis-rendering.
  */
-const CUSTOM_PHASE_META: Pick<Phase, 'id' | 'week' | 'title' | 'description'> = {
-  id: 'additional-lessons',
-  week: 'Additional',
-  title: 'Additional lessons',
-  description: 'Standalone lessons outside the matrix — available to everyone, not gated.',
+const MODULE_TYPES: ModuleType[] = ['content', 'lab', 'simulator', 'quiz', 'glossary', 'sorter'];
+
+/**
+ * Meta for the "Supplemental coursework" section (U2/R2): the home for matrix
+ * lessons that are not assigned to any visible course week. One flat group —
+ * the existing sort order is preserved, no sub-groups (Key Decisions).
+ */
+const SUPPLEMENTAL_META: Pick<CurriculumSection, 'kind' | 'id' | 'week' | 'title' | 'description'> = {
+  kind: 'supplemental',
+  id: 'supplemental',
+  week: 'Supplemental',
+  title: 'Supplemental coursework',
+  description: 'The AI-literacy matrix lessons — open practice outside the course weeks, not gated.',
+};
+
+/**
+ * Meta for the "Resources & additional lessons" section (U2/R13) — the former
+ * "Additional lessons" custom-lessons group, renamed. Keeps its published-only
+ * rule and appears only when at least one such lesson exists.
+ */
+const RESOURCES_META: Pick<CurriculumSection, 'kind' | 'id' | 'week' | 'title' | 'description'> = {
+  kind: 'resources',
+  id: 'resources',
+  week: 'Resources',
+  title: 'Resources & additional lessons',
+  description: 'Standalone lessons and resources outside the course — available to everyone, not gated.',
 };
 
 /** A row from the `modules` table (only the columns the runtime curriculum needs). */
 interface ModuleRow {
   cell_id: string;
-  // Custom lessons are ungated and carry stage = null (P5.4-1).
+  // Custom and course lessons are stage-less (stage = null) — P5.4-1 / U1.
   stage: Stage | null;
   status: ModuleStatus;
   origin: ModuleOrigin;
+  visibility: ModuleVisibility;
   title: string;
   type: ModuleType;
   dimension: Dimension[];
@@ -75,6 +82,9 @@ interface ModuleRow {
   video_url: string | null;
   tutor_reference_md: string | null;
   archived_at: string | null;
+  // U10: when an admin last published-with-reset (null = never). Captured by
+  // the client at completion time and echoed with completion writes.
+  progress_reset_at: string | null;
   mastery_anchor: string | null;
   emergent_anchor: string | null;
   quiz_json: QuizQuestion[] | null;
@@ -87,7 +97,7 @@ interface ModuleRow {
 // content, never an in-progress draft (R3, W2-2). The CMS read path (Chunk 2)
 // selects `draft` separately for admins.
 const MODULE_COLUMNS =
-  'cell_id, stage, status, origin, title, type, dimension, evidence_type, self_report_validity, body_md, video_url, tutor_reference_md, archived_at, mastery_anchor, emergent_anchor, quiz_json, lab_config_json, sorter_config_json';
+  'cell_id, stage, status, origin, visibility, title, type, dimension, evidence_type, self_report_validity, body_md, video_url, tutor_reference_md, archived_at, progress_reset_at, mastery_anchor, emergent_anchor, quiz_json, lab_config_json, sorter_config_json';
 
 /**
  * Runtime guard for a `modules` row (TYPE-03). The Supabase client returns
@@ -111,33 +121,51 @@ export function assertModuleRow(row: unknown): asserts row is ModuleRow {
   requireString('title');
   requireString('type');
   requireString('origin');
+  requireString('visibility');
   if (!['draft', 'in_review', 'published'].includes(r.status as string)) {
     throw new Error(`modules row has unknown status "${String(r.status)}" — schema drift?`);
   }
-  if (!['matrix', 'custom'].includes(r.origin as string)) {
+  if (!MODULE_TYPES.includes(r.type as ModuleType)) {
+    throw new Error(`modules row has unknown type "${String(r.type)}" — schema drift?`);
+  }
+  if (!['matrix', 'custom', 'course'].includes(r.origin as string)) {
     throw new Error(`modules row has unknown origin "${String(r.origin)}" — schema drift?`);
   }
-  // Matrix cells carry a valid stage; custom lessons are ungated (stage = null).
-  // The draft working copy is admin-only and re-validated on write, so the read
-  // side only needs to guard the live stage discriminator here (P5.4-1).
-  if (r.origin === 'custom') {
+  if (!['public', 'program'].includes(r.visibility as string)) {
+    throw new Error(`modules row has unknown visibility "${String(r.visibility)}" — schema drift?`);
+  }
+  // Matrix cells carry a valid stage; custom and course lessons are stage-less
+  // (stage = null) — U1. The draft working copy is admin-only and re-validated
+  // on write, so the read side only needs to guard the live stage discriminator
+  // here (P5.4-1).
+  if (r.origin === 'custom' || r.origin === 'course') {
     if (r.stage !== null && r.stage !== undefined) {
-      throw new Error(`custom module has a non-null stage "${String(r.stage)}" — schema drift?`);
+      throw new Error(`${r.origin} module has a non-null stage "${String(r.stage)}" — schema drift?`);
     }
-  } else if (!((r.stage as string) in STAGE_META)) {
+  } else if (!STAGES.includes(r.stage as Stage)) {
     throw new Error(`modules row has unknown stage "${String(r.stage)}" — schema drift?`);
   }
   if (!Array.isArray(r.dimension)) {
     throw new Error('modules row field "dimension" is not an array — schema drift?');
   }
+  // U10: progress_reset_at is a nullable timestamptz — a present non-string,
+  // non-null value means the column changed shape under us.
+  if (
+    r.progress_reset_at !== null &&
+    r.progress_reset_at !== undefined &&
+    typeof r.progress_reset_at !== 'string'
+  ) {
+    throw new Error('modules row field "progress_reset_at" is not a string or null — schema drift?');
+  }
 }
 
-/** Maps a DB row to the existing Module shape (cell_id -> id+cellId, body_md -> content). */
+/**
+ * Maps a DB row to the existing Module shape (cell_id -> id+cellId, body_md ->
+ * content). `phaseId` is stamped by groupCurriculum (a module's section is a
+ * function of week membership, not of the row alone).
+ */
 export function mapRowToModule(row: ModuleRow): Module {
   const origin: ModuleOrigin = row.origin ?? 'matrix';
-  // Custom lessons (stage = null) live in the "Additional lessons" group; matrix
-  // cells map to their stage's phase.
-  const phaseId = row.stage ? STAGE_META[row.stage].id : CUSTOM_PHASE_META.id;
   return {
     id: row.cell_id,
     cellId: row.cell_id,
@@ -146,10 +174,13 @@ export function mapRowToModule(row: ModuleRow): Module {
     content: row.body_md ?? '',
     videoUrl: row.video_url ?? undefined,
     tutorReference: row.tutor_reference_md ?? undefined,
-    phaseId,
+    // Assigned during grouping (U2) — '' means "not yet placed in a section".
+    phaseId: '',
     origin,
     stage: row.stage,
+    visibility: row.visibility,
     status: row.status,
+    progressResetAt: row.progress_reset_at ?? null,
     dimension: row.dimension,
     evidenceType: row.evidence_type,
     selfReportValidity: row.self_report_validity,
@@ -161,20 +192,84 @@ export function mapRowToModule(row: ModuleRow): Module {
   };
 }
 
+/** The course/week structure rows groupCurriculum consumes (already RLS-filtered). */
+export interface CourseStructure {
+  courses: Course[];
+  weeks: CourseWeek[];
+  memberships: CourseWeekModule[];
+}
+
 /**
- * Groups modules (already ordered by sort_order) into Phase[]: the three matrix
- * stages, then an ungated "Additional lessons" group for any custom lessons. The
- * custom group is only appended when at least one custom lesson exists, so the
- * default matrix curriculum keeps its "exactly 3 phases" shape (P5.4-1).
+ * Groups learner-visible modules (already ordered by sort_order and filtered by
+ * the per-origin status rule) into the U2 section order:
+ *
+ *  1. Course weeks, in course + week sort order. A week is visible to learners
+ *     only when it has ≥1 PUBLISHED member the viewer can see; a visible week
+ *     renders ALL of its viewer-visible members (matrix drafts keep their D10
+ *     badge) in membership sort order. Empty/draft-only weeks are hidden.
+ *  2. "Supplemental coursework": matrix modules not in any visible week, in
+ *     their existing sort order (no sub-groups).
+ *  3. "Resources & additional lessons": custom lessons not in any visible week.
+ *
+ * A module assigned to a visible week renders under the week and leaves its
+ * origin bucket (Key Decisions). Course-origin modules with no visible week
+ * membership render nowhere for learners (staff/CMS-only until assigned).
+ * Sections with no modules are omitted entirely.
  */
-export function groupIntoPhases(modules: Module[]): Phase[] {
-  const matrixPhases = STAGE_ORDER.map((stage) => ({
-    ...STAGE_META[stage],
-    modules: modules.filter((m) => m.origin !== 'custom' && m.stage === stage),
-  }));
-  const customModules = modules.filter((m) => m.origin === 'custom');
-  if (customModules.length === 0) return matrixPhases;
-  return [...matrixPhases, { ...CUSTOM_PHASE_META, modules: customModules }];
+export function groupCurriculum(modules: Module[], structure: CourseStructure): CurriculumSection[] {
+  const moduleById = new Map(modules.map((m) => [m.id, m]));
+  const courseById = new Map(structure.courses.map((c) => [c.id, c]));
+
+  // Memberships per week, in membership sort order (fetch order).
+  const membersByWeek = new Map<string, Module[]>();
+  for (const membership of structure.memberships) {
+    const module = moduleById.get(membership.cellId);
+    if (!module) continue; // references a row this viewer can't see
+    const members = membersByWeek.get(membership.weekId) ?? [];
+    members.push(module);
+    membersByWeek.set(membership.weekId, members);
+  }
+
+  // Courses in sort order, each course's weeks in sort order (fetch order).
+  const sections: CurriculumSection[] = [];
+  const assignedIds = new Set<string>();
+  for (const course of structure.courses) {
+    for (const week of structure.weeks) {
+      if (week.courseId !== course.id) continue;
+      const members = membersByWeek.get(week.id) ?? [];
+      // A week appears only once it has a published member (draft-only and
+      // empty weeks are hidden from learners; staff/CMS always see them there).
+      if (!members.some((m) => m.status === 'published')) continue;
+      const sectionId = `week-${week.id}`;
+      sections.push({
+        kind: 'week',
+        id: sectionId,
+        week: week.title,
+        title: week.subtitle ?? week.title,
+        description: '',
+        courseId: course.id,
+        courseTitle: courseById.get(course.id)?.title ?? '',
+        modules: members.map((m) => ({ ...m, phaseId: sectionId })),
+      });
+      for (const m of members) assignedIds.add(m.id);
+    }
+  }
+
+  const supplemental = modules
+    .filter((m) => m.origin === 'matrix' && !assignedIds.has(m.id))
+    .map((m) => ({ ...m, phaseId: SUPPLEMENTAL_META.id }));
+  if (supplemental.length > 0) {
+    sections.push({ ...SUPPLEMENTAL_META, modules: supplemental });
+  }
+
+  const resources = modules
+    .filter((m) => m.origin === 'custom' && !assignedIds.has(m.id))
+    .map((m) => ({ ...m, phaseId: RESOURCES_META.id }));
+  if (resources.length > 0) {
+    sections.push({ ...RESOURCES_META, modules: resources });
+  }
+
+  return sections;
 }
 
 /**
@@ -186,32 +281,92 @@ export function isModuleLive(module: Module): boolean {
   return module.content.length > 0 && !module.content.includes('*Coming soon.*');
 }
 
-/**
- * Fetches the full curriculum from Supabase and returns it as Phase[], the same
- * structure the static PHASES had. Reads under the authenticated SELECT policy
- * from P3.2.1 (modules are shared, read-only content). Throws on error so the
- * loader can surface a clear failure state.
- */
-export async function fetchCurriculum(): Promise<Phase[]> {
-  const { data, error } = await getSupabaseClient()
-    .from('modules')
-    .select(MODULE_COLUMNS)
-    // Soft-deleted lessons are hidden from learners (R6); restore brings them back.
-    .is('archived_at', null)
-    .order('sort_order', { ascending: true });
+/** Runtime guard for a structure row: fail loudly on drift, like assertModuleRow. */
+function assertStructureRow(
+  table: string,
+  row: unknown,
+  stringKeys: string[],
+): asserts row is Record<string, unknown> {
+  if (typeof row !== 'object' || row === null) {
+    throw new Error(`${table} row is not an object — schema drift?`);
+  }
+  const r = row as Record<string, unknown>;
+  for (const key of stringKeys) {
+    if (typeof r[key] !== 'string') {
+      throw new Error(`${table} row is missing string field "${key}" — schema drift?`);
+    }
+  }
+}
 
-  if (error) throw error;
+/**
+ * Fetches the full curriculum — modules plus the course/week structure — and
+ * returns the grouped sections and the raw module-row count (the FE-02
+ * empty-state discriminator: the error state keys on ZERO ROWS RETURNED, never
+ * on group shape, so an unenrolled learner receiving only public rows renders
+ * normally). Reads under the tables' SELECT policies (modules are shared,
+ * read-only content). Throws on error so the loader can surface a clear
+ * failure state.
+ */
+export async function fetchCurriculum(): Promise<Curriculum> {
+  const supabase = getSupabaseClient();
+  const [modulesRes, coursesRes, weeksRes, membershipsRes] = await Promise.all([
+    supabase
+      .from('modules')
+      .select(MODULE_COLUMNS)
+      // Soft-deleted lessons are hidden from learners (R6); restore brings them back.
+      .is('archived_at', null)
+      .order('sort_order', { ascending: true }),
+    supabase.from('courses').select('id, slug, title, description, sort_order').order('sort_order', { ascending: true }),
+    supabase.from('course_weeks').select('id, course_id, title, subtitle, sort_order').order('sort_order', { ascending: true }),
+    supabase.from('course_week_modules').select('week_id, cell_id, sort_order').order('sort_order', { ascending: true }),
+  ]);
+  for (const res of [modulesRes, coursesRes, weeksRes, membershipsRes]) {
+    if (res.error) throw res.error;
+  }
 
   // Validate each row's shape before mapping so schema drift fails loudly.
-  const rows = data ?? [];
+  const rows = modulesRes.data ?? [];
   const modules = rows
     .map((row) => {
       assertModuleRow(row);
       return mapRowToModule(row);
     })
-    // A custom lesson is invisible to learners until it has been published; matrix
-    // cells are always shown (their D10 "draft — under review" badge is driven by
-    // status, not visibility). Learners always read the LIVE columns (R3).
-    .filter((m) => m.origin !== 'custom' || m.status === 'published');
-  return groupIntoPhases(modules);
+    // Custom and course lessons are invisible to learners until published;
+    // matrix cells are always shown (their D10 "draft — under review" badge is
+    // driven by status). Learners always read the LIVE columns (R3).
+    .filter((m) => m.origin === 'matrix' || m.status === 'published');
+
+  const courses: Course[] = (coursesRes.data ?? []).map((row) => {
+    assertStructureRow('courses', row, ['id', 'slug', 'title']);
+    return {
+      id: row.id as string,
+      slug: row.slug as string,
+      title: row.title as string,
+      description: (row.description as string | null) ?? null,
+      sortOrder: (row.sort_order as number) ?? 0,
+    };
+  });
+  const weeks: CourseWeek[] = (weeksRes.data ?? []).map((row) => {
+    assertStructureRow('course_weeks', row, ['id', 'course_id', 'title']);
+    return {
+      id: row.id as string,
+      courseId: row.course_id as string,
+      title: row.title as string,
+      subtitle: (row.subtitle as string | null) ?? null,
+      sortOrder: (row.sort_order as number) ?? 0,
+    };
+  });
+  const memberships: CourseWeekModule[] = (membershipsRes.data ?? []).map((row) => {
+    assertStructureRow('course_week_modules', row, ['week_id', 'cell_id']);
+    return {
+      weekId: row.week_id as string,
+      cellId: row.cell_id as string,
+      sortOrder: (row.sort_order as number) ?? 0,
+    };
+  });
+
+  return {
+    sections: groupCurriculum(modules, { courses, weeks, memberships }),
+    moduleRowCount: rows.length,
+  };
 }

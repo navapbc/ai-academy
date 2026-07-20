@@ -16,18 +16,20 @@ const mod = (over: Partial<Module>): Module =>
     content: '',
     phaseId: 'stage-1a',
     origin: 'matrix',
+    visibility: 'public',
     stage: '1a',
     status: 'published',
     dimension: [],
     evidenceType: 'quiz',
     selfReportValidity: 'na',
+    progressResetAt: null,
     ...over,
   }) as Module;
 
 const phases: Phase[] = [
   {
-    id: 'stage-1a',
-    title: 'Stage 1a',
+    id: 'supplemental',
+    title: 'Supplemental coursework',
     description: '',
     week: '',
     modules: [

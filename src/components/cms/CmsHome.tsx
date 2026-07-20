@@ -114,7 +114,7 @@ export default function CmsHome({ onBack }: { onBack: () => void }) {
           </div>
           <button
             onClick={() => setCreating(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-plum transition-all"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-nava-green px-4 py-2 text-sm font-bold text-white hover:bg-nava-green/90 transition-all"
           >
             <Plus className="w-4 h-4" aria-hidden="true" />
             New lesson
@@ -138,7 +138,7 @@ export default function CmsHome({ onBack }: { onBack: () => void }) {
             type="checkbox"
             checked={includeArchived}
             onChange={(e) => setIncludeArchived(e.target.checked)}
-            className="rounded border-gray-300 text-nava-green focus:ring-nava-green"
+            className="rounded border-gray-300 text-nava-green focus:ring-nava-plum"
           />
           Show archived ({archivedCount})
         </label>
@@ -157,7 +157,7 @@ export default function CmsHome({ onBack }: { onBack: () => void }) {
           <p className="text-sm text-gray-700">{error}</p>
           <button
             onClick={load}
-            className="px-5 py-2 bg-nava-green hover:bg-nava-plum text-white rounded-xl font-bold transition-all"
+            className="px-5 py-2 bg-nava-green hover:bg-nava-green/90 text-white rounded-xl font-bold transition-all"
           >
             Retry
           </button>
@@ -197,7 +197,8 @@ function LessonRow({
           <p className="font-semibold text-gray-900 truncate">{lesson.title}</p>
           <p className="mt-0.5 text-xs text-gray-500">
             {lesson.type}
-            {lesson.origin === 'custom' && ' · custom'}
+            {/* Non-matrix lessons are labeled by origin ('custom' / 'course' — U3). */}
+            {lesson.origin !== 'matrix' && ` · ${lesson.origin}`}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">

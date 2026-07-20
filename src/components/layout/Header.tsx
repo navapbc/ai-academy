@@ -38,13 +38,13 @@ export default function Header({
     <header className="h-16 border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-10 flex items-center justify-between px-6">
       <div className="flex items-center gap-4">
         {!isSidebarOpen && (
-          <button onClick={onOpenSidebar} aria-label="Open menu" className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+          <button onClick={onOpenSidebar} aria-label="Show sidebar" className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
             <Menu className="w-5 h-5" aria-hidden="true" />
           </button>
         )}
         <nav className="flex items-center text-sm text-gray-500 gap-2">
           {currentPhase && (
-            <span className="text-nava-green font-bold uppercase tracking-wider text-[10px]">{currentPhase.week}</span>
+            <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">{currentPhase.week}</span>
           )}
           <ChevronRight className="w-4 h-4 text-gray-500" />
           <span className="text-gray-900 font-semibold truncate max-w-[200px]">{currentModule.title}</span>

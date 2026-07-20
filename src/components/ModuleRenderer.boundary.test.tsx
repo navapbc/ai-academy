@@ -29,6 +29,7 @@ const base: Module = {
   id: '2.15',
   cellId: '2.15',
   origin: 'matrix',
+  visibility: 'public',
   title: 'T',
   type: 'content',
   content: '# Lesson body text',
@@ -38,11 +39,17 @@ const base: Module = {
   dimension: ['Diligence'],
   evidenceType: 'performance-task',
   selfReportValidity: 'medium',
+  progressResetAt: null,
 };
 
 function renderModule(over: Partial<Module>) {
   return render(
-    <ModuleRenderer module={{ ...base, ...over }} selectedPersona="default" onComplete={() => {}} />,
+    <ModuleRenderer
+      module={{ ...base, ...over }}
+      selectedPersona="default"
+      isCompleted={false}
+      onComplete={() => {}}
+    />,
   );
 }
 

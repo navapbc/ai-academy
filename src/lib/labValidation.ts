@@ -34,6 +34,10 @@ export const LAB_KINDS: LabConfig['kind'][] = [
   'dashboard-critique',
   'use-case-portfolio',
   'failure-log',
+  'chat-compare',
+  'decision-scenario',
+  'prediction-sort',
+  'delegation-sort',
   'glat',
 ];
 
@@ -66,6 +70,10 @@ export const LAB_KIND_LABELS: Record<LabConfig['kind'], string> = {
   'dashboard-critique': 'Dashboard critique',
   'use-case-portfolio': 'Use-case portfolio',
   'failure-log': 'Failure log',
+  'chat-compare': 'Chat compare',
+  'decision-scenario': 'Decision scenario',
+  'prediction-sort': 'Prediction sort',
+  'delegation-sort': 'Delegation sort',
   glat: 'GLAT exam',
 };
 
@@ -163,6 +171,9 @@ function firstError(...checks: (string | null)[]): string | null {
   for (const c of checks) if (c) return c;
   return null;
 }
+
+/** The decision-scenario workflow phases (mirrors DecisionCheckpoint in types.ts). */
+const DECISION_PHASES = ['delegate', 'ground', 'scope', 'verify'] as const;
 
 const LAB_VALIDATORS: Record<string, (c: Obj) => string | null> = {
   'prompt-construction': (c) =>
@@ -421,6 +432,114 @@ const LAB_VALIDATORS: Record<string, (c: Obj) => string | null> = {
       c.targetEntries >= 1
         ? null
         : '`targetEntries` must be an integer ≥ 1.',
+    ),
+
+  // chat-compare (restructure U6): 1–4 panes of all-optional string fields —
+  // a bare pane is plain Claude; systemPromptMd rigs it; sourceMd grounds it.
+  'chat-compare': (c) => {
+    if (!Array.isArray(c.panes) || c.panes.length < 1 || c.panes.length > 4) {
+      return '`panes` must be an array of 1–4 panes.';
+    }
+    for (let i = 0; i < c.panes.length; i++) {
+      const pane = c.panes[i];
+      if (!isObj(pane)) return `\`panes[${i}]\` must be an object.`;
+      for (const f of ['label', 'systemPromptMd', 'sourceMd'] as const) {
+        if (f in pane && pane[f] !== undefined && typeof pane[f] !== 'string') {
+          return `\`panes[${i}].${f}\` must be a string.`;
+        }
+      }
+    }
+    if ('suggestedPrompts' in c && c.suggestedPrompts !== undefined) {
+      if (!Array.isArray(c.suggestedPrompts) || !c.suggestedPrompts.every((s) => typeof s === 'string')) {
+        return '`suggestedPrompts` must be an array of strings.';
+      }
+    }
+    return null;
+  },
+
+  // decision-scenario (restructure U7): a LINEAR "Walk the Workflow" checkpoint
+  // scenario — required introMd, ≥1 checkpoints of { id, phase∈(delegate|ground|
+  // scope|verify), setupMd, prompt, options[≥2] of { text, feedbackMd } };
+  // multiSelect and closingMd optional.
+  'decision-scenario': (c) => {
+    if (!isNonEmptyStr(c.introMd)) return '`introMd` must be a non-empty string.';
+    if (!Array.isArray(c.checkpoints) || c.checkpoints.length < 1) {
+      return '`checkpoints` must be a non-empty array.';
+    }
+    for (let i = 0; i < c.checkpoints.length; i++) {
+      const cp = c.checkpoints[i];
+      const p = `checkpoints[${i}]`;
+      if (!isObj(cp)) return `\`${p}\` must be an object.`;
+      if (!isNonEmptyStr(cp.id)) return `\`${p}.id\` must be a non-empty string.`;
+      if (!(DECISION_PHASES as readonly string[]).includes(cp.phase as string)) {
+        return `\`${p}.phase\` must be one of: ${DECISION_PHASES.join(', ')}.`;
+      }
+      if (!isNonEmptyStr(cp.setupMd)) return `\`${p}.setupMd\` must be a non-empty string.`;
+      if (!isNonEmptyStr(cp.prompt)) return `\`${p}.prompt\` must be a non-empty string.`;
+      if ('multiSelect' in cp && cp.multiSelect !== undefined && typeof cp.multiSelect !== 'boolean') {
+        return `\`${p}.multiSelect\` must be a boolean.`;
+      }
+      if (!Array.isArray(cp.options) || cp.options.length < 2) {
+        return `\`${p}.options\` must be an array of at least 2 options.`;
+      }
+      for (let j = 0; j < cp.options.length; j++) {
+        const opt = cp.options[j];
+        if (!isObj(opt) || !isNonEmptyStr(opt.text) || !isNonEmptyStr(opt.feedbackMd)) {
+          return `\`${p}.options[${j}]\` must be { text, feedbackMd } (both non-empty strings).`;
+        }
+      }
+    }
+    if ('closingMd' in c && c.closingMd !== undefined && typeof c.closingMd !== 'string') {
+      return '`closingMd` must be a string.';
+    }
+    return null;
+  },
+
+  // prediction-sort (P?): a "lookup vs. predict" sorting exercise — required
+  // introMd, bucketLabels{lookup,predict}, ≥1 items of { id, prompt, reveal },
+  // and a uniform takeaway{title,body} payoff card.
+  'prediction-sort': (c) =>
+    firstError(
+      isNonEmptyStr(c.introMd) ? null : '`introMd` must be a non-empty string.',
+      isObj(c.bucketLabels) &&
+      isNonEmptyStr((c.bucketLabels as Obj).lookup) &&
+      isNonEmptyStr((c.bucketLabels as Obj).predict)
+        ? null
+        : '`bucketLabels` must be { lookup, predict } (both non-empty strings).',
+      checkArray(c.items, 'items', (it, p) =>
+        isObj(it) && isNonEmptyStr(it.id) && isNonEmptyStr(it.prompt) && isNonEmptyStr(it.reveal)
+          ? null
+          : `\`${p}\` must be { id, prompt, reveal } (all non-empty strings).`,
+      ),
+      isObj(c.takeaway) &&
+      isNonEmptyStr((c.takeaway as Obj).title) &&
+      isNonEmptyStr((c.takeaway as Obj).body)
+        ? null
+        : '`takeaway` must be { title, body } (both non-empty strings).',
+    ),
+
+  'delegation-sort': (c) =>
+    firstError(
+      isNonEmptyStr(c.introMd) ? null : '`introMd` must be a non-empty string.',
+      checkArray(c.categories, 'categories', (cat, p) =>
+        isObj(cat) && isNonEmptyStr(cat.id) && isNonEmptyStr(cat.label) && typeof cat.desc === 'string'
+          ? null
+          : `\`${p}\` must be { id, label, desc }.`,
+      ),
+      checkArray(c.items, 'items', (it, p) =>
+        isObj(it) &&
+        isNonEmptyStr(it.id) &&
+        isNonEmptyStr(it.scenario) &&
+        isNonEmptyStr(it.suggested) &&
+        isNonEmptyStr(it.rationale)
+          ? null
+          : `\`${p}\` must be { id, scenario, suggested, rationale } (all non-empty strings).`,
+      ),
+      isObj(c.takeaway) &&
+      isNonEmptyStr((c.takeaway as Obj).title) &&
+      isNonEmptyStr((c.takeaway as Obj).body)
+        ? null
+        : '`takeaway` must be { title, body } (both non-empty strings).',
     ),
 
   glat: (c) => {

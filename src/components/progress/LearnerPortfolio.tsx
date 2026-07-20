@@ -18,7 +18,7 @@ const PANEL_TITLE = 'flex items-center gap-2 text-base font-bold text-gray-900';
 function PanelHeader({ icon: Icon, title }: { icon: typeof Gauge; title: string }) {
   return (
     <h3 className={PANEL_TITLE}>
-      <Icon className="w-4 h-4 text-nava-green shrink-0" aria-hidden="true" />
+      <Icon className="w-4 h-4 text-nava-plum shrink-0" aria-hidden="true" />
       {title}
     </h3>
   );
@@ -75,8 +75,8 @@ function ConfidencePanel({ data }: { data: ConfidenceCalibrationArtifact | null 
             <span className="font-semibold tabular-nums">{data.maxScore}</span> outputs.
           </p>
           <ul className="grid grid-cols-3 gap-2 text-center">
-            <li className="rounded-lg bg-nava-green/10 px-2 py-2">
-              <div className="text-lg font-bold text-nava-green tabular-nums">{data.calibrated}</div>
+            <li className="rounded-lg bg-nava-plum/10 px-2 py-2">
+              <div className="text-lg font-bold text-nava-plum tabular-nums">{data.calibrated}</div>
               <div className="text-[11px] font-semibold text-gray-600">Calibrated</div>
             </li>
             <li className="rounded-lg bg-amber-100 px-2 py-2">
@@ -164,7 +164,7 @@ function UseCasePortfolioPanel({ data }: { data: UseCasePortfolioArtifact | null
                       <span
                         className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                           e.verdict === 'helps'
-                            ? 'bg-nava-green/15 text-nava-green'
+                            ? 'bg-nava-plum/15 text-nava-plum'
                             : 'bg-gray-200 text-gray-700'
                         }`}
                       >
@@ -188,7 +188,7 @@ function UseCasePortfolioPanel({ data }: { data: UseCasePortfolioArtifact | null
               <dl className="space-y-2">
                 {statementEntries.map(([id, text]) => (
                   <div key={id} className="rounded-lg border border-gray-100 bg-gray-50/50 p-3">
-                    <dt className="text-sm font-bold text-nava-green">{dimensionLabel(id)}</dt>
+                    <dt className="text-sm font-bold text-nava-plum">{dimensionLabel(id)}</dt>
                     <dd className="text-sm text-gray-700">{text}</dd>
                   </div>
                 ))}
@@ -212,13 +212,13 @@ export default function LearnerPortfolio({ userId }: { userId: string }) {
     <section className="space-y-4">
       <h2 className="text-lg font-bold text-gray-900">Your portfolio &amp; calibration</h2>
       <p className="text-sm text-gray-600">
-        The artifacts you build in the Stage 2 practice labs — your calibration numbers and
+        The artifacts you build in the practice labs — your calibration numbers and
         portfolio. These are yours to keep and reuse.
       </p>
 
       {loading && (
         <div className="flex items-center justify-center py-8" role="status">
-          <Loader2 className="w-5 h-5 text-nava-green animate-spin" aria-hidden="true" />
+          <Loader2 className="w-5 h-5 text-nava-plum animate-spin" aria-hidden="true" />
           <span className="sr-only">Loading your portfolio…</span>
         </div>
       )}
@@ -229,7 +229,7 @@ export default function LearnerPortfolio({ userId }: { userId: string }) {
           <span className="text-sm text-gray-700">{error}</span>
           <button
             onClick={reload}
-            className="ml-auto text-sm font-bold text-nava-green hover:text-nava-plum shrink-0"
+            className="ml-auto text-sm font-bold text-nava-plum hover:text-nava-plum shrink-0"
           >
             Retry
           </button>

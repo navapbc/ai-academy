@@ -13,9 +13,11 @@ import LearnerPortfolio from './progress/LearnerPortfolio';
 // lab submission statuses in one place. Reuses the P5.2c per-learner data-access
 // (fetchLearnerDetail) at the owner-RLS path — userId is the signed-in user, so the
 // existing owner policies already permit every read; no new policy or migration.
+// INVARIANT (U13): this learner surface never reads the staff aggregation views
+// (learner_progress_summary etc.) — their viewer-independent denominators are
+// staff semantics by design. Asserted by learnerDetail.test.ts.
 // Summary cards are derived locally (summarizeOwnProgress) so they stay consistent
-// with the published-module table below. Read-only: records nothing, no onComplete,
-// no effect on gating.
+// with the published-module table below. Read-only: records nothing, no onComplete.
 
 export default function LearnerDashboard({ userId }: { userId: string }) {
   const { detail, loading, error, reload } = useLearnerDetail(userId);
@@ -24,7 +26,7 @@ export default function LearnerDashboard({ userId }: { userId: string }) {
   return (
     <div className="space-y-8">
       <header className="space-y-1">
-        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-green">
+        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-plum">
           Your dashboard
         </span>
         <h1 className="text-2xl font-bold text-gray-900" tabIndex={-1}>
@@ -37,7 +39,7 @@ export default function LearnerDashboard({ userId }: { userId: string }) {
 
       {loading && (
         <div className="flex items-center justify-center py-12" role="status">
-          <Loader2 className="w-6 h-6 text-nava-green animate-spin" aria-hidden="true" />
+          <Loader2 className="w-6 h-6 text-nava-plum animate-spin" aria-hidden="true" />
           <span className="sr-only">Loading your progress…</span>
         </div>
       )}
@@ -48,7 +50,7 @@ export default function LearnerDashboard({ userId }: { userId: string }) {
           <p className="text-sm text-gray-700">{error}</p>
           <button
             onClick={reload}
-            className="px-5 py-2 bg-nava-green hover:bg-nava-plum text-white rounded-xl font-bold transition-all"
+            className="px-5 py-2 bg-nava-green hover:bg-nava-green/90 text-white rounded-xl font-bold transition-all"
           >
             Retry
           </button>

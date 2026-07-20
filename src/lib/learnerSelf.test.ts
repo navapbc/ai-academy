@@ -6,7 +6,7 @@ function mod(p: Partial<LearnerModuleRow> & { cellId: string }): LearnerModuleRo
   return {
     cellId: p.cellId,
     title: p.title ?? p.cellId,
-    stage: p.stage ?? '1a',
+    section: p.section ?? 'Supplemental coursework',
     completed: p.completed ?? false,
     bestQuizPct: p.bestQuizPct ?? null,
     quizPassed: p.quizPassed ?? null,
@@ -53,19 +53,19 @@ describe('summarizeOwnProgress', () => {
 
   test('glatPassed is true only when 2.14 best attempt passed', () => {
     const passed = summarizeOwnProgress({
-      modules: [mod({ cellId: '2.14', stage: '2', bestQuizPct: 0.9, quizPassed: true })],
+      modules: [mod({ cellId: '2.14', bestQuizPct: 0.9, quizPassed: true })],
       labs: [],
     });
     expect(passed.glatPassed).toBe(true);
 
     const failed = summarizeOwnProgress({
-      modules: [mod({ cellId: '2.14', stage: '2', bestQuizPct: 0.5, quizPassed: false })],
+      modules: [mod({ cellId: '2.14', bestQuizPct: 0.5, quizPassed: false })],
       labs: [],
     });
     expect(failed.glatPassed).toBe(false);
 
     const absent = summarizeOwnProgress({
-      modules: [mod({ cellId: '2.1', stage: '2', quizPassed: true })],
+      modules: [mod({ cellId: '2.1', quizPassed: true })],
       labs: [],
     });
     expect(absent.glatPassed).toBe(false);

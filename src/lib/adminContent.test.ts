@@ -103,6 +103,36 @@ describe('invokeAdminContent — happy path', () => {
     });
   });
 
+  // U10: resetProgress rides the publish body only when true — a plain publish
+  // stays byte-identical to the pre-U10 contract.
+  test('publishLesson includes resetProgress: true when requested (U10)', async () => {
+    const { publishLesson } = await loadModule();
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true, action: 'publish', version: 4 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await publishLesson('2.9', 'reworked activity', true);
+    expect(JSON.parse(callAt(fetchMock, 0)[1].body)).toEqual({
+      action: 'publish',
+      cellId: '2.9',
+      note: 'reworked activity',
+      resetProgress: true,
+    });
+  });
+
+  test('publishLesson omits resetProgress when false or absent (U10)', async () => {
+    const { publishLesson } = await loadModule();
+    const fetchMock = vi.fn(async () => jsonResponse({ ok: true, action: 'publish', version: 4 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await publishLesson('2.9', undefined, false);
+    await publishLesson('2.9');
+    for (const i of [0, 1]) {
+      const body = JSON.parse(callAt(fetchMock, i)[1].body);
+      expect(body).toEqual({ action: 'publish', cellId: '2.9' });
+      expect('resetProgress' in body).toBe(false);
+    }
+  });
+
   test('archive + restore post their actions', async () => {
     const { archiveLesson, restoreLesson } = await loadModule();
     const fetchMock = vi.fn(async () => jsonResponse({ ok: true, action: 'archive' }));

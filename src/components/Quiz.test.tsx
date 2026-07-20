@@ -6,10 +6,13 @@ import userEvent from '@testing-library/user-event';
 import Quiz from './Quiz';
 import type { QuizQuestion } from '../types';
 
-// Component tests for the quiz — the module COMPLETION GATE. We mock auth (a
-// signed-in user) and the progress data layer so nothing hits the network, and
-// assert: options render, the score is computed, the 100%-to-pass gate holds,
-// recordQuizAttempt is called, and onComplete fires ONLY on a passing run.
+// Component tests for the quiz — UNGATED PRACTICE under U9 (R15/R16): finishing
+// a run at ANY score records the attempt (which auto-completes the module via
+// the data layer's participation seam — covered in progress.unit.test.ts /
+// useProgress.test.tsx, not here). We mock auth (a signed-in user) and the
+// progress data layer so nothing hits the network, and assert: options render,
+// the score is computed, recordQuizAttempt fires exactly once per finished run,
+// and NO gate copy or advance button appears at any score.
 const { recordQuizAttempt, fetchQuizSummary } = vi.hoisted(() => ({
   recordQuizAttempt: vi.fn(async () => {}),
   fetchQuizSummary: vi.fn(async () => ({ best: null, latest: null })),
@@ -38,7 +41,7 @@ async function answer(option: string, then: 'Next Question' | 'See Results') {
 
 describe('Quiz', () => {
   test('renders the first question and its options', () => {
-    render(<Quiz moduleId="1.4" questions={questions} onComplete={() => {}} />);
+    render(<Quiz moduleId="1.4" questions={questions} />);
     expect(screen.getByText('What is PII?')).toBeInTheDocument();
     expect(screen.getByRole('radiogroup', { name: 'What is PII?' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Public info' })).toBeInTheDocument();
@@ -50,7 +53,7 @@ describe('Quiz', () => {
 
   test('exposes selection via aria-checked and announces feedback (A11Y-01/03)', async () => {
     const user = userEvent.setup();
-    render(<Quiz moduleId="1.4" questions={questions} onComplete={() => {}} />);
+    render(<Quiz moduleId="1.4" questions={questions} />);
     const option = screen.getByRole('radio', { name: 'Personal info' });
     expect(option).toHaveAttribute('aria-checked', 'false');
     await user.click(option);
@@ -61,13 +64,12 @@ describe('Quiz', () => {
   });
 
   test('returns null for an empty question set', () => {
-    const { container } = render(<Quiz moduleId="1.4" questions={[]} onComplete={() => {}} />);
+    const { container } = render(<Quiz moduleId="1.4" questions={[]} />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  test('a perfect run passes, records a passing attempt, and fires onComplete', async () => {
-    const onComplete = vi.fn();
-    render(<Quiz moduleId="1.4" questions={questions} onComplete={onComplete} />);
+  test('a perfect run records a passing attempt and shows practice copy — no advance button', async () => {
+    render(<Quiz moduleId="1.4" questions={questions} />);
 
     await answer('Personal info', 'Next Question');
     await answer('4', 'See Results');
@@ -83,40 +85,25 @@ describe('Quiz', () => {
       passed: true,
     }));
 
-    const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Continue to Next Sprint' }));
-    expect(onComplete).toHaveBeenCalledOnce();
-  });
-
-  // W2-3 / D8 / audit D-02: as an ungated concept check (gates=false, e.g. cell
-  // 2.1 where the hands-on lab gates), a passing run is still recorded but shows
-  // practice copy, offers NO advance button, and never fires onComplete.
-  test('gates=false: a passing run records the attempt but is practice — no advance, no onComplete', async () => {
-    const onComplete = vi.fn();
-    render(<Quiz moduleId="2.1" questions={questions} onComplete={onComplete} gates={false} />);
-
-    await answer('Personal info', 'Next Question');
-    await answer('4', 'See Results');
-
-    expect(screen.getByText('You scored 2 out of 2')).toBeInTheDocument();
-    await waitFor(() => expect(recordQuizAttempt).toHaveBeenCalledWith('u1', expect.objectContaining({
-      moduleId: '2.1', score: 2, maxScore: 2, passed: true,
-    })));
-    expect(screen.getByText(/Complete the hands-on lab above to finish/i)).toBeInTheDocument();
+    // U9: quizzes never gate — no "Continue" advance button at any score.
     expect(screen.queryByRole('button', { name: 'Continue to Next Sprint' })).not.toBeInTheDocument();
-    expect(onComplete).not.toHaveBeenCalled();
   });
 
-  test('a sub-100% run does NOT pass: no onComplete, records passed:false, offers a restart', async () => {
-    const onComplete = vi.fn();
-    render(<Quiz moduleId="1.4" questions={questions} onComplete={onComplete} />);
+  // U9 (R15/R16): a sub-100% finish is a FULL participation event — the attempt
+  // is recorded with its real score, the copy is retake-friendly practice copy
+  // (no "100% required" gate copy), and a restart is offered.
+  test('a sub-100% run records passed:false, shows retake-friendly practice copy, and offers a restart', async () => {
+    render(<Quiz moduleId="1.4" questions={questions} />);
 
     await answer('Public info', 'Next Question'); // wrong
-    await answer('4', 'See Results'); // right → 1/2, not a pass
+    await answer('4', 'See Results'); // right → 1/2
 
     expect(screen.getByText('You scored 1 out of 2')).toBeInTheDocument();
-    expect(screen.getByText(/require a 100% score/i)).toBeInTheDocument();
+    // The old gate copy is gone…
+    expect(screen.queryByText(/require a 100% score/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Continue to Next Sprint' })).not.toBeInTheDocument();
+    // …replaced by practice copy + a retake.
+    expect(screen.getByText(/counts at any score/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Restart Quiz' })).toBeInTheDocument();
 
     await waitFor(() => expect(recordQuizAttempt).toHaveBeenCalled());
@@ -125,17 +112,24 @@ describe('Quiz', () => {
       maxScore: 2,
       passed: false,
     }));
-    expect(onComplete).not.toHaveBeenCalled();
   });
 
-  // DATA-03 / FE-04 — the attempt is now recorded exactly once per completed
+  // Retakes are always available (retake never un-completes — completion is
+  // monotonic and owned by useProgress, not this component).
+  test('a passing run also offers a restart (retake-friendly)', async () => {
+    render(<Quiz moduleId="1.4" questions={questions} />);
+    await answer('Personal info', 'Next Question');
+    await answer('4', 'See Results');
+    expect(screen.getByRole('button', { name: 'Restart Quiz' })).toBeInTheDocument();
+  });
+
+  // DATA-03 / FE-04 — the attempt is recorded exactly once per completed
   // run (a useRef guard makes it idempotent across StrictMode's double-invoked
   // effect and results re-renders).
   test('records exactly one attempt per run, even under StrictMode (DATA-03 / FE-04)', async () => {
-    const onComplete = vi.fn();
     render(
       <StrictMode>
-        <Quiz moduleId="1.4" questions={questions} onComplete={onComplete} />
+        <Quiz moduleId="1.4" questions={questions} />
       </StrictMode>,
     );
     await answer('Personal info', 'Next Question');

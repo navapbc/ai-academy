@@ -24,7 +24,10 @@ const jsxA11yErrors = Object.fromEntries(
 // Deno Edge Functions (supabase/) use Deno globals + remote imports and are out
 // of scope here; e2e/ and src/ are linted.
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'supabase', 'coverage', 'playwright-report', 'test-results'] },
+  // `.claude` is ignored so local git worktrees created under `.claude/worktrees/`
+  // (each a full repo copy with its own tsconfig) can't trip the typescript-eslint
+  // parser's "multiple candidate TSConfigRootDirs" error and break `npm run lint`.
+  { ignores: ['dist', 'node_modules', 'supabase', 'coverage', 'playwright-report', 'test-results', '.claude'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

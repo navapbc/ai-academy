@@ -111,7 +111,7 @@ export default function FailureSpotter({ config, labId }: Props) {
                     : wrongPick
                       ? 'border-red-600 bg-red-50 text-red-900'
                       : selected
-                        ? 'border-nava-green bg-nava-mint text-nava-green'
+                        ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
                         : 'border-gray-100 text-gray-700 hover:border-nava-green/30'
                 }`}
               >
@@ -159,11 +159,11 @@ export default function FailureSpotter({ config, labId }: Props) {
 
   return (
     <div
-      className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-8"
+      className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-8"
       id="failure-spotter"
     >
-      <div className="flex items-center gap-3 border-b border-nava-mint pb-6">
-        <div className="w-10 h-10 bg-nava-mint rounded-xl flex items-center justify-center text-nava-green">
+      <div className="flex items-center gap-3 border-b border-nava-plum/20 pb-6">
+        <div className="w-10 h-10 bg-nava-plum/10 rounded-xl flex items-center justify-center text-nava-plum">
           <AlertTriangle className="w-5 h-5" />
         </div>
         <div>

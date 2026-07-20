@@ -11,8 +11,8 @@ vi.mock('./cms/CmsHome', () => ({ default: () => <div /> }));
 vi.mock('./staff/UsageMonitoring', () => ({
   default: () => <div data-testid="usage-monitoring" />,
 }));
-vi.mock('./staff/WorkshopManagement', () => ({
-  default: () => <div data-testid="workshop-management" />,
+vi.mock('./cms/CourseManagement', () => ({
+  default: () => <div data-testid="course-management" />,
 }));
 
 describe('StaffArea CMS tile gating (P5.4-2, R5 UI half)', () => {
@@ -58,24 +58,24 @@ describe('StaffArea usage-monitoring tile gating (P6.2)', () => {
   });
 });
 
-describe('StaffArea workshop-management tile gating (X.3 Unit 3)', () => {
-  test('admins see a live Workshop management tile that opens the view', () => {
+describe('StaffArea course-management tile gating (restructure U3)', () => {
+  test('admins see a live Course management tile that opens the view', () => {
     render(<StaffArea role="admin" />);
-    const tile = screen.getByRole('button', { name: /workshop management/i });
+    const tile = screen.getByRole('button', { name: /course management/i });
     expect(tile).toBeInTheDocument();
     expect(tile).not.toHaveTextContent(/soon/i);
 
     fireEvent.click(tile);
-    expect(screen.getByTestId('workshop-management')).toBeInTheDocument();
+    expect(screen.getByTestId('course-management')).toBeInTheDocument();
   });
 
-  test('champions do not get the live workshop tile (see it as upcoming)', () => {
+  test('champions do not get the live course tile (see it as upcoming)', () => {
     render(<StaffArea role="champion" />);
     expect(
-      screen.queryByRole('button', { name: /workshop management/i }),
+      screen.queryByRole('button', { name: /course management/i }),
     ).not.toBeInTheDocument();
     // Shown as an upcoming (ComingSoon) tile instead.
-    expect(screen.getByText(/workshop management/i)).toBeInTheDocument();
-    expect(screen.getByText(/X\.3 · admin/i)).toBeInTheDocument();
+    expect(screen.getByText(/course management/i)).toBeInTheDocument();
+    expect(screen.getByText(/U3 · admin/i)).toBeInTheDocument();
   });
 });

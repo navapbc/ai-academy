@@ -48,7 +48,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             </p>
             <button
               onClick={this.handleReload}
-              className="px-6 py-2.5 bg-nava-green hover:bg-nava-plum text-white rounded-xl font-bold transition-all"
+              className="px-6 py-2.5 bg-nava-green hover:bg-nava-green/90 text-white rounded-xl font-bold transition-all"
             >
               Reload
             </button>

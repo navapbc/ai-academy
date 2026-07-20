@@ -5,13 +5,12 @@ import { Module, AIPersona } from '../types';
 import { GLOSSARY_TERMS } from '../constants';
 import { BRANDING, injectBranding } from '../branding';
 import { useAuth } from '../lib/auth';
-import { fetchQuizSummary, type QuizResult } from '../lib/progress';
+import { fetchQuizSummary, type CompletedVia, type QuizResult } from '../lib/progress';
 import LessonMarkdown from './LessonMarkdown';
 import PrivacySimulator from './PrivacySimulator';
 import Lab from './Lab';
 import Quiz from './Quiz';
 import SectionBoundary from './SectionBoundary';
-import UseCaseLib from './UseCaseLib';
 import ScenarioSorter from './ScenarioSorter';
 import DataClassifier from './exercises/DataClassifier';
 import ToolTriage from './exercises/ToolTriage';
@@ -31,12 +30,34 @@ import PairedCalibration from './exercises/PairedCalibration';
 import DashboardCritique from './exercises/DashboardCritique';
 import UseCasePortfolio from './exercises/UseCasePortfolio';
 import FailureLog from './exercises/FailureLog';
+import ChatCompare from './exercises/ChatCompare';
+import DecisionScenario from './exercises/DecisionScenario';
+import PredictionSort from './exercises/PredictionSort';
+import DelegationSort from './exercises/DelegationSort';
 import GlatExam from './exercises/GlatExam';
 
 interface Props {
   module: Module;
   selectedPersona: AIPersona;
-  onComplete: () => void;
+  /** Whether the learner has already completed this module (drives the footer state). */
+  isCompleted: boolean;
+  /**
+   * Explicit completion path (U9): callers thread `via` into
+   * `completeModule(id, via)` so `completed_via` is stamped truthfully. The
+   * footer button passes 'explored'; the sorter's Continue passes 'sorter'
+   * (ScenarioSorter persists nothing, so no data-layer participation event
+   * exists for it); the prompt-construction lab and GLAT keep their explicit
+   * wiring ('lab'/'quiz') for cursor advance, redundant with the data-layer
+   * seam that fires on their recorded submission/attempt.
+   */
+  onComplete: (via: CompletedVia) => void;
+  /**
+   * U10: whether THIS SESSION dropped a cached completion for this module
+   * because an admin published-with-reset — shows the dismissible reset notice.
+   * Dismissal is in-memory only; the notice reappears on revisit until the
+   * module is re-completed (intended v1 behavior).
+   */
+  wasReset?: boolean;
 }
 
 function toYouTubeEmbed(url: string): string {
@@ -44,11 +65,25 @@ function toYouTubeEmbed(url: string): string {
   return match ? `https://www.youtube.com/embed/${match[1]}` : url;
 }
 
-export default function ModuleRenderer({ module, selectedPersona, onComplete }: Props) {
+export default function ModuleRenderer({
+  module,
+  selectedPersona,
+  isCompleted,
+  onComplete,
+  wasReset = false,
+}: Props) {
   const { user } = useAuth();
+
+  // U10 reset notice dismissal: in-memory only, and it re-arms whenever the
+  // rendered module changes, so the notice reappears on every revisit until
+  // the learner re-completes the module (documented intended v1 behavior).
+  const [resetNoticeDismissed, setResetNoticeDismissed] = useState(false);
+  useEffect(() => {
+    setResetNoticeDismissed(false);
+  }, [module.id]);
   // A content/lesson module can carry a scored quiz. When it does, the quiz
-  // renders after the lesson and is the completion gate — the standalone
-  // "I've completed this section" button is suppressed (passing == complete).
+  // renders after the lesson as ungated practice (U9: quizzes never gate —
+  // finishing one at any score auto-completes via the participation seam).
   // Quiz-type modules already render their quiz via renderInteractive().
   const hasInlineQuiz = module.type !== 'quiz' && (module.quiz?.length ?? 0) > 0;
   const hasQuiz = (module.quiz?.length ?? 0) > 0;
@@ -77,13 +112,19 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
   const renderInteractive = () => {
     switch (module.type) {
       case 'simulator':
-        return <PrivacySimulator onComplete={onComplete} />;
+        // Client-side-only activity (nothing persisted) — its finish action is
+        // an explicit learner claim, so it stamps 'explored', not a
+        // participation via.
+        return <PrivacySimulator onComplete={() => onComplete('explored')} />;
       case 'quiz':
-        return <Quiz moduleId={module.id} questions={module.quiz ?? []} onComplete={onComplete} />;
-      case 'use-case':
-        return <UseCaseLib onComplete={onComplete} />;
+        // Ungated practice (U9): finishing at any score records the attempt,
+        // which auto-completes the module via the participation seam.
+        return <Quiz moduleId={module.id} questions={module.quiz ?? []} />;
       case 'sorter':
-        return <ScenarioSorter config={module.sorterConfig} onComplete={onComplete} />;
+        // The sorter grades entirely client-side and persists nothing, so no
+        // data-layer participation event exists — its Continue button is the
+        // completion and stamps 'sorter'.
+        return <ScenarioSorter config={module.sorterConfig} onComplete={() => onComplete('sorter')} />;
       case 'glossary':
         return <Glossary />;
       default:
@@ -94,17 +135,22 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
   // Interactive exercises driven by the module's lab_config_json
   // (content-as-data). One switch keyed off the config's `kind` discriminator so
   // new exercise types are added additively (P3.5 'scenario-sorter', P3.6
-  // 'data-classifier' / 'tool-triage'). The prompt-construction lab is the
-  // module's completion gate; the classifier/triage exercises are graded
-  // practice that record a submission but leave completion to the inline quiz.
+  // 'data-classifier' / 'tool-triage'). None of these gate completion (U9):
+  // every exercise records a submission through recordLabSubmission, whose
+  // participation event auto-completes the module (via='lab') with no
+  // per-component wiring.
   const renderExercise = () => {
     switch (module.labConfig?.kind) {
       case 'prompt-construction':
+        // The lab's own Continue (post-grade) keeps its explicit onComplete for
+        // cursor advance; the completion itself already happened via the seam
+        // when the submission was recorded. Redundant but harmless
+        // (completeModule is idempotent) — candidate for U11 cleanup.
         return (
           <Lab
             config={module.labConfig}
             labId={module.cellId}
-            onComplete={onComplete}
+            onComplete={() => onComplete('lab')}
             selectedPersona={selectedPersona}
           />
         );
@@ -175,32 +221,59 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         // (not LLM-graded) above the quiz, which remains the completion gate; no
         // onComplete (see FailureLogConfig).
         return <FailureLog config={module.labConfig} labId={module.cellId} />;
+      case 'chat-compare':
+        // Ungraded live comparison (restructure U6) — 1–4 panes answer one
+        // shared prompt; records a submission but never gates completion
+        // (participation completion is U9); no onComplete (see ChatCompareConfig).
+        return <ChatCompare config={module.labConfig} labId={module.cellId} />;
+      case 'decision-scenario':
+        // Ungraded "Walk the Workflow" checkpoint scenario (restructure U7) —
+        // linear DELEGATE→GROUND→SCOPE→VERIFY choices with per-option authored
+        // feedback; records ONE submission on finish but never gates completion
+        // (participation completion is U9); no onComplete (see
+        // DecisionScenarioConfig).
+        return <DecisionScenario config={module.labConfig} labId={module.cellId} />;
+      case 'prediction-sort':
+        // 1.01 intuition sort (Course 1, Week 1) — records a submission that
+        // auto-completes the module via the participation seam (via='lab'); no
+        // onComplete (see PredictionSortConfig). Matches chat-compare/decision-scenario.
+        return <PredictionSort config={module.labConfig} labId={module.cellId} />;
+      case 'delegation-sort':
+        // 1.03 delegation sort (Course 1, Week 2) — records a submission that
+        // auto-completes the module via the participation seam (via='lab'); no
+        // onComplete (see DelegationSortConfig). Matches prediction-sort.
+        return <DelegationSort config={module.labConfig} labId={module.cellId} />;
       case 'glat':
-        // GLAT objective gate (P4.10) — this lab GATES cell 2.14: ≥80% records a
-        // passing quiz_attempts row and calls onComplete. 2.14 has no inline quiz.
-        return <GlatExam config={module.labConfig} labId={module.cellId} onComplete={onComplete} />;
+        // GLAT (P4.10 → U9): no longer a gate — submitting records a
+        // quiz_attempts row, whose participation event auto-completes 2.14 at
+        // ANY score (via='quiz'). The exam's own Finish button keeps its
+        // explicit onComplete for cursor advance after the results are read;
+        // redundant with the seam (idempotent) — candidate for U11 cleanup.
+        return (
+          <GlatExam
+            config={module.labConfig}
+            labId={module.cellId}
+            onComplete={() => onComplete('quiz')}
+          />
+        );
       default:
         return null;
     }
   };
 
-  // Render the widgets once so we can detect a dead-end module (FE-06): a
-  // module that produces no interactive widget, no exercise, no inline quiz, and
-  // no completion button would otherwise show only the video/content with no way
-  // forward — silently blocking gated content. We surface a clear fallback.
+  // Render the widgets once so we can detect a missing-activity module (FE-06):
+  // a non-content module whose config produced no widget still gets a clear
+  // notice. It is no longer a dead-end — the universal footer "Mark as
+  // explored" button (U9) always offers a way forward — but a silent blank
+  // where an activity should be would still read as broken.
   const interactive = renderInteractive();
   const exercise = renderExercise();
-  // Cell 2.1 (decision D8 / audit D-02): the hands-on prompt-construction lab is
-  // the completion gate, so its inline quiz renders as an ungated concept check
-  // (the lab's onComplete still gates). Every other cell keeps the quiz as the
-  // gate. The lab is the only exercise kind that takes onComplete, so keying on
-  // it is exact and contained.
-  const labGatesCompletion =
-    module.labConfig?.kind === 'prompt-construction' || module.labConfig?.kind === 'glat';
-  const hasCompletionButton =
-    (module.type === 'content' || module.type === 'glossary') && !hasInlineQuiz && !labGatesCompletion;
   const showNoActivityFallback =
-    !interactive && !exercise && !hasInlineQuiz && !hasCompletionButton;
+    !interactive &&
+    !exercise &&
+    !hasInlineQuiz &&
+    module.type !== 'content' &&
+    module.type !== 'glossary';
 
   return (
     <motion.div
@@ -220,6 +293,30 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         >
           <FileClock className="w-3.5 h-3.5" aria-hidden="true" />
           Draft — under review
+        </div>
+      )}
+
+      {/* U10 reset notice: rendered above the module content, below the draft
+          badge (UX decision). Shown when this session dropped a cached
+          completion for this module after a publish-with-reset. */}
+      {wasReset && !resetNoticeDismissed && (
+        <div
+          role="status"
+          className="-mb-4 flex items-start justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3"
+        >
+          <p className="text-sm text-blue-900">
+            This activity was updated on{' '}
+            {module.progressResetAt
+              ? new Date(module.progressResetAt).toLocaleDateString()
+              : 'a recent date'}{' '}
+            and progress was reset.
+          </p>
+          <button
+            onClick={() => setResetNoticeDismissed(true)}
+            className="text-sm font-bold text-blue-700 hover:text-blue-900 shrink-0"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -261,19 +358,14 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
 
       {/* Each widget region gets its own scoped boundary (D-16): a malformed
           authored row crashes only its own card, never the page — and a broken
-          exercise can't take down the quiz (the completion gate) beside it. */}
+          exercise can't take down the practice quiz beside it. */}
       {interactive && <SectionBoundary label="activity">{interactive}</SectionBoundary>}
 
       {exercise && <SectionBoundary label="interactive exercise">{exercise}</SectionBoundary>}
 
       {hasInlineQuiz && (
         <SectionBoundary label="quiz">
-          <Quiz
-            moduleId={module.id}
-            questions={module.quiz ?? []}
-            onComplete={onComplete}
-            gates={!labGatesCompletion}
-          />
+          <Quiz moduleId={module.id} questions={module.quiz ?? []} />
         </SectionBoundary>
       )}
 
@@ -310,18 +402,33 @@ export default function ModuleRenderer({ module, selectedPersona, onComplete }: 
         </div>
       )}
 
-      {hasCompletionButton && (
-        <div className="flex justify-center pt-8 border-t border-gray-100">
-          <button
-            onClick={onComplete}
-            className="flex items-center gap-2 px-12 py-4 bg-nava-green hover:bg-nava-plum text-white rounded-2xl font-bold shadow-lg shadow-nava-mint transition-all active:scale-95"
-            id="complete-button"
+      {/* Universal completion footer (U9, explored-affordance rule): EVERY
+          incomplete module — including ones with an inline quiz or exercise —
+          offers one one-way "Mark as explored" button (via='explored'). Once
+          completed by ANY path (participation event, sorter, explored, …), the
+          footer is a static "Completed ✓" state. completed_via is never shown
+          to learners (v1). */}
+      <div className="flex justify-center pt-8 border-t border-gray-100">
+        {isCompleted ? (
+          <div
+            role="status"
+            id="module-completed"
+            className="flex items-center gap-2 px-12 py-4 text-nava-green font-bold"
           >
-            I've completed this section
-            <CheckCircle className="w-5 h-5" />
+            <CheckCircle className="w-5 h-5" aria-hidden="true" />
+            Completed ✓
+          </div>
+        ) : (
+          <button
+            onClick={() => onComplete('explored')}
+            className="flex items-center gap-2 px-12 py-4 bg-nava-green hover:bg-nava-green/90 text-white rounded-2xl font-bold shadow-lg shadow-nava-mint transition-all active:scale-95"
+            id="mark-explored-button"
+          >
+            Mark as explored
+            <CheckCircle className="w-5 h-5" aria-hidden="true" />
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </motion.div>
   );
 }

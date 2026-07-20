@@ -1,15 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { signInAsDemo, openModule, completeStage1a } from './helpers';
+import { signInAsDemo, openModule } from './helpers';
 
 // Cell 2.9 ("Recognizing AI failure modes specific to your work") renders the
 // failure-log portfolio (P4.9) after the lesson: dated entries of how AI broke on
 // the learner's work — the task, what went wrong, how they caught it, and the tell
 // to watch next time. Captured (not LLM-graded) and NOT the completion gate — the
-// inline quiz still owns completion. 2.9 is Stage 2, so we complete Stage 1a to
-// unlock it. No Claude/grade stub is needed (no model call).
+// inline quiz still owns completion. Nothing is gated (restructure U2), so 2.9 opens
+// directly. No Claude/grade stub is needed (no model call).
 test('the 2.9 failure log captures dated entries and does not gate completion', async ({ page }) => {
   await signInAsDemo(page);
-  await completeStage1a(page);
 
   await openModule(page, '2.9');
   const log = page.locator('#failure-log');

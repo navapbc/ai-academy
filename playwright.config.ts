@@ -17,9 +17,10 @@ export default defineConfig({
   // The specs share ONE seeded demo user and the user tables have no DELETE
   // policy (append-only, owner-only) — so there is no per-test cleanup. Run
   // serially in filename order against a FRESHLY RESET DB (`supabase db reset`):
-  // 02-stage-gating asserts the locked-before state, so it must see a clean
-  // slate, and 03-prompt-lab relies on the Stage-1a completion it leaves behind.
-  // (The no-cleanup constraint is itself a recorded finding; see DEBT-REPORT.md.)
+  // completion/attempt state accumulates across specs by design, and
+  // 22-progress-reset (which mutates one module's progress via service role)
+  // runs last. (The no-cleanup constraint is a recorded finding; see
+  // DEBT-REPORT.md.)
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,

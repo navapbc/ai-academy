@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardList, Users, ChevronRight, FileText, Activity, Route } from 'lucide-react';
+import { ClipboardList, Users, ChevronRight, FileText, Activity, BookOpen } from 'lucide-react';
 import type { Role } from '../types';
 import type { LearnerRosterEntry } from '../lib/learnerDetail';
 import CohortDashboard from './staff/CohortDashboard';
@@ -7,8 +7,8 @@ import LearnerDetail from './staff/LearnerDetail';
 import CohortManagement from './staff/CohortManagement';
 import ReviewQueue from './staff/ReviewQueue';
 import UsageMonitoring from './staff/UsageMonitoring';
-import WorkshopManagement from './staff/WorkshopManagement';
 import CmsHome from './cms/CmsHome';
+import CourseManagement from './cms/CourseManagement';
 
 // Staff landing reached via the role-gated `staff` view (P5.1d). The cohort
 // dashboard (P5.2b) is live at the top; selecting a learner drills into their
@@ -23,7 +23,7 @@ export default function StaffArea({ role }: { role: Role }) {
   const [showReviewQueue, setShowReviewQueue] = useState(false);
   const [showCms, setShowCms] = useState(false);
   const [showUsage, setShowUsage] = useState(false);
-  const [showWorkshops, setShowWorkshops] = useState(false);
+  const [showCourses, setShowCourses] = useState(false);
   const isAdmin = role === 'admin';
 
   if (selected) {
@@ -66,10 +66,10 @@ export default function StaffArea({ role }: { role: Role }) {
     );
   }
 
-  if (showWorkshops && isAdmin) {
+  if (showCourses && isAdmin) {
     return (
       <div className="max-w-5xl mx-auto">
-        <WorkshopManagement onBack={() => setShowWorkshops(false)} />
+        <CourseManagement onBack={() => setShowCourses(false)} />
       </div>
     );
   }
@@ -77,7 +77,7 @@ export default function StaffArea({ role }: { role: Role }) {
   return (
     <div className="max-w-5xl mx-auto space-y-10">
       <header className="space-y-2">
-        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-green">
+        <span className="text-[11px] font-bold uppercase tracking-widest text-nava-plum">
           {isAdmin ? 'Admin' : 'Champion'} area
         </span>
         <h1 className="text-2xl font-bold text-gray-900" tabIndex={-1}>
@@ -97,7 +97,7 @@ export default function StaffArea({ role }: { role: Role }) {
             onClick={() => setShowCohorts(true)}
             className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
           >
-            <Users className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+            <Users className="w-5 h-5 text-nava-plum shrink-0 mt-0.5" aria-hidden="true" />
             <div className="min-w-0 flex-1">
               <h2 className="font-semibold text-gray-900">Cohort management</h2>
               <p className="mt-1 text-sm text-gray-600">
@@ -121,7 +121,7 @@ export default function StaffArea({ role }: { role: Role }) {
             onClick={() => setShowCms(true)}
             className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
           >
-            <FileText className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+            <FileText className="w-5 h-5 text-nava-plum shrink-0 mt-0.5" aria-hidden="true" />
             <div className="min-w-0 flex-1">
               <h2 className="font-semibold text-gray-900">Content management</h2>
               <p className="mt-1 text-sm text-gray-600">
@@ -139,27 +139,27 @@ export default function StaffArea({ role }: { role: Role }) {
           />
         )}
 
-        {/* Workshop management (X.3): admin-only. Champions see it as upcoming. */}
+        {/* Course management (restructure U3): admin-only. Champions see it as upcoming. */}
         {isAdmin ? (
           <button
-            onClick={() => setShowWorkshops(true)}
+            onClick={() => setShowCourses(true)}
             className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
           >
-            <Route className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+            <BookOpen className="w-5 h-5 text-nava-plum shrink-0 mt-0.5" aria-hidden="true" />
             <div className="min-w-0 flex-1">
-              <h2 className="font-semibold text-gray-900">Workshop management</h2>
+              <h2 className="font-semibold text-gray-900">Course management</h2>
               <p className="mt-1 text-sm text-gray-600">
-                Build workshops — an ordered path through existing published modules.
+                Author course weeks and assign published modules.
               </p>
             </div>
             <ChevronRight className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" aria-hidden="true" />
           </button>
         ) : (
           <ComingSoon
-            icon={Route}
-            title="Workshop management"
-            detail="Build workshops — an ordered path through existing published modules."
-            slice="X.3 · admin"
+            icon={BookOpen}
+            title="Course management"
+            detail="Author course weeks and assign published modules."
+            slice="U3 · admin"
           />
         )}
 
@@ -170,7 +170,7 @@ export default function StaffArea({ role }: { role: Role }) {
             onClick={() => setShowUsage(true)}
             className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
           >
-            <Activity className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+            <Activity className="w-5 h-5 text-nava-plum shrink-0 mt-0.5" aria-hidden="true" />
             <div className="min-w-0 flex-1">
               <h2 className="font-semibold text-gray-900">Usage monitoring</h2>
               <p className="mt-1 text-sm text-gray-600">
@@ -193,7 +193,7 @@ export default function StaffArea({ role }: { role: Role }) {
           onClick={() => setShowReviewQueue(true)}
           className="flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50 transition-colors"
         >
-          <ClipboardList className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+          <ClipboardList className="w-5 h-5 text-nava-plum shrink-0 mt-0.5" aria-hidden="true" />
           <div className="min-w-0 flex-1">
             <h2 className="font-semibold text-gray-900">Review queue</h2>
             <p className="mt-1 text-sm text-gray-600">
@@ -220,7 +220,7 @@ function ComingSoon({
 }) {
   return (
     <div className="flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-4">
-      <Icon className="w-5 h-5 text-nava-green shrink-0 mt-0.5" aria-hidden="true" />
+      <Icon className="w-5 h-5 text-nava-plum shrink-0 mt-0.5" aria-hidden="true" />
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <h2 className="font-semibold text-gray-900">{title}</h2>

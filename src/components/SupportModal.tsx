@@ -83,7 +83,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                     onBlur={() => setTouched(true)}
                     aria-invalid={showWarning}
                     aria-describedby={showWarning ? 'support-desc-warning' : undefined}
-                    className={`w-full bg-gray-50 border-2 rounded-xl px-4 py-3 h-32 focus:ring-2 outline-none transition-all resize-none text-sm ${showWarning ? 'border-red-100 focus:ring-red-200' : 'border-gray-50 focus:ring-nava-green'}`}
+                    className={`w-full bg-gray-50 border-2 rounded-xl px-4 py-3 h-32 focus:ring-2 outline-none transition-all resize-none text-sm ${showWarning ? 'border-red-100 focus:ring-red-200' : 'border-gray-50 focus:ring-nava-plum'}`}
                     placeholder="Describe the bug or share your feedback..."
                   />
                 </div>

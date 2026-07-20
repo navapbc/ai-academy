@@ -9,8 +9,8 @@ import {
 
 describe('buildCohortSummaries', () => {
   const names: CohortNameRow[] = [
-    { id: 'c-b', name: 'Beta cohort' },
-    { id: 'c-a', name: 'Alpha cohort' },
+    { id: 'c-b', name: 'Beta cohort', archived_at: '2026-06-30T00:00:00Z' },
+    { id: 'c-a', name: 'Alpha cohort', archived_at: null },
   ];
 
   test('drops the NULL-cohort group, coerces numeric strings, sorts by name', () => {
@@ -47,6 +47,7 @@ describe('buildCohortSummaries', () => {
     expect(result[0]).toEqual({
       cohortId: 'c-a',
       cohortName: 'Alpha cohort',
+      archived: false,
       learnerCount: 3,
       avgCompletionPct: 0.333333,
       glatPassRate: null,
@@ -55,13 +56,17 @@ describe('buildCohortSummaries', () => {
     });
     expect(result[1].avgCompletionPct).toBe(0.5);
     expect(result[1].glatPassRate).toBe(0);
+    // U5: an archived cohort stays in the rollup, flagged read-only.
+    expect(result[1].archived).toBe(true);
   });
 
   test('falls back to a placeholder name when a cohort id has no name row', () => {
     const rows: CohortSummaryRow[] = [
       { cohort_id: 'c-x', learner_count: 1, avg_completion_pct: '0', glat_pass_rate: '0', avg_quiz_pct: null, reviewable_total: 0 },
     ];
-    expect(buildCohortSummaries(rows, []).at(0)?.cohortName).toBe('Unnamed cohort');
+    const summary = buildCohortSummaries(rows, []).at(0);
+    expect(summary?.cohortName).toBe('Unnamed cohort');
+    expect(summary?.archived).toBe(false);
   });
 });
 

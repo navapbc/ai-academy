@@ -8,8 +8,8 @@ import {
 } from './adminCohorts';
 
 const cohorts: CohortRow[] = [
-  { id: 'c-b', name: 'Beta' },
-  { id: 'c-a', name: 'Alpha' },
+  { id: 'c-b', name: 'Beta', archived_at: null },
+  { id: 'c-a', name: 'Alpha', archived_at: '2026-07-01T00:00:00Z' },
 ];
 const profiles: ProfileRow[] = [
   { id: 'u1', full_name: 'Ada Lovelace', email: 'ada@navapbc.com', role: 'learner' },
@@ -41,6 +41,12 @@ describe('buildCohortManagement', () => {
     expect(byId.get('u2')!.name).toBe('champ@navapbc.com'); // full_name null → email
     expect(byId.get('u3')!.name).toBe('User u3'); // blank name + null email → short id
     expect(r.users).toHaveLength(3);
+  });
+
+  test('carries archived_at through as archivedAt (read-only marker)', () => {
+    const r = buildCohortManagement(cohorts, profiles, enrollments, champions);
+    expect(r.cohorts.find((c) => c.id === 'c-a')!.archivedAt).toBe('2026-07-01T00:00:00Z');
+    expect(r.cohorts.find((c) => c.id === 'c-b')!.archivedAt).toBeNull();
   });
 
   test('skips enrollment/champion rows for users the admin cannot resolve', () => {

@@ -1,5 +1,5 @@
 
-export type ModuleType = 'content' | 'lab' | 'simulator' | 'use-case' | 'quiz' | 'glossary' | 'sorter';
+export type ModuleType = 'content' | 'lab' | 'simulator' | 'quiz' | 'glossary' | 'sorter';
 
 // --- Nava AI Literacy Matrix metadata (P3.1) ---
 // These describe where a module sits in the matrix and how mastery is evidenced.
@@ -28,11 +28,21 @@ export type Stage = '1a' | '1b' | '2';
 export type ModuleStatus = 'draft' | 'in_review' | 'published';
 
 /**
- * Where a lesson comes from (mirrors modules.origin, P5.4-1). `matrix` is one of
- * the 28 fixed cells (gated, has a stage); `custom` is a free-form lesson created
- * in the admin CMS (ungated, stage = null, shown in the "Additional lessons" group).
+ * Where a lesson comes from (mirrors modules.origin, P5.4-1 / cohort-restructure
+ * U1). `matrix` is one of the 28 fixed cells (has a stage); `custom` is a
+ * free-form lesson created in the admin CMS (stage = null, shown in the
+ * "Additional lessons" group); `course` is a Course-1+ program lesson (stage =
+ * null — stage-less like custom), rendered under its assigned course week (U2).
  */
-export type ModuleOrigin = 'matrix' | 'custom';
+export type ModuleOrigin = 'matrix' | 'custom' | 'course';
+
+/**
+ * Who may see a module (mirrors modules.visibility, cohort-restructure U1).
+ * `public` = every signed-in Nava user (matrix/supplemental/custom/Week 0);
+ * `program` = enrolled learners + staff only, enforced by RLS (U4). Assigning a
+ * module to a week never changes its visibility.
+ */
+export type ModuleVisibility = 'public' | 'program';
 
 /**
  * A user's access role (mirrors the `profiles.role` CHECK constraint).
@@ -43,9 +53,8 @@ export type ModuleOrigin = 'matrix' | 'custom';
 export type Role = 'learner' | 'champion' | 'admin';
 
 /** Top-level views the app can show. `staff` is role-gated (P5.1d); `progress`
- *  is the learner self-view dashboard (P5.3a), available to everyone; `workshops`
- *  is the learner guided-path list + runner (X.3), available to everyone. */
-export type View = 'learning' | 'playground' | 'staff' | 'progress' | 'workshops';
+ *  is the learner self-view dashboard (P5.3a), available to everyone. */
+export type View = 'learning' | 'playground' | 'staff' | 'progress';
 
 export interface Module {
   id: string;
@@ -57,14 +66,22 @@ export interface Module {
   tutorReference?: string; // extra tutor grounding for this cell, from modules.tutor_reference_md (P5.4-1)
   resources?: { title: string; url: string }[];
   // --- Matrix metadata (P3.1) ---
-  cellId: string; // matrix cell id (== id for matrix cells, e.g. '1.4'); 'custom-<slug>' for custom lessons
-  origin: ModuleOrigin; // 'matrix' (one of the 28 cells) | 'custom' (free-form lesson) — P5.4-1
-  // Matrix cells have a stage; custom lessons are ungated and carry stage = null.
+  cellId: string; // matrix cell id (== id for matrix cells, e.g. '1.4'); 'custom-<slug>' / 'c1-…'/'course-<slug>' otherwise
+  origin: ModuleOrigin; // 'matrix' | 'custom' | 'course' — P5.4-1 / restructure U1
+  // Matrix cells have a stage; custom and course lessons carry stage = null.
   stage: Stage | null;
+  // Who may see this module (RLS-enforced from U4). 'public' | 'program' — U1.
+  visibility: ModuleVisibility;
   // Editorial state from modules.status (W3-2 / D10). Until SME accuracy review
   // flips a row to 'published', learners see it with a "draft — under review"
   // badge — content stays testable but is clearly marked (closes audit D-08).
   status: ModuleStatus;
+  // The module's progress-reset epoch (modules.progress_reset_at, U10): the
+  // moment an admin last published-with-reset, or null if never reset. The
+  // client CAPTURES this value at completion time and echoes it with the
+  // completion write — the DB trigger rejects completions carrying an older
+  // epoch, so offline caches can't resurrect reset progress.
+  progressResetAt: string | null;
   dimension: Dimension[]; // 4D tag(s)
   evidenceType: EvidenceType; // matrix "primary evidence"
   selfReportValidity: SelfReportValidity;
@@ -81,6 +98,63 @@ export interface Phase {
   description: string;
   week: string;
   modules: Module[];
+}
+
+// --- Course/Week curriculum structure (cohort-restructure U2) -----------------
+
+/** A row from the `courses` table (U1). */
+export interface Course {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  sortOrder: number;
+}
+
+/** A row from the `course_weeks` table (U1). */
+export interface CourseWeek {
+  id: string;
+  courseId: string;
+  title: string;
+  subtitle: string | null;
+  sortOrder: number;
+}
+
+/** A row from the `course_week_modules` join table (U1) — a module belongs to at most one week. */
+export interface CourseWeekModule {
+  weekId: string;
+  cellId: string;
+  sortOrder: number;
+}
+
+/** Which learner-nav bucket a curriculum section is (U2). */
+export type SectionKind = 'week' | 'supplemental' | 'resources';
+
+/**
+ * One renderable learner-nav section (U2): a course week, the "Supplemental
+ * coursework" bucket (matrix modules not in any visible week), or the
+ * "Resources & additional lessons" bucket (custom lessons). Extends the legacy
+ * `Phase` render shape (id/title/description/week/modules) so downstream
+ * consumers that flatten `modules` keep working unchanged; `kind` discriminates
+ * the buckets, and week sections carry their course for the sidebar's tree.
+ */
+export interface CurriculumSection extends Phase {
+  kind: SectionKind;
+  /** Set on kind='week' sections: the course this week belongs to. */
+  courseId?: string;
+  courseTitle?: string;
+}
+
+/**
+ * The fetched curriculum (U2). `moduleRowCount` is the raw number of module
+ * rows the query returned BEFORE client-side filtering/grouping — the FE-02
+ * empty-state discriminator (zero rows = error state; any rows = render). A
+ * shape-based check over sections would misfire for an unenrolled learner who
+ * legitimately receives only public rows (post-U4).
+ */
+export interface Curriculum {
+  sections: CurriculumSection[];
+  moduleRowCount: number;
 }
 
 export interface QuizQuestion {
@@ -198,6 +272,59 @@ export interface ScenarioExerciseConfig {
     why: string;
   }[];
   takeaway: { title: string; intro: string };
+}
+
+/**
+ * 1.01 prediction-sort (Course 1, Week 1): an intuition-then-reveal two-bucket
+ * sort. The learner places each task by what it FEELS like — "looking it up" vs
+ * "making it up" — then every item reveals the same truth: it was all prediction,
+ * never lookup. There is deliberately no `correct` field: placement is never graded.
+ * Records a lab_submissions row (`transcript` = { placements, items }); the
+ * participation seam auto-completes the module (`via='lab'`). No quiz gate.
+ */
+export interface PredictionSortItem {
+  id: string;
+  /** The task/prompt shown on the card. */
+  prompt: string;
+  /** One-line note revealed after submit; every note reaffirms prediction-not-lookup. */
+  reveal: string;
+}
+
+export interface PredictionSortConfig {
+  kind: 'prediction-sort';
+  introMd: string;
+  /** The two drop-target labels shown to the learner. */
+  bucketLabels: { lookup: string; predict: string };
+  items: PredictionSortItem[];
+  /** The uniform payoff card shown after submit. */
+  takeaway: { title: string; body: string };
+}
+
+/**
+ * 1.03 delegation-sort (Course 1, Week 2): a participation-based delegation sort.
+ * The learner places each scenario into one of the `categories` buckets (Full-AI /
+ * AI-assisted / Human-only); on submit each card reveals a SUGGESTED categorization +
+ * rationale, framed as a defensible call — never scored or gated. Records a
+ * lab_submissions row; the participation seam auto-completes the module (via='lab').
+ */
+export interface DelegationSortItem {
+  id: string;
+  /** The task/scenario shown on the card. */
+  scenario: string;
+  /** id of the categories[] entry this is a defensible fit for — shown on reveal as
+   *  guidance; NEVER used to score or gate. */
+  suggested: string;
+  /** One-sentence rationale revealed after submit. */
+  rationale: string;
+}
+
+export interface DelegationSortConfig {
+  kind: 'delegation-sort';
+  introMd: string;
+  /** The category buckets, in display order. */
+  categories: { id: string; label: string; desc: string }[];
+  items: DelegationSortItem[];
+  takeaway: { title: string; body: string };
 }
 
 /**
@@ -537,6 +664,101 @@ export interface FailureLogConfig {
 }
 
 /**
+ * One pane of the chat-compare exercise (cohort-restructure U6). All fields are
+ * optional: a bare pane is plain Claude; `systemPromptMd` makes it a "rigged"
+ * pane (hidden per-pane system prompt, sent via StreamOptions.system);
+ * `sourceMd` makes it a "grounded" pane (the source is prepended to the
+ * learner's message content). `label` is the visible pane heading (falls back
+ * to "Response N").
+ */
+export interface ChatComparePane {
+  label?: string;
+  /** Hidden per-pane system prompt — passed to streamChat as StreamOptions.system. */
+  systemPromptMd?: string;
+  /** Grounding source markdown — prepended to the learner's user message. */
+  sourceMd?: string;
+}
+
+/**
+ * chat-compare (cohort-restructure U6): 1–4 side-by-side live Claude panes
+ * answering ONE shared learner prompt, each with its own hidden system prompt
+ * and/or grounding source. One parameterized kind powers Course 1 Week 1
+ * (3-pane rigged; 1-pane confidently-wrong) and Week 2 (bare-vs-grounded).
+ * UNGRADED: every submit records a lab_submissions row
+ * (`transcript.kind:'chat-compare'`, including partial pane failures) but it
+ * never gates completion (participation completion lands in U9), so the
+ * component takes no onComplete prop. `suggestedPrompts` render as chips that
+ * FILL the input (never auto-submit); `reflectionMd` renders as static
+ * discussion copy below the panes (not captured).
+ */
+export interface ChatCompareConfig {
+  kind: 'chat-compare';
+  title?: string; // exercise header; generic fallback if absent
+  subtitle?: string;
+  /** Optional markdown intro rendered above the prompt input. */
+  introMd?: string;
+  /** 1–4 panes, each answering the same shared prompt. */
+  panes: ChatComparePane[];
+  /** Clickable chips that fill the prompt input (never auto-submit). */
+  suggestedPrompts?: string[];
+  /** Discussion prompts rendered below the panes (static, not captured). */
+  reflectionMd?: string;
+}
+
+/**
+ * One choice of a decision-scenario checkpoint (cohort-restructure U7). Every
+ * option carries its own authored feedback, revealed the moment the option is
+ * chosen (single-select) or checked via "Check answer" (multi-select) — there
+ * are no "correct" flags; the feedback IS the teaching.
+ */
+export interface DecisionOption {
+  text: string;
+  /** Authored feedback markdown revealed once this option is chosen. */
+  feedbackMd: string;
+}
+
+/**
+ * One checkpoint (decision point) of the linear decision-scenario walk. The
+ * `phase` names which workflow step the checkpoint exercises and renders as an
+ * uppercase label (DELEGATE / GROUND / SCOPE / VERIFY) beside the
+ * "Checkpoint X of Y" progress indicator.
+ */
+export interface DecisionCheckpoint {
+  id: string;
+  phase: 'delegate' | 'ground' | 'scope' | 'verify';
+  /** Story beat markdown rendered above the decision prompt. */
+  setupMd: string;
+  prompt: string;
+  /** When true: checkboxes + a "Check answer" button. Default: single-select. */
+  multiSelect?: boolean;
+  /** ≥2 options, each with its own authored feedback. */
+  options: DecisionOption[];
+}
+
+/**
+ * decision-scenario (cohort-restructure U7): "Walk the Workflow" — a LINEAR
+ * checkpoint scenario (DELEGATE → GROUND → SCOPE → VERIFY; no branching graph
+ * in v1). Flow: introMd → checkpoints in order → closingMd. Each option's
+ * authored feedback is revealed before the story continues and the choice is
+ * then immutable; Previous re-reads completed checkpoints but never re-answers.
+ * UNGRADED: finishing records ONE lab_submissions row
+ * (`transcript.kind:'decision-scenario'`, choices as option indexes per
+ * checkpoint) but never gates completion (participation completion lands in
+ * U9), so the component takes no onComplete prop.
+ */
+export interface DecisionScenarioConfig {
+  kind: 'decision-scenario';
+  title?: string; // exercise header; generic fallback if absent
+  subtitle?: string;
+  /** Markdown scene-setter shown before the first checkpoint. */
+  introMd: string;
+  /** ≥1 checkpoints, walked strictly in order. */
+  checkpoints: DecisionCheckpoint[];
+  /** Optional markdown epilogue shown after the last checkpoint. */
+  closingMd?: string;
+}
+
+/**
  * GLAT objective gate (cell 2.14, P4.10). An auto-graded exit-credential exam:
  * Section A is 5 diagnostic self-report scales (captured, NOT scored); Sections
  * B+C are 35 objective questions (scored). ≥`passThreshold` of the scored set
@@ -583,11 +805,25 @@ export type LabConfig =
   | DashboardCritiqueConfig
   | UseCasePortfolioConfig
   | FailureLogConfig
+  | ChatCompareConfig
+  | DecisionScenarioConfig
+  | PredictionSortConfig
+  | DelegationSortConfig
   | GlatConfig;
 
 export interface UserProgress {
   completedModuleIds: string[];
   currentModuleId: string;
+  /**
+   * U10: per-completion reset epochs — for each completed module id, the
+   * module's `progress_reset_at` as captured AT COMPLETION TIME (null =
+   * module never reset, or unknown for server-hydrated/legacy completions).
+   * Reconcile compares these to the fetched module's current epoch to decide
+   * whether a locally cached completion was reset by a publish (dropped, not
+   * unioned). Optional so pre-U10 shapes remain constructible; the progress
+   * cache bumped CACHE_VERSION over this change.
+   */
+  completionEpochs?: Record<string, string | null>;
 }
 
 export type AIPersona = 'analyst' | 'empathy' | 'technical' | 'default';

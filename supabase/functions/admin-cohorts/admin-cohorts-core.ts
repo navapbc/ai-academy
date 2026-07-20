@@ -9,6 +9,7 @@
 export const COHORT_ACTIONS = [
   'create_cohort',
   'rename_cohort',
+  'archive_cohort',
   'delete_cohort',
   'enroll_learner',
   'unenroll_learner',
@@ -17,12 +18,19 @@ export const COHORT_ACTIONS = [
 ] as const;
 export type CohortActionType = (typeof COHORT_ACTIONS)[number];
 
+// U5 multi-enrollment contract: a learner may hold one enrollment PER COHORT
+// (enrollments.unique(user_id, cohort_id)), so enroll_learner ADDS a row (no
+// reassignment semantics) and unenroll_learner must name WHICH cohort to leave.
+// archive_cohort is the end-of-cohort operation (read-only marker; enrollments
+// and champion assignments survive); delete_cohort stays but is guarded to
+// zero-enrollment cohorts (see deleteCohortBlockedReason).
 export type CohortAction =
   | { action: 'create_cohort'; name: string }
   | { action: 'rename_cohort'; cohortId: string; name: string }
+  | { action: 'archive_cohort'; cohortId: string }
   | { action: 'delete_cohort'; cohortId: string }
   | { action: 'enroll_learner'; cohortId: string; userId: string }
-  | { action: 'unenroll_learner'; userId: string }
+  | { action: 'unenroll_learner'; cohortId: string; userId: string }
   | { action: 'assign_champion'; cohortId: string; userId: string }
   | { action: 'unassign_champion'; cohortId: string; userId: string };
 
@@ -76,20 +84,15 @@ export function parseCohortAction(body: unknown): ParseResult {
       const n = parseName(b.name);
       return n.ok ? { ok: true, value: { action, cohortId: b.cohortId as string, name: n.value } } : n;
     }
+    case 'archive_cohort':
     case 'delete_cohort': {
       const c = needCohort();
       return c ?? { ok: true, value: { action, cohortId: b.cohortId as string } };
     }
-    case 'enroll_learner': {
-      const c = needCohort();
-      if (c) return c;
-      const u = needUser();
-      return u ?? { ok: true, value: { action, cohortId: b.cohortId as string, userId: b.userId as string } };
-    }
-    case 'unenroll_learner': {
-      const u = needUser();
-      return u ?? { ok: true, value: { action, userId: b.userId as string } };
-    }
+    case 'enroll_learner':
+    // unenroll requires the cohort too: under multi-enrollment a bare userId is
+    // ambiguous (which of the learner's cohorts should they leave?).
+    case 'unenroll_learner':
     case 'assign_champion':
     case 'unassign_champion': {
       const c = needCohort();
@@ -100,12 +103,29 @@ export function parseCohortAction(body: unknown): ParseResult {
   }
 }
 
+// --- Cohort lifecycle guard (U5) ---------------------------------------------
+// Hard delete is allowed only at zero enrollments; otherwise the caller gets a
+// 409 naming the count and pointing at archive. Pure decider so the policy is
+// node-testable; index.ts performs the count and returns the 409.
+
+/** Returns the 409 rejection message when deletion is blocked, else null. */
+export function deleteCohortBlockedReason(enrollmentCount: number): string | null {
+  if (enrollmentCount <= 0) return null;
+  const noun = enrollmentCount === 1 ? 'enrollment' : 'enrollments';
+  return (
+    `Cannot delete a cohort with ${enrollmentCount} ${noun}. ` +
+    'Unenroll all learners first, or archive the cohort instead.'
+  );
+}
+
 // --- Role transitions tied to champion (un)assignment ------------------------
 // Champion has two facets: profiles.role (gates staff access, P5.1d) and
 // cohort_champions rows (which cohorts they lead, P5.1c). Assigning a champion in
 // the management UI should make that person an actual champion; unassigning their
 // LAST cohort should hand the role back. These pure deciders keep that policy
-// node-testable; index.ts performs the reads/writes.
+// node-testable; index.ts performs the reads/writes. Archiving a cohort (U5)
+// deliberately does NOT touch cohort_champions and never demotes — demotion
+// happens only on explicit unassign.
 
 /** On assign: a plain learner becomes a champion; champion/admin are left as-is. */
 export function roleAfterAssign(currentRole: string | null): 'champion' | null {

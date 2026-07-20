@@ -1,15 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { signInAsDemo, openModule, completeStage1a } from './helpers';
+import { signInAsDemo, openModule } from './helpers';
 
 // Cell 2.11 ("Personal AI use-case library + Diligence Statement") renders the
 // portfolio instrument (P4.8) after the lesson: log where AI helps / doesn't,
 // then write one high-stakes Diligence Statement across the 4D AI Fluency
 // dimensions. It is captured (not LLM-graded) and is NOT the completion gate —
-// the inline quiz still owns completion. 2.11 is Stage 2, so we complete Stage 1a
-// to unlock it. No Claude/grade stub is needed (no model call).
+// the inline quiz still owns completion. Nothing is gated (restructure U2), so 2.11
+// opens directly. No Claude/grade stub is needed (no model call).
 test('the 2.11 use-case portfolio captures the library + 4D statement and does not gate completion', async ({ page }) => {
   await signInAsDemo(page);
-  await completeStage1a(page);
 
   await openModule(page, '2.11');
   const portfolio = page.locator('#use-case-portfolio');

@@ -92,7 +92,7 @@ const USAGE_ROWS: UsageByUser[] = [
   { userId: 'u-2', name: 'Grace Hopper', callCount: 40, inputTokens: 900_000, outputTokens: 200_000, totalTokens: 1_100_000, overThreshold: true },
 ];
 const COHORTS: CohortSummary[] = [
-  { cohortId: 'c-a', cohortName: 'Alpha cohort', learnerCount: 3, avgCompletionPct: 0.5, glatPassRate: 0, avgQuizPct: 0.7, reviewableTotal: 2 },
+  { cohortId: 'c-a', cohortName: 'Alpha cohort', archived: false, learnerCount: 3, avgCompletionPct: 0.5, glatPassRate: 0, avgQuizPct: 0.7, reviewableTotal: 2 },
 ];
 const DIST = new Map<string, ScoreDistribution>([['c-a', { lt60: 1, '60to79': 1, '80to100': 1 }]]);
 
@@ -100,6 +100,7 @@ const baseModule: Module = {
   id: '1.1',
   cellId: '1.1',
   origin: 'matrix',
+  visibility: 'public',
   title: 'What is AI literacy?',
   type: 'content',
   content: '# What is AI literacy?\n\nA short lesson with a [link](https://example.gov) and a list:\n\n- one\n- two',
@@ -109,6 +110,7 @@ const baseModule: Module = {
   dimension: ['Diligence'],
   evidenceType: 'quiz',
   selfReportValidity: 'medium',
+  progressResetAt: null,
 };
 
 const quizModule: Module = {
@@ -173,8 +175,8 @@ const sorterConfig: SorterConfig = {
 
 const learnerDetail: LearnerDetailData = {
   modules: [
-    { cellId: '1.1', title: 'Intro to AI literacy', stage: '1a', completed: true, bestQuizPct: 1, quizPassed: true },
-    { cellId: '2.1', title: 'Prompt construction', stage: '2', completed: false, bestQuizPct: null, quizPassed: null },
+    { cellId: '1.1', title: 'Intro to AI literacy', section: 'Supplemental coursework', completed: true, bestQuizPct: 1, quizPassed: true },
+    { cellId: '2.1', title: 'Prompt construction', section: 'Supplemental coursework', completed: false, bestQuizPct: null, quizPassed: null },
   ],
   labs: [{ id: 'lab-a', labId: 'lab-2.1', status: 'reviewable', createdAt: '2026-01-01T00:00:00Z' }],
 };
@@ -238,12 +240,38 @@ const CASES: Case[] = [
   },
   {
     name: 'ModuleRenderer — content lesson',
-    element: <ModuleRenderer module={baseModule} selectedPersona="default" onComplete={noop} />,
+    element: (
+      <ModuleRenderer
+        module={baseModule}
+        selectedPersona="default"
+        isCompleted={false}
+        onComplete={noop}
+      />
+    ),
   },
   {
     name: 'ModuleRenderer — quiz module',
-    element: <ModuleRenderer module={quizModule} selectedPersona="default" onComplete={noop} />,
+    element: (
+      <ModuleRenderer
+        module={quizModule}
+        selectedPersona="default"
+        isCompleted={false}
+        onComplete={noop}
+      />
+    ),
     axeOptions: IGNORE_PAGE_HEADING_ORDER,
+  },
+  {
+    // U9: the completed footer state ("Completed ✓") is a status region.
+    name: 'ModuleRenderer — completed module footer',
+    element: (
+      <ModuleRenderer
+        module={baseModule}
+        selectedPersona="default"
+        isCompleted={true}
+        onComplete={noop}
+      />
+    ),
   },
   {
     name: 'Lab (prompt-construction)',

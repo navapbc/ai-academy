@@ -11,12 +11,17 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // --- Write path: invoke the Edge Function -----------------------------------
 
+// Mirrors the Edge Function contract (admin-cohorts-core.ts). U5: a learner may
+// hold one enrollment per cohort, so unenroll names the cohort to leave and
+// enrolling never "moves" anyone; archive_cohort is the read-only end-of-cohort
+// operation (delete_cohort is 409-guarded to zero-enrollment cohorts).
 export type CohortAction =
   | { action: 'create_cohort'; name: string }
   | { action: 'rename_cohort'; cohortId: string; name: string }
+  | { action: 'archive_cohort'; cohortId: string }
   | { action: 'delete_cohort'; cohortId: string }
   | { action: 'enroll_learner'; cohortId: string; userId: string }
-  | { action: 'unenroll_learner'; userId: string }
+  | { action: 'unenroll_learner'; cohortId: string; userId: string }
   | { action: 'assign_champion'; cohortId: string; userId: string }
   | { action: 'unassign_champion'; cohortId: string; userId: string };
 
@@ -59,12 +64,14 @@ export async function invokeAdminCohorts(action: CohortAction): Promise<void> {
 export const createCohort = (name: string) => invokeAdminCohorts({ action: 'create_cohort', name });
 export const renameCohort = (cohortId: string, name: string) =>
   invokeAdminCohorts({ action: 'rename_cohort', cohortId, name });
+export const archiveCohort = (cohortId: string) =>
+  invokeAdminCohorts({ action: 'archive_cohort', cohortId });
 export const deleteCohort = (cohortId: string) =>
   invokeAdminCohorts({ action: 'delete_cohort', cohortId });
 export const enrollLearner = (cohortId: string, userId: string) =>
   invokeAdminCohorts({ action: 'enroll_learner', cohortId, userId });
-export const unenrollLearner = (userId: string) =>
-  invokeAdminCohorts({ action: 'unenroll_learner', userId });
+export const unenrollLearner = (cohortId: string, userId: string) =>
+  invokeAdminCohorts({ action: 'unenroll_learner', cohortId, userId });
 export const assignChampion = (cohortId: string, userId: string) =>
   invokeAdminCohorts({ action: 'assign_champion', cohortId, userId });
 export const unassignChampion = (cohortId: string, userId: string) =>
@@ -81,6 +88,8 @@ export interface ManagedUser {
 export interface ManagedCohort {
   id: string;
   name: string;
+  /** Set when the cohort is archived (read-only); null = active. */
+  archivedAt: string | null;
   members: ManagedUser[];
   champions: ManagedUser[];
 }
@@ -94,6 +103,7 @@ export interface CohortManagementData {
 export interface CohortRow {
   id: string;
   name: string;
+  archived_at: string | null;
 }
 export interface ProfileRow {
   id: string;
@@ -148,6 +158,7 @@ export function buildCohortManagement(
     .map((c) => ({
       id: c.id,
       name: c.name,
+      archivedAt: c.archived_at,
       members: (membersByCohort.get(c.id) ?? []).sort(byName),
       champions: (championsByCohort.get(c.id) ?? []).sort(byName),
     }))
@@ -163,7 +174,7 @@ export function buildCohortManagement(
 export async function fetchCohortManagement(): Promise<CohortManagementData> {
   const sb = getSupabaseClient();
   const [cohortsRes, profilesRes, enrollRes, champRes] = await Promise.all([
-    sb.from('cohorts').select('id, name'),
+    sb.from('cohorts').select('id, name, archived_at'),
     sb.from('profiles').select('id, full_name, email, role'),
     sb.from('enrollments').select('user_id, cohort_id'),
     sb.from('cohort_champions').select('user_id, cohort_id'),

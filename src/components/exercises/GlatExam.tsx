@@ -67,7 +67,7 @@ export default function GlatExam({
   if (result) {
     const byId = new Map(result.perItem.map((i) => [i.id, i]));
     return (
-      <div className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-8">
+      <div className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-8">
         <div role="status" aria-live="polite" className="text-center space-y-3">
           <div
             className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center ${
@@ -133,7 +133,7 @@ export default function GlatExam({
             <button
               onClick={onComplete}
               aria-label="Finish and continue"
-              className="px-10 py-3 bg-nava-green text-white rounded-xl font-bold hover:bg-nava-plum transition-all shadow-lg"
+              className="px-10 py-3 bg-nava-green text-white rounded-xl font-bold hover:bg-nava-green/90 transition-all shadow-lg"
             >
               Finish — continue
             </button>
@@ -151,11 +151,12 @@ export default function GlatExam({
   }
 
   return (
-    <div className="bg-white border-2 border-nava-mint rounded-3xl p-8 shadow-sm space-y-10" id="glat-exam">
+    <div className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-10" id="glat-exam">
       <header className="space-y-1">
         <h3 className="text-xl font-bold text-gray-900">GLAT — objective gate</h3>
         <p className="text-sm text-gray-600">
-          A {config.sectionBC.length}-question objective check across Stage 1–2. Score{' '}
+          {/* U13: learner copy speaks curriculum, not matrix stages (GLAT itself stays pending D12). */}
+          A {config.sectionBC.length}-question objective check across the AI-literacy curriculum. Score{' '}
           {Math.round(config.passThreshold * 100)}% or higher to pass. The first few questions are a
           quick self-check and aren&apos;t scored.
         </p>
@@ -186,7 +187,7 @@ export default function GlatExam({
                       onClick={() => setSectionA((p) => ({ ...p, [item.id]: n }))}
                       className={`w-9 h-9 rounded-full border-2 text-sm font-bold transition-all ${
                         sectionA[item.id] === n
-                          ? 'border-nava-green bg-nava-mint text-nava-green'
+                          ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
                           : 'border-gray-200 text-gray-500 hover:border-nava-green/40'
                       }`}
                     >
@@ -218,7 +219,7 @@ export default function GlatExam({
                   onClick={() => setSectionBC((p) => ({ ...p, [q.id]: oi }))}
                   className={`w-full p-3 rounded-xl text-left text-sm font-medium border-2 transition-all ${
                     sectionBC[q.id] === oi
-                      ? 'border-nava-green bg-nava-mint text-nava-green'
+                      ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
                       : 'border-gray-100 hover:border-nava-green/30'
                   }`}
                 >

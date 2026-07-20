@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { signInAsDemo, openModule, completeStage1a, stubClaude, stubGrade } from './helpers';
+import { signInAsDemo, openModule, stubClaude, stubGrade } from './helpers';
 
 // Cell 2.6 renders the voice-edit exercise (P4.4b) after the lesson: read a dense
 // source + a writing brief, generate an AI FIRST DRAFT live (streamChat), revise it
 // "AI off" in your own voice, then get the revision anchor-scored in place. We STUB
 // BOTH the chat Edge Function (the draft) AND the grade Edge Function (the judge) —
-// no real key. 2.6 is Stage 2, so we complete Stage 1a to unlock it. The voice-edit
+// no real key. Nothing is gated (restructure U2), so 2.6 opens directly. The voice-edit
 // is graded PRACTICE — it must NOT gate completion, so we also confirm the inline
 // quiz is still present as the gate. Reuses streamChat + the #48 judge stub +
 // GradeResultCard.
@@ -30,7 +30,6 @@ test('the 2.6 voice-edit exercise generates a draft, grades the revision in plac
   });
 
   await signInAsDemo(page);
-  await completeStage1a(page);
 
   await openModule(page, '2.6');
   const voiceEdit = page.locator('#voice-edit');

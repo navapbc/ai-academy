@@ -48,12 +48,12 @@ export default function Login() {
     <div className="min-h-screen bg-nava-grey flex items-center justify-center p-6 relative overflow-hidden">
       {/* Subtle Nava "direction" brand pattern behind the card (decorative). */}
       <div
-        className="nava-pattern-direction absolute inset-0 text-nava-green opacity-[0.05] pointer-events-none"
+        className="nava-pattern-direction absolute inset-0 text-nava-plum opacity-[0.05] pointer-events-none"
         aria-hidden="true"
       />
-      <div className="relative w-full max-w-md bg-white rounded-3xl border-2 border-nava-mint shadow-sm p-8 space-y-8">
+      <div className="relative w-full max-w-md bg-white rounded-3xl border-2 border-nava-plum/20 shadow-sm p-8 space-y-8">
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 mx-auto bg-nava-mint rounded-2xl flex items-center justify-center text-nava-green">
+          <div className="w-14 h-14 mx-auto bg-nava-plum/10 rounded-2xl flex items-center justify-center text-nava-plum">
             <GoogleMark className="w-7 h-7" />
           </div>
           <h1 className="text-2xl font-bold text-nava-plum">{BRANDING.name}</h1>
@@ -75,7 +75,7 @@ export default function Login() {
           disabled={googleSubmitting}
           aria-label="Sign in with Google"
           aria-busy={googleSubmitting}
-          className="w-full py-3.5 bg-nava-green text-white rounded-xl font-bold shadow-lg shadow-nava-green/20 hover:bg-nava-plum disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-2"
+          className="w-full py-3.5 bg-nava-green text-white rounded-xl font-bold shadow-lg shadow-nava-green/20 hover:bg-nava-green/90 disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-2"
         >
           {googleSubmitting ? (
             <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
@@ -104,7 +104,7 @@ export default function Login() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-nava-green focus:outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none transition-colors"
                 />
               </div>
 
@@ -119,14 +119,14 @@ export default function Login() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-nava-green focus:outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-nava-plum focus:outline-none transition-colors"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3 bg-white text-nava-plum border-2 border-nava-mint rounded-xl font-bold hover:border-nava-green disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-2"
+                className="w-full py-3 bg-white text-nava-plum border-2 border-nava-plum/20 rounded-xl font-bold hover:border-nava-plum disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-2"
               >
                 {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
               </button>

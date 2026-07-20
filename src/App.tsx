@@ -1,34 +1,32 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import { AIPersona, Phase, View } from './types';
+import { AIPersona, CurriculumSection, View } from './types';
 import { BRANDING } from './branding';
 import { useAuth } from './lib/auth';
+import type { CompletedVia } from './lib/progress';
 import { useProgress } from './lib/useProgress';
 import { useRole } from './lib/useRole';
 import { useCurriculum } from './lib/useCurriculum';
-import { useWorkshops } from './lib/useWorkshops';
-import { stage1aProgress, isModuleLocked, firstIncompleteStage1aId } from './lib/gating';
 import Login from './components/Login';
 import ModuleRenderer from './components/ModuleRenderer';
-import LockedNotice from './components/LockedNotice';
+import ModulePager from './components/ModulePager';
 import Playground from './components/Playground';
 import RoleGuard from './components/RoleGuard';
 import StaffArea from './components/StaffArea';
 import LearnerDashboard from './components/LearnerDashboard';
-import WorkshopList from './components/WorkshopList';
-import WorkshopRunner from './components/WorkshopRunner';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import ContentContainer from './components/layout/ContentContainer';
 import SupportModal from './components/SupportModal';
 import LocalTutorFAB from './components/LocalTutorFAB';
+import LandingPage from './components/LandingPage';
 
 export default function App() {
   const { loading, session, signOut } = useAuth();
 
   // Page Title
   useEffect(() => {
-    document.title = `${BRANDING.name} AI Training`;
+    document.title = `${BRANDING.name} — Training`;
   }, []);
 
   if (loading) {
@@ -50,7 +48,7 @@ export default function App() {
 // Content-as-data: the curriculum is no longer a static import — it's fetched
 // at runtime, so editing a module row changes the lesson with no rebuild.
 function AcademyApp({ userId, onSignOut }: { userId: string; onSignOut: () => void }) {
-  const { phases, loading, error } = useCurriculum();
+  const { curriculum, loading, error } = useCurriculum();
 
   if (loading) {
     return (
@@ -61,16 +59,20 @@ function AcademyApp({ userId, onSignOut }: { userId: string; onSignOut: () => vo
     );
   }
 
-  // An empty curriculum (no modules in any stage) is treated as an error state,
-  // not rendered (DEBT FE-02): groupIntoPhases always returns 3 stages, so
-  // `phases` is never null/[] even when the modules table is empty — without
-  // this check `Academy` would deref `allModules[0]` (undefined) and crash.
-  const isEmpty = !!phases && phases.every((p) => p.modules.length === 0);
+  // Empty-state guard (FE-02, re-cut in restructure U2): the error state keys on
+  // the modules query returning ZERO ROWS — never on section shape. An unenrolled
+  // learner legitimately receiving only public rows (post-U4) groups into fewer
+  // sections and must render normally. The second check is a crash guard for the
+  // degenerate "rows exist but none are learner-visible" case (e.g. only
+  // unassigned course drafts), which Academy can't mount (it needs ≥1 module).
+  const isEmpty = !!curriculum && curriculum.moduleRowCount === 0;
+  const noneVisible =
+    !!curriculum && !isEmpty && curriculum.sections.every((s) => s.modules.length === 0);
 
-  if (error || !phases || isEmpty) {
+  if (error || !curriculum || isEmpty || noneVisible) {
     const message =
       error ??
-      (isEmpty
+      (isEmpty || noneVisible
         ? 'No curriculum content is available yet. Please check back soon.'
         : 'Could not load the curriculum.');
     return (
@@ -91,31 +93,26 @@ function AcademyApp({ userId, onSignOut }: { userId: string; onSignOut: () => vo
 
   // Mount the academy only once the curriculum is loaded, so module ids are
   // stable and non-empty when useProgress initialises.
-  return <Academy phases={phases} userId={userId} onSignOut={onSignOut} />;
+  return <Academy sections={curriculum.sections} userId={userId} onSignOut={onSignOut} />;
 }
 
-function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: string; onSignOut: () => void }) {
-  const allModules = useMemo(() => phases.flatMap(p => p.modules), [phases]);
+function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[]; userId: string; onSignOut: () => void }) {
+  const allModules = useMemo(() => sections.flatMap(s => s.modules), [sections]);
   const allModuleIds = useMemo(() => allModules.map(m => m.id), [allModules]);
   const moduleById = useMemo(() => new Map(allModules.map(m => [m.id, m])), [allModules]);
 
-  // Gating predicate for completeModule's advance (FE-03): a candidate module is
-  // locked if it's a Stage-2 module and Stage 1a isn't done given the *new*
-  // completed set (so completing the gating module unlocks the next one).
-  const isLocked = useCallback(
-    (moduleId: string, completedIds: string[]) => {
-      const m = moduleById.get(moduleId);
-      if (!m) return false;
-      return isModuleLocked(m, stage1aProgress(phases, completedIds).done);
-    },
-    [moduleById, phases],
+  // U10: the reset-epoch lookup — the module's progress_reset_at from the
+  // in-memory curriculum fetch. useProgress captures it AT COMPLETION TIME and
+  // uses it at reconcile to detect completions a publish-time reset deleted.
+  const getResetEpoch = useCallback(
+    (moduleId: string) => moduleById.get(moduleId)?.progressResetAt ?? null,
+    [moduleById],
   );
 
-  const { progress, completeModule, selectModule, error, dismissError } = useProgress(
-    userId,
-    allModuleIds,
-    isLocked,
-  );
+  // No gating (restructure U2 turned it off, U11 deleted it — R14): the
+  // completion cursor advances straight through the flattened visible order.
+  const { progress, completeModule, selectModule, resetModuleIds, error, dismissError } =
+    useProgress(userId, allModuleIds, getResetEpoch);
 
   // Role drives which views are reachable (P5.1d). Resolved here, inside the
   // `key={session.user.id}` subtree, so it resets cleanly on a user switch and
@@ -123,23 +120,36 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
   const { role, loading: roleLoading, isStaff } = useRole();
 
   const [view, setView] = useState<View>('learning');
-  // X.3: which workshop the learner is walking in the runner (null = the list).
-  const [activeWorkshopId, setActiveWorkshopId] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    try {
+      return localStorage.getItem('sidebar-collapsed') !== '1';
+    } catch {
+      return true;
+    }
+  });
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<AIPersona>('default');
 
-  const currentModule = allModules.find(m => m.id === progress.currentModuleId) || allModules[0];
-  const currentPhase = phases.find(p => p.id === currentModule.phaseId);
+  // First-run landing gate (per user). Shown until the user clicks "Enter AI
+  // Academy"; persisted in localStorage so later logins go straight to the app.
+  const [hasEntered, setHasEntered] = useState(() => {
+    try {
+      return localStorage.getItem(`academy-entered-${userId}`) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const handleEnter = () => {
+    setHasEntered(true);
+    try {
+      localStorage.setItem(`academy-entered-${userId}`, '1');
+    } catch {
+      /* storage disabled — entry still works for this session */
+    }
+  };
 
-  // Stage gating (P3.11): Stage 2 unlocks only once all of Stage 1a is complete.
-  // Computed once from the loaded phases + the learner's progress and passed
-  // down to the nav and the content view.
-  const stage1a = useMemo(
-    () => stage1aProgress(phases, progress.completedModuleIds),
-    [phases, progress.completedModuleIds],
-  );
-  const currentModuleLocked = isModuleLocked(currentModule, stage1a.done);
+  const currentModule = allModules.find(m => m.id === progress.currentModuleId) || allModules[0];
+  const currentSection = sections.find(s => s.id === currentModule.phaseId);
 
   // Focus + scroll management on content change (a11y D-10, WCAG SC 2.4.3). The
   // content region swaps wholesale when the module or view changes — including on
@@ -150,8 +160,8 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
   // Focus only moves when the change was user-initiated (a nav click, an
   // auto-advance, a view toggle): `navIntentRef` is armed by those entry points
   // and consumed here. That deliberately excludes the async progress reconcile,
-  // which can also shift `currentModuleId`/lock state but must NOT yank focus out
-  // of whatever the learner is already doing (e.g. typing in a lab).
+  // which can also shift `currentModuleId` but must NOT yank focus out of
+  // whatever the learner is already doing (e.g. typing in a lab).
   const contentRef = useRef<HTMLDivElement>(null);
   const navIntentRef = useRef(false);
   useEffect(() => {
@@ -162,13 +172,9 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
       navIntentRef.current = false;
       el.focus({ preventScroll: true });
     }
-  }, [progress.currentModuleId, view, currentModuleLocked]);
+  }, [progress.currentModuleId, view]);
 
   const handleModuleSelect = (moduleId: string) => {
-    // A locked module is never selectable (the nav already disables it); guard
-    // here too so no path can navigate into a gated Stage-2 module.
-    const target = allModules.find(m => m.id === moduleId);
-    if (target && isModuleLocked(target, stage1a.done)) return;
     // Arm focus only for a real move; re-selecting the current module changes no
     // dep, so the flag would otherwise linger and be consumed by a later reconcile.
     if (moduleId !== progress.currentModuleId) navIntentRef.current = true;
@@ -179,55 +185,63 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
     }
   };
 
-  const goToStage1a = () => {
-    const targetId = firstIncompleteStage1aId(phases, progress.completedModuleIds);
-    if (targetId) handleModuleSelect(targetId);
+  // Desktop-scoped sidebar persistence: an explicit collapse/expand at >=1024px
+  // records the preference; the mobile drawer auto-close in handleModuleSelect stays
+  // transient and never writes it.
+  const handleCloseSidebar = () => {
+    setIsSidebarOpen(false);
+    if (window.innerWidth >= 1024) {
+      try {
+        localStorage.setItem('sidebar-collapsed', '1');
+      } catch {
+        /* storage disabled — collapse still works for this session */
+      }
+    }
+  };
+  const handleOpenSidebar = () => {
+    setIsSidebarOpen(true);
+    if (window.innerWidth >= 1024) {
+      try {
+        localStorage.removeItem('sidebar-collapsed');
+      } catch {
+        /* storage disabled */
+      }
+    }
   };
 
-  const handleComplete = (moduleId: string) => {
+  const handleComplete = (moduleId: string, via: CompletedVia) => {
     // Auto-advance moves the learner to the next module — focus should follow.
+    // (Only EXPLICIT completions route here; participation-event completions
+    // are handled inside useProgress and never move the cursor — U9.)
     navIntentRef.current = true;
-    completeModule(moduleId);
+    completeModule(moduleId, via);
   };
 
   const handleViewChange = (next: View) => {
     if (next !== view) navIntentRef.current = true;
-    // Leaving the workshops view (or re-entering it) returns to the list, so the
-    // runner never lingers behind another view.
-    if (next !== 'workshops') setActiveWorkshopId(null);
     setView(next);
   };
 
-  // X.3 workshop runner wiring. The runner reuses ModuleRenderer verbatim, so it
-  // needs the same module resolution + gating + completion path as the standalone
-  // learning view — it writes no new progress (R5/R6).
-  const { getWorkshop } = useWorkshops();
-  const activeWorkshop = activeWorkshopId ? getWorkshop(activeWorkshopId) : undefined;
-  const resolveWorkshopModule = useCallback(
-    (cellId: string) => moduleById.get(cellId),
-    [moduleById],
+  // Progress denominators (restructure U2): numerator = completions ∩ the
+  // VISIBLE module set, denominator = visible modules — a learner with stored
+  // completions for ids no longer visible to them must never exceed 100%.
+  const completedVisibleCount = useMemo(
+    () => progress.completedModuleIds.filter((id) => moduleById.has(id)).length,
+    [progress.completedModuleIds, moduleById],
   );
-  const isWorkshopStepLocked = useCallback(
-    (module: (typeof allModules)[number]) => isModuleLocked(module, stage1a.done),
-    [stage1a.done],
-  );
-  const handleLaunchWorkshop = (id: string) => {
-    navIntentRef.current = true;
-    setActiveWorkshopId(id);
-  };
-  const handleExitWorkshop = () => {
-    navIntentRef.current = true;
-    setActiveWorkshopId(null);
-  };
+  const overallProgress =
+    allModules.length > 0 ? Math.round((completedVisibleCount / allModules.length) * 100) : 0;
 
-  const overallProgress = Math.round((progress.completedModuleIds.length / allModules.length) * 100);
+  if (!hasEntered) {
+    return <LandingPage onEnter={handleEnter} />;
+  }
 
   return (
     <div className="flex h-screen bg-nava-grey text-[#1A1A1A] font-sans overflow-hidden" id="app-container">
       <Sidebar
         isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        phases={phases}
+        onClose={handleCloseSidebar}
+        sections={sections}
         progress={progress}
         onModuleSelect={handleModuleSelect}
         overallProgress={overallProgress}
@@ -235,17 +249,14 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
         activeView={view}
         onViewChange={handleViewChange}
         isStaff={isStaff}
-        stage1aDone={stage1a.done}
-        stage1aCompleted={stage1a.completed}
-        stage1aTotal={stage1a.total}
       />
 
       <main className="flex-1 flex flex-col min-w-0 relative h-full">
         <Header
           isSidebarOpen={isSidebarOpen}
-          onOpenSidebar={() => setIsSidebarOpen(true)}
+          onOpenSidebar={handleOpenSidebar}
           currentModule={currentModule}
-          currentPhase={currentPhase}
+          currentPhase={currentSection}
           selectedPersona={selectedPersona}
           onPersonaSelect={setSelectedPersona}
           onSignOut={onSignOut}
@@ -274,11 +285,7 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
                 ? 'Staff tools'
                 : view === 'progress'
                   ? 'Your progress'
-                  : view === 'workshops'
-                    ? 'Workshops'
-                    : currentModuleLocked
-                    ? 'Section locked'
-                    : currentModule.title
+                  : currentModule.title
           }
           className="flex-1 overflow-y-auto w-full focus:outline-none"
         >
@@ -301,46 +308,21 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
               <LearnerDashboard userId={userId} />
             </ContentContainer>
           )}
-          {/* Workshops (X.3): the list, or the guided runner once one is launched.
-              Conditionally mounted (not hidden) so the derived progress reflects a
-              just-completed step. The runner reuses ModuleRenderer verbatim and
-              routes completion through completeModule — no new writes (R5/R6). */}
-          {view === 'workshops' && (
-            <ContentContainer wide>
-              {activeWorkshop ? (
-                <WorkshopRunner
-                  key={activeWorkshop.id}
-                  workshop={activeWorkshop}
-                  moduleById={resolveWorkshopModule}
-                  isStepLocked={isWorkshopStepLocked}
-                  completedModuleIds={progress.completedModuleIds}
-                  selectedPersona={selectedPersona}
-                  onCompleteModule={handleComplete}
-                  onExit={handleExitWorkshop}
-                />
-              ) : (
-                <WorkshopList
-                  completedModuleIds={progress.completedModuleIds}
-                  onLaunch={handleLaunchWorkshop}
-                />
-              )}
-            </ContentContainer>
-          )}
           <ContentContainer active={view === 'learning'}>
-            {currentModuleLocked ? (
-              <LockedNotice
-                completed={stage1a.completed}
-                total={stage1a.total}
-                onGoToStage1a={goToStage1a}
-                canGoToStage1a={firstIncompleteStage1aId(phases, progress.completedModuleIds) !== undefined}
-              />
-            ) : (
-              <ModuleRenderer
-                module={currentModule}
-                selectedPersona={selectedPersona}
-                onComplete={() => handleComplete(currentModule.id)}
-              />
-            )}
+            <ModuleRenderer
+              module={currentModule}
+              selectedPersona={selectedPersona}
+              isCompleted={progress.completedModuleIds.includes(currentModule.id)}
+              onComplete={(via) => handleComplete(currentModule.id, via)}
+              wasReset={resetModuleIds.has(currentModule.id)}
+            />
+            {/* Week flow (U2/R4): Next/Previous over the flattened visible order.
+                Pure navigation — completion semantics are untouched (U9). */}
+            <ModulePager
+              modules={allModules}
+              currentModuleId={currentModule.id}
+              onSelect={handleModuleSelect}
+            />
           </ContentContainer>
         </div>
       </main>
@@ -354,7 +336,7 @@ function Academy({ phases, userId, onSignOut }: { phases: Phase[]; userId: strin
         <LocalTutorFAB
           selectedPersona={selectedPersona}
           currentModule={currentModule}
-          phases={phases}
+          phases={sections}
         />
       )}
     </div>

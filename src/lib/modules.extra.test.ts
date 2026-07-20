@@ -1,16 +1,18 @@
 import { describe, test, expect } from 'vitest';
-import { mapRowToModule, groupIntoPhases, isModuleLive, assertModuleRow } from './modules';
-import type { Module, Stage } from '../types';
+import { mapRowToModule, groupCurriculum, isModuleLive, assertModuleRow, type CourseStructure } from './modules';
+import type { Module } from '../types';
 
 // Pure helpers (no Supabase) — these complement the existing modules.test.ts
-// (which covers the sorter_config mapping) with the field mapping, null-body
-// fallback, phase grouping/order, and the stub-vs-live derivation.
+// (which covers the sorter_config mapping and the U2 grouping rules) with the
+// field mapping, null-body fallback, section ordering across multiple weeks,
+// and the stub-vs-live derivation.
 
 const row = (over: Record<string, unknown> = {}) => ({
   cell_id: '1.4',
-  stage: '1a' as Stage,
+  stage: '1a',
   status: 'published',
   origin: 'matrix',
+  visibility: 'public',
   title: 'Data classification',
   type: 'content',
   dimension: ['Diligence'],
@@ -25,65 +27,73 @@ const row = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mod = (over: Record<string, unknown> = {}): Module => mapRowToModule(row(over) as any);
+
 describe('mapRowToModule — field mapping', () => {
   test('maps cell_id to id+cellId and body_md to content', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const m = mapRowToModule(row() as any);
+    const m = mod();
     expect(m.id).toBe('1.4');
     expect(m.cellId).toBe('1.4');
     expect(m.content).toBe('# Lesson body');
-    expect(m.phaseId).toBe('stage-1a');
     expect(m.dimension).toEqual(['Diligence']);
     expect(m.evidenceType).toBe('quiz');
     expect(m.selfReportValidity).toBe('medium');
   });
 
   test('null body_md becomes an empty string (not null/undefined)', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const m = mapRowToModule(row({ body_md: null }) as any);
-    expect(m.content).toBe('');
+    expect(mod({ body_md: null }).content).toBe('');
   });
 
   test('null optional columns map to undefined', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const m = mapRowToModule(row() as any);
+    const m = mod();
     expect(m.masteryAnchor).toBeUndefined();
     expect(m.emergentAnchor).toBeUndefined();
     expect(m.quiz).toBeUndefined();
     expect(m.labConfig).toBeUndefined();
     expect(m.sorterConfig).toBeUndefined();
   });
-
-  test('maps each stage to its phase id', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(mapRowToModule(row({ stage: '1a' }) as any).phaseId).toBe('stage-1a');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(mapRowToModule(row({ stage: '1b' }) as any).phaseId).toBe('stage-1b');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(mapRowToModule(row({ stage: '2' }) as any).phaseId).toBe('stage-2');
-  });
 });
 
-describe('groupIntoPhases', () => {
-  const mod = (id: string, stage: Stage): Module => ({ id, cellId: id, stage } as Module);
-
-  test('returns the three stages in nav order (1a, 1b, 2)', () => {
-    const phases = groupIntoPhases([mod('2.1', '2'), mod('1.3', '1a'), mod('1.7', '1b')]);
-    expect(phases.map((p) => p.id)).toEqual(['stage-1a', 'stage-1b', 'stage-2']);
+describe('groupCurriculum — section ordering across weeks (U2)', () => {
+  test('weeks render in course + week sort order, then supplemental, then resources', () => {
+    const structure: CourseStructure = {
+      courses: [{ id: 'c-1', slug: 'course-1', title: 'Course 1', description: null, sortOrder: 0 }],
+      weeks: [
+        { id: 'w-0', courseId: 'c-1', title: 'Week 0', subtitle: 'Claude Set-up', sortOrder: 0 },
+        { id: 'w-1', courseId: 'c-1', title: 'Week 1', subtitle: 'Break Claude on Purpose', sortOrder: 1 },
+      ],
+      memberships: [
+        { weekId: 'w-1', cellId: 'c1-w1-a', sortOrder: 0 },
+        { weekId: 'w-0', cellId: 'c1-w0-setup', sortOrder: 0 },
+      ],
+    };
+    const sections = groupCurriculum(
+      [
+        mod({ cell_id: '1.3' }),
+        mod({ cell_id: 'custom-extra', origin: 'custom', stage: null }),
+        mod({ cell_id: 'c1-w0-setup', origin: 'course', stage: null }),
+        mod({ cell_id: 'c1-w1-a', origin: 'course', stage: null, visibility: 'program' }),
+      ],
+      structure,
+    );
+    expect(sections.map((s) => s.id)).toEqual(['week-w-0', 'week-w-1', 'supplemental', 'resources']);
+    expect(sections.map((s) => s.week)).toEqual(['Week 0', 'Week 1', 'Supplemental', 'Resources']);
   });
 
-  test('buckets modules into their stage', () => {
-    const phases = groupIntoPhases([mod('1.3', '1a'), mod('1.4', '1a'), mod('2.1', '2')]);
-    const byId = Object.fromEntries(phases.map((p) => [p.id, p.modules.map((m) => m.id)]));
-    expect(byId['stage-1a']).toEqual(['1.3', '1.4']);
-    expect(byId['stage-1b']).toEqual([]);
-    expect(byId['stage-2']).toEqual(['2.1']);
+  test('a week whose title has no subtitle falls back to the week title', () => {
+    const structure: CourseStructure = {
+      courses: [{ id: 'c-1', slug: 'course-1', title: 'Course 1', description: null, sortOrder: 0 }],
+      weeks: [{ id: 'w-5', courseId: 'c-1', title: 'Week 5', subtitle: null, sortOrder: 0 }],
+      memberships: [{ weekId: 'w-5', cellId: 'c1-w5-a', sortOrder: 0 }],
+    };
+    const sections = groupCurriculum([mod({ cell_id: 'c1-w5-a', origin: 'course', stage: null })], structure);
+    expect(sections[0].title).toBe('Week 5');
   });
 
-  test('an empty curriculum still yields three empty stages (never []), which is the FE-02 crash precondition', () => {
-    const phases = groupIntoPhases([]);
-    expect(phases).toHaveLength(3);
-    expect(phases.every((p) => p.modules.length === 0)).toBe(true);
+  test('an empty curriculum yields zero sections — the empty state keys on ZERO ROWS, not shape (FE-02 re-cut)', () => {
+    const sections = groupCurriculum([], { courses: [], weeks: [], memberships: [] });
+    expect(sections).toEqual([]);
   });
 });
 

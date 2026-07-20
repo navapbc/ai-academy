@@ -51,10 +51,16 @@ export const DRAFT_COLUMN_KEYS = [
 
 export type ContentAction =
   | { action: 'save-draft'; cellId: string; draft: DraftFields }
-  | { action: 'publish'; cellId: string; note: string | null }
+  // resetProgress (restructure U10): publish may additionally clear every
+  // learner's progress for the module — the core parses/validates the flag,
+  // index.ts executes the strictly-ordered epoch-then-delete sequence.
+  | { action: 'publish'; cellId: string; note: string | null; resetProgress: boolean }
   | { action: 'archive'; cellId: string }
   | { action: 'restore'; cellId: string }
-  | { action: 'create-custom'; title: string; type: string };
+  // origin (restructure U3): 'custom' (default — a public standalone lesson) or
+  // 'course' (a program-visible Course lesson, assigned to a week separately via
+  // the admin-courses function).
+  | { action: 'create-custom'; title: string; type: string; origin: CreatableOrigin };
 
 export type ParseResult =
   | { ok: true; value: ContentAction }
@@ -79,17 +85,34 @@ export function isValidCellId(v: unknown): v is string {
   return typeof v === 'string' && v.length <= CELL_ID_MAX && CELL_ID_RE.test(v);
 }
 
-// --- Custom (free-form) lessons (P5.4-6) -------------------------------------
-// A custom lesson is created with a server-generated cell_id `custom-<slug>`.
-// The slug is derived deterministically from the title and collision-guarded
+// --- Module origin (cohort-restructure U1) -----------------------------------
+// Mirrors the DB `modules_origin_check` constraint and the ModuleOrigin union in
+// src/types.ts — keep all three in lockstep. 'matrix' = one of the 28 fixed
+// cells (has a stage); 'custom' and 'course' are stage-less (stage = null,
+// enforced by modules_origin_stage_check). Wherever this function validates an
+// origin (U3 adds the create-course variant), this is the allow-list.
+export const MODULE_ORIGINS = ['matrix', 'custom', 'course'] as const;
+export type ModuleOrigin = (typeof MODULE_ORIGINS)[number];
+
+export function isValidOrigin(v: unknown): v is ModuleOrigin {
+  return typeof v === 'string' && (MODULE_ORIGINS as readonly string[]).includes(v);
+}
+
+// --- Custom / course (free-form) lessons (P5.4-6 / restructure U3) -----------
+// A CMS-created lesson gets a server-generated cell_id `<prefix><slug>`. The
+// slug is derived deterministically from the title and collision-guarded
 // against existing ids, so creating "Prompt basics" twice yields distinct ids.
+// The same machinery mints both `custom-<slug>` (P5.4-6) and `course-<slug>`
+// (U3) ids — the client never mints non-custom ids (Key Decisions).
 
 /** The fixed prefix every custom lesson's cell_id carries. */
 export const CUSTOM_ID_PREFIX = 'custom-';
-// The slug must leave room for the prefix within the cell_id length cap, so the
-// generated id always passes isValidCellId — otherwise the new lesson would 400
-// on its first save-draft (which re-validates the cell_id).
-const CUSTOM_SLUG_MAX = CELL_ID_MAX - CUSTOM_ID_PREFIX.length;
+/** The fixed prefix every CMS-created course lesson's cell_id carries (U3). */
+export const COURSE_ID_PREFIX = 'course-';
+
+/** The origins the create-custom action can mint (mirrors ContentAction). */
+export const CREATABLE_ORIGINS = ['custom', 'course'] as const;
+export type CreatableOrigin = (typeof CREATABLE_ORIGINS)[number];
 
 /** lower-cases, collapses non-alphanumerics to single hyphens, trims hyphens. */
 export function slugify(title: string): string {
@@ -100,22 +123,36 @@ export function slugify(title: string): string {
 }
 
 /**
- * Deterministic, collision-free `custom-<slug>` cell_id for a new lesson. The
- * slug is truncated so `custom-<slug>` always fits CELL_ID_MAX (incl. room for a
- * disambiguating `-N` suffix); an all-punctuation/empty title falls back to
- * `custom-lesson`. On collision with an existing id, appends `-2`, `-3`, …
+ * Deterministic, collision-free `<prefix><slug>` cell_id for a new lesson. The
+ * slug is truncated so the id always fits CELL_ID_MAX (incl. room for a
+ * disambiguating `-N` suffix) and passes isValidCellId — otherwise the new
+ * lesson would 400 on its first save-draft (which re-validates the cell_id).
+ * An all-punctuation/empty title falls back to `<prefix>lesson`. On collision
+ * with an existing id, appends `-2`, `-3`, …
  */
-export function customCellId(title: string, existingIds: readonly string[]): string {
+function mintCellId(prefix: string, title: string, existingIds: readonly string[]): string {
+  // The slug must leave room for the prefix within the cell_id length cap.
+  const slugMax = CELL_ID_MAX - prefix.length;
   const taken = new Set(existingIds);
   const base = slugify(title);
   for (let n = 1; ; n++) {
     const suffix = n === 1 ? '' : `-${n}`;
-    const room = CUSTOM_SLUG_MAX - suffix.length;
+    const room = slugMax - suffix.length;
     const trimmed = base.slice(0, room).replace(/-+$/g, '');
     const slug = trimmed === '' ? 'lesson' : trimmed;
-    const id = `${CUSTOM_ID_PREFIX}${slug}${suffix}`;
+    const id = `${prefix}${slug}${suffix}`;
     if (!taken.has(id)) return id;
   }
+}
+
+/** `custom-<slug>` id for a new custom lesson (P5.4-6). */
+export function customCellId(title: string, existingIds: readonly string[]): string {
+  return mintCellId(CUSTOM_ID_PREFIX, title, existingIds);
+}
+
+/** `course-<slug>` id for a new CMS-created course lesson (U3). */
+export function courseCellId(title: string, existingIds: readonly string[]): string {
+  return mintCellId(COURSE_ID_PREFIX, title, existingIds);
 }
 
 // --- Field validators --------------------------------------------------------
@@ -196,6 +233,10 @@ export const LAB_KINDS = [
   'dashboard-critique',
   'use-case-portfolio',
   'failure-log',
+  'chat-compare',
+  'decision-scenario',
+  'prediction-sort',
+  'delegation-sort',
   'glat',
 ] as const;
 
@@ -301,6 +342,9 @@ function firstError(...checks: (string | null)[]): string | null {
   for (const c of checks) if (c) return c;
   return null;
 }
+
+/** The decision-scenario workflow phases (mirrors DecisionCheckpoint in types.ts). */
+const DECISION_PHASES = ['delegate', 'ground', 'scope', 'verify'] as const;
 
 /**
  * Per-kind validators. Each receives the config object (already confirmed to be
@@ -570,6 +614,114 @@ const LAB_VALIDATORS: Record<string, (c: Obj) => string | null> = {
         : '`targetEntries` must be an integer ≥ 1.',
     ),
 
+  // chat-compare (restructure U6): 1–4 panes of all-optional string fields —
+  // a bare pane is plain Claude; systemPromptMd rigs it; sourceMd grounds it.
+  'chat-compare': (c) => {
+    if (!Array.isArray(c.panes) || c.panes.length < 1 || c.panes.length > 4) {
+      return '`panes` must be an array of 1–4 panes.';
+    }
+    for (let i = 0; i < c.panes.length; i++) {
+      const pane = c.panes[i];
+      if (!isObj(pane)) return `\`panes[${i}]\` must be an object.`;
+      for (const f of ['label', 'systemPromptMd', 'sourceMd'] as const) {
+        if (f in pane && pane[f] !== undefined && typeof pane[f] !== 'string') {
+          return `\`panes[${i}].${f}\` must be a string.`;
+        }
+      }
+    }
+    if ('suggestedPrompts' in c && c.suggestedPrompts !== undefined) {
+      if (!Array.isArray(c.suggestedPrompts) || !c.suggestedPrompts.every((s) => typeof s === 'string')) {
+        return '`suggestedPrompts` must be an array of strings.';
+      }
+    }
+    return null;
+  },
+
+  // decision-scenario (restructure U7): a LINEAR "Walk the Workflow" checkpoint
+  // scenario — required introMd, ≥1 checkpoints of { id, phase∈(delegate|ground|
+  // scope|verify), setupMd, prompt, options[≥2] of { text, feedbackMd } };
+  // multiSelect and closingMd optional.
+  'decision-scenario': (c) => {
+    if (!isNonEmptyStr(c.introMd)) return '`introMd` must be a non-empty string.';
+    if (!Array.isArray(c.checkpoints) || c.checkpoints.length < 1) {
+      return '`checkpoints` must be a non-empty array.';
+    }
+    for (let i = 0; i < c.checkpoints.length; i++) {
+      const cp = c.checkpoints[i];
+      const p = `checkpoints[${i}]`;
+      if (!isObj(cp)) return `\`${p}\` must be an object.`;
+      if (!isNonEmptyStr(cp.id)) return `\`${p}.id\` must be a non-empty string.`;
+      if (!(DECISION_PHASES as readonly string[]).includes(cp.phase as string)) {
+        return `\`${p}.phase\` must be one of: ${DECISION_PHASES.join(', ')}.`;
+      }
+      if (!isNonEmptyStr(cp.setupMd)) return `\`${p}.setupMd\` must be a non-empty string.`;
+      if (!isNonEmptyStr(cp.prompt)) return `\`${p}.prompt\` must be a non-empty string.`;
+      if ('multiSelect' in cp && cp.multiSelect !== undefined && typeof cp.multiSelect !== 'boolean') {
+        return `\`${p}.multiSelect\` must be a boolean.`;
+      }
+      if (!Array.isArray(cp.options) || cp.options.length < 2) {
+        return `\`${p}.options\` must be an array of at least 2 options.`;
+      }
+      for (let j = 0; j < cp.options.length; j++) {
+        const opt = cp.options[j];
+        if (!isObj(opt) || !isNonEmptyStr(opt.text) || !isNonEmptyStr(opt.feedbackMd)) {
+          return `\`${p}.options[${j}]\` must be { text, feedbackMd } (both non-empty strings).`;
+        }
+      }
+    }
+    if ('closingMd' in c && c.closingMd !== undefined && typeof c.closingMd !== 'string') {
+      return '`closingMd` must be a string.';
+    }
+    return null;
+  },
+
+  // prediction-sort (Week 1 Lookup-vs-Predict intuition sort, 1.01): required
+  // introMd, bucketLabels{lookup,predict}, ≥1 items of { id, prompt, reveal },
+  // and a uniform takeaway{title,body} payoff card.
+  'prediction-sort': (c) =>
+    firstError(
+      isNonEmptyStr(c.introMd) ? null : '`introMd` must be a non-empty string.',
+      isObj(c.bucketLabels) &&
+      isNonEmptyStr((c.bucketLabels as Obj).lookup) &&
+      isNonEmptyStr((c.bucketLabels as Obj).predict)
+        ? null
+        : '`bucketLabels` must be { lookup, predict } (both non-empty strings).',
+      checkArray(c.items, 'items', (it, p) =>
+        isObj(it) && isNonEmptyStr(it.id) && isNonEmptyStr(it.prompt) && isNonEmptyStr(it.reveal)
+          ? null
+          : `\`${p}\` must be { id, prompt, reveal } (all non-empty strings).`,
+      ),
+      isObj(c.takeaway) &&
+      isNonEmptyStr((c.takeaway as Obj).title) &&
+      isNonEmptyStr((c.takeaway as Obj).body)
+        ? null
+        : '`takeaway` must be { title, body } (both non-empty strings).',
+    ),
+
+  'delegation-sort': (c) =>
+    firstError(
+      isNonEmptyStr(c.introMd) ? null : '`introMd` must be a non-empty string.',
+      checkArray(c.categories, 'categories', (cat, p) =>
+        isObj(cat) && isNonEmptyStr(cat.id) && isNonEmptyStr(cat.label) && typeof cat.desc === 'string'
+          ? null
+          : `\`${p}\` must be { id, label, desc }.`,
+      ),
+      checkArray(c.items, 'items', (it, p) =>
+        isObj(it) &&
+        isNonEmptyStr(it.id) &&
+        isNonEmptyStr(it.scenario) &&
+        isNonEmptyStr(it.suggested) &&
+        isNonEmptyStr(it.rationale)
+          ? null
+          : `\`${p}\` must be { id, scenario, suggested, rationale } (all non-empty strings).`,
+      ),
+      isObj(c.takeaway) &&
+      isNonEmptyStr((c.takeaway as Obj).title) &&
+      isNonEmptyStr((c.takeaway as Obj).body)
+        ? null
+        : '`takeaway` must be { title, body } (both non-empty strings).',
+    ),
+
   glat: (c) => {
     // Number.isFinite rejects NaN/Infinity/non-numbers (a bare `typeof === number`
     // would let NaN through, since NaN <= 0 and NaN > 1 are both false).
@@ -719,7 +871,8 @@ export function parseContentAction(body: unknown): ParseResult {
   }
 
   // create-custom is the one action with no incoming cellId — the server
-  // generates `custom-<slug>` — so it is validated before the cellId gate.
+  // generates `custom-<slug>` / `course-<slug>` — so it is validated before the
+  // cellId gate.
   if (action === 'create-custom') {
     if (typeof b.title !== 'string' || b.title.trim() === '') {
       return err('`title` must be a non-empty string.');
@@ -729,7 +882,15 @@ export function parseContentAction(body: unknown): ParseResult {
       return err('`type` must be a non-empty string.');
     }
     if (b.type.length > TYPE_MAX) return err(`\`type\` must be at most ${TYPE_MAX} characters.`);
-    return ok({ action, title: b.title.trim(), type: b.type.trim() });
+    // Optional origin (U3): absent → 'custom' (the pre-U3 contract, unchanged).
+    let origin: CreatableOrigin = 'custom';
+    if (b.origin !== undefined && b.origin !== null) {
+      if (!(CREATABLE_ORIGINS as readonly unknown[]).includes(b.origin)) {
+        return err(`\`origin\` must be one of: ${CREATABLE_ORIGINS.join(', ')}.`);
+      }
+      origin = b.origin as CreatableOrigin;
+    }
+    return ok({ action, title: b.title.trim(), type: b.type.trim(), origin });
   }
 
   if (!isValidCellId(b.cellId)) {
@@ -744,7 +905,14 @@ export function parseContentAction(body: unknown): ParseResult {
     }
     case 'publish': {
       const n = normalizePublishNote(b.note);
-      return n.ok ? ok({ action, cellId, note: n.value }) : n;
+      if (!n.ok) return n;
+      // Optional resetProgress (U10): absent/null → false (the pre-U10 contract,
+      // unchanged); anything but a real boolean is rejected — a truthy string
+      // must never silently wipe learner progress.
+      if (b.resetProgress !== undefined && b.resetProgress !== null && typeof b.resetProgress !== 'boolean') {
+        return err('`resetProgress` must be a boolean.');
+      }
+      return ok({ action, cellId, note: n.value, resetProgress: b.resetProgress === true });
     }
     case 'archive':
       return ok({ action, cellId });
@@ -813,10 +981,14 @@ export function buildContentVersionRow(input: {
 }
 
 /**
- * Builds the full row for a new free-form (custom) lesson (P5.4-6). It starts as
- * a `draft` so it is invisible to learners until Publish (R3): `origin='custom'`
- * + `stage=null` puts it in the ungated "Additional lessons" group, never the
- * matrix gating. The title/type sit in the LIVE columns (the row is hidden by
+ * Builds the full row for a new free-form lesson (P5.4-6; origin variant U3).
+ * It starts as a `draft` so it is invisible to learners until Publish (R3):
+ * `stage=null` for both creatable origins (modules_origin_stage_check).
+ * `origin='custom'` (default) puts it in the ungated "Resources & additional
+ * lessons" group; `origin='course'` mints a `course-<slug>` id and sets
+ * `visibility='program'` (enrolled + staff only once U4's policy is live) — week
+ * assignment happens separately via admin-courses and never changes visibility
+ * (Key Decisions). The title/type sit in the LIVE columns (the row is hidden by
  * status, so this is safe); the admin then stages body/quiz/lab edits into
  * `draft` via the reused editors and Publish promotes them. `sort_order` lands
  * after every existing row. The caller passes the existing ids (collision guard)
@@ -830,12 +1002,17 @@ export function buildCustomInsert(
   maxSortOrder: number,
   callerId: string,
   now: string,
+  origin: CreatableOrigin = 'custom',
 ): Record<string, unknown> {
   return {
-    cell_id: customCellId(title, existingIds),
-    origin: 'custom',
+    cell_id:
+      origin === 'course' ? courseCellId(title, existingIds) : customCellId(title, existingIds),
+    origin,
     stage: null,
     status: 'draft',
+    // Course lessons are program-visible; custom lessons keep the DB default
+    // ('public') — stated explicitly so the write contract is visible here.
+    visibility: origin === 'course' ? 'program' : 'public',
     title: title.trim(),
     type,
     // Free-form lessons sit outside the matrix's 4D/evidence framework; use
@@ -849,6 +1026,22 @@ export function buildCustomInsert(
     updated_by: callerId,
     updated_at: now,
   };
+}
+
+/**
+ * Archive referential guard (restructure U3 — the admin-courses counterpart):
+ * a lesson assigned to a course week cannot be archived, or learners would see
+ * a week silently lose a member (and the membership row would dangle in the
+ * CMS). Returns the 400 rejection message naming the week, else null; index.ts
+ * looks up the membership + week title. Restore deliberately does NOT
+ * auto-rejoin a week (an admin re-assigns explicitly via admin-courses).
+ */
+export function archiveBlockedReason(assignedWeekTitle: string | null | undefined): string | null {
+  if (!assignedWeekTitle) return null;
+  return (
+    `This lesson is assigned to ${assignedWeekTitle}. ` +
+    `Unassign it from ${assignedWeekTitle} first, then archive.`
+  );
 }
 
 // --- Allowlist / domain (mirrors admin-cohorts-core) -------------------------

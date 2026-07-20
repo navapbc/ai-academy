@@ -1,13 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { signInAsDemo, openModule, completeStage1a, stubClaude, stubGrade } from './helpers';
+import { signInAsDemo, openModule, stubClaude, stubGrade } from './helpers';
 
 // The 2.1 prompt-construction lab calls Claude through the chat Edge Function.
 // We STUB that call (no real key) and assert the lab renders the canned
-// completion. 2.1 is Stage 2, so we first complete Stage 1a to unlock it.
+// completion. Nothing is gated (restructure U2), so 2.1 opens directly.
 test('the 2.1 prompt lab returns the stubbed Claude completion', async ({ page }) => {
   await stubClaude(page, 'STUBBED CLAUDE OUTPUT: a constraint-first prompt result.');
   await signInAsDemo(page);
-  await completeStage1a(page);
 
   await openModule(page, '2.1');
   const lab = page.locator('#prompt-lab');
@@ -34,7 +33,6 @@ test('completing the 2.1 lab (run → save → grade → Continue) marks the mod
     maxOverall: 2,
   });
   await signInAsDemo(page);
-  await completeStage1a(page);
 
   await openModule(page, '2.1');
   const lab = page.locator('#prompt-lab');

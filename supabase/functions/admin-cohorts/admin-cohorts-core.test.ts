@@ -5,6 +5,7 @@ import {
   isAllowlistedAdmin,
   emailDomainAllowed,
   buildCorsHeaders,
+  deleteCohortBlockedReason,
   fixedWindowAllow,
   roleAfterAssign,
   roleAfterUnassign,
@@ -41,12 +42,18 @@ describe('parseCohortAction', () => {
     expect(parseCohortAction({ action: 'rename_cohort', cohortId: CID, name: '' }).ok).toBe(false);
   });
 
-  test('delete_cohort requires a uuid', () => {
+  test('delete_cohort and archive_cohort require a uuid', () => {
     expect(parseCohortAction({ action: 'delete_cohort', cohortId: CID })).toEqual({
       ok: true,
       value: { action: 'delete_cohort', cohortId: CID },
     });
     expect(parseCohortAction({ action: 'delete_cohort' }).ok).toBe(false);
+    expect(parseCohortAction({ action: 'archive_cohort', cohortId: CID })).toEqual({
+      ok: true,
+      value: { action: 'archive_cohort', cohortId: CID },
+    });
+    expect(parseCohortAction({ action: 'archive_cohort' }).ok).toBe(false);
+    expect(parseCohortAction({ action: 'archive_cohort', cohortId: 'bad' }).ok).toBe(false);
   });
 
   test('enroll_learner requires cohortId + userId', () => {
@@ -58,12 +65,15 @@ describe('parseCohortAction', () => {
     expect(parseCohortAction({ action: 'enroll_learner', userId: UID }).ok).toBe(false);
   });
 
-  test('unenroll_learner requires only userId', () => {
-    expect(parseCohortAction({ action: 'unenroll_learner', userId: UID })).toEqual({
+  test('unenroll_learner requires cohortId + userId (multi-enrollment: which cohort?)', () => {
+    expect(parseCohortAction({ action: 'unenroll_learner', cohortId: CID, userId: UID })).toEqual({
       ok: true,
-      value: { action: 'unenroll_learner', userId: UID },
+      value: { action: 'unenroll_learner', cohortId: CID, userId: UID },
     });
-    expect(parseCohortAction({ action: 'unenroll_learner', userId: 'bad' }).ok).toBe(false);
+    // A bare userId is ambiguous under one-enrollment-per-cohort — rejected.
+    expect(parseCohortAction({ action: 'unenroll_learner', userId: UID }).ok).toBe(false);
+    expect(parseCohortAction({ action: 'unenroll_learner', cohortId: CID }).ok).toBe(false);
+    expect(parseCohortAction({ action: 'unenroll_learner', cohortId: CID, userId: 'bad' }).ok).toBe(false);
   });
 
   test('assign/unassign champion require cohortId + userId', () => {
@@ -76,6 +86,19 @@ describe('parseCohortAction', () => {
     expect(parseCohortAction({ action: 'nuke_everything' }).ok).toBe(false);
     expect(parseCohortAction(null).ok).toBe(false);
     expect(parseCohortAction('x').ok).toBe(false);
+  });
+});
+
+describe('deleteCohortBlockedReason (U5 lifecycle guard)', () => {
+  test('allows deletion only at zero enrollments', () => {
+    expect(deleteCohortBlockedReason(0)).toBeNull();
+    expect(deleteCohortBlockedReason(-1)).toBeNull(); // defensive: never blocks on a bogus count
+  });
+
+  test('blocks deletion with the enrollment count and points at archive', () => {
+    expect(deleteCohortBlockedReason(1)).toMatch(/1 enrollment\b/);
+    expect(deleteCohortBlockedReason(3)).toMatch(/3 enrollments/);
+    expect(deleteCohortBlockedReason(3)).toMatch(/archive/i);
   });
 });
 

@@ -59,6 +59,125 @@ describe('validateLabConfig — per kind', () => {
     expect(validateLabConfig({ ...good, rubric: { anchors: [] } }).ok).toBe(false);
   });
 
+  test('chat-compare requires 1–4 panes of optional string fields', () => {
+    const good = {
+      kind: 'chat-compare',
+      panes: [
+        { label: 'Plain Claude' },
+        { label: 'Rigged', systemPromptMd: 'Answer confidently.' },
+        { label: 'Grounded', sourceMd: '# Policy' },
+      ],
+      suggestedPrompts: ['What does the policy say?'],
+    };
+    expect(validateLabConfig(good).ok).toBe(true);
+    expect(validateLabConfig({ kind: 'chat-compare', panes: [{}] }).ok).toBe(true);
+    expect(validateLabConfig({ kind: 'chat-compare', panes: [] }).ok).toBe(false);
+    expect(validateLabConfig({ kind: 'chat-compare', panes: [{}, {}, {}, {}, {}] }).ok).toBe(false);
+    expect(validateLabConfig({ kind: 'chat-compare', panes: [{ label: 1 }] }).ok).toBe(false);
+    expect(validateLabConfig({ ...good, suggestedPrompts: 'nope' }).ok).toBe(false);
+  });
+
+  test('decision-scenario requires introMd + well-formed checkpoints with per-option feedback', () => {
+    const good = {
+      kind: 'decision-scenario',
+      introMd: 'Marina has notes to summarize.',
+      checkpoints: [
+        {
+          id: 'cp-1',
+          phase: 'delegate',
+          setupMd: 'Marina wonders what to hand off.',
+          prompt: 'What should she delegate?',
+          options: [
+            { text: 'The decision', feedbackMd: 'Too much.' },
+            { text: 'The draft', feedbackMd: 'Right-sized.' },
+          ],
+        },
+      ],
+    };
+    expect(validateLabConfig(good).ok).toBe(true);
+    // multiSelect and closingMd are optional extras.
+    const multi = {
+      ...good,
+      closingMd: 'She ships it.',
+      checkpoints: [{ ...good.checkpoints[0], multiSelect: true }],
+    };
+    expect(validateLabConfig(multi).ok).toBe(true);
+    // Rejections: missing introMd, 0 checkpoints, 1 option, bad phase, missing feedback.
+    expect(validateLabConfig({ ...good, introMd: '' }).ok).toBe(false);
+    expect(validateLabConfig({ ...good, checkpoints: [] }).ok).toBe(false);
+    expect(
+      validateLabConfig({
+        ...good,
+        checkpoints: [{ ...good.checkpoints[0], options: [{ text: 'Only', feedbackMd: 'f' }] }],
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateLabConfig({ ...good, checkpoints: [{ ...good.checkpoints[0], phase: 'ponder' }] }).ok,
+    ).toBe(false);
+    expect(
+      validateLabConfig({
+        ...good,
+        checkpoints: [
+          { ...good.checkpoints[0], options: [{ text: 'A', feedbackMd: 'f' }, { text: 'B' }] },
+        ],
+      }).ok,
+    ).toBe(false);
+  });
+
+  test('prediction-sort requires introMd, bucketLabels, items, and a takeaway', () => {
+    const good = {
+      kind: 'prediction-sort',
+      introMd: 'Sort each task into lookup or predict.',
+      bucketLabels: { lookup: 'Lookup', predict: 'Predict' },
+      items: [{ id: 'i1', prompt: 'Summarize this memo', reveal: 'Predict — the wording varies.' }],
+      takeaway: { title: 'Takeaway', body: 'Prediction beats lookup for open-ended tasks.' },
+    };
+    expect(validateLabConfig(good).ok).toBe(true);
+    // Missing items entirely.
+    const missingItems: Record<string, unknown> = { ...good };
+    delete missingItems.items;
+    expect(validateLabConfig(missingItems).ok).toBe(false);
+    // bucketLabels missing `predict`.
+    expect(
+      validateLabConfig({ ...good, bucketLabels: { lookup: 'Lookup' } }).ok,
+    ).toBe(false);
+  });
+
+  test('delegation-sort: accepts a well-formed config', () => {
+    expect(
+      validateLabConfig({
+        kind: 'delegation-sort',
+        introMd: 'Sort these.',
+        categories: [
+          { id: 'full-ai', label: 'Full-AI', desc: 'end to end' },
+          { id: 'human-only', label: 'Human-only', desc: 'person owns it' },
+        ],
+        items: [{ id: 'a', scenario: 'Reformat a table.', suggested: 'full-ai', rationale: 'Mechanical.' }],
+        takeaway: { title: 'T', body: 'B' },
+      }).ok,
+    ).toBe(true);
+  });
+
+  test('delegation-sort: rejects missing items and incomplete categories', () => {
+    expect(
+      validateLabConfig({
+        kind: 'delegation-sort',
+        introMd: 'x',
+        categories: [{ id: 'full-ai', label: 'Full-AI', desc: '' }],
+        takeaway: { title: 'T', body: 'B' },
+      }).ok,
+    ).toBe(false); // items missing
+    expect(
+      validateLabConfig({
+        kind: 'delegation-sort',
+        introMd: 'x',
+        categories: [{ id: '', label: 'Full-AI', desc: 'd' }],
+        items: [{ id: 'a', scenario: 's', suggested: 'full-ai', rationale: 'r' }],
+        takeaway: { title: 'T', body: 'B' },
+      }).ok,
+    ).toBe(false); // category id blank
+  });
+
   test('glat threshold + sections', () => {
     const good = {
       kind: 'glat',

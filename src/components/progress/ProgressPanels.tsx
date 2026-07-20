@@ -12,12 +12,6 @@ export function formatPct(n: number | null): string {
   return n === null ? '—' : `${Math.round(n * 100)}%`;
 }
 
-export const STAGE_LABELS: Record<string, string> = {
-  '1a': 'Stage 1a',
-  '1b': 'Stage 1b',
-  '2': 'Stage 2',
-};
-
 export function StatCard({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -36,7 +30,7 @@ export function StatCard({ label, value, note }: { label: string; value: string;
 /** Per-lab status colors; unknown statuses fall back to gray. */
 const LAB_STATUS_COLORS: Record<string, string> = {
   reviewable: 'bg-amber-100 text-amber-800',
-  reviewed: 'bg-nava-green/15 text-nava-green',
+  reviewed: 'bg-nava-plum/15 text-nava-plum',
   returned: 'bg-red-100 text-red-700',
   submitted: 'bg-gray-100 text-gray-700',
 };
@@ -58,7 +52,7 @@ function ModuleRowItem({ row }: { row: LearnerModuleRow }) {
       </td>
       <td className="py-2 px-3 text-center">
         {row.completed ? (
-          <span className="inline-flex items-center gap-1 text-nava-green font-semibold">
+          <span className="inline-flex items-center gap-1 text-nava-plum font-semibold">
             <Check className="w-4 h-4" aria-hidden="true" />
             <span>Done</span>
           </span>
@@ -85,7 +79,11 @@ function ModuleRowItem({ row }: { row: LearnerModuleRow }) {
   );
 }
 
-/** Best-per-module rollup table, grouped by stage. */
+/**
+ * Best-per-module rollup table, grouped by curriculum section (U13): course
+ * lessons → Supplemental coursework → Resources — the same sections the
+ * learner nav renders (rows arrive pre-ordered from buildLearnerModuleRows).
+ */
 export function ModuleProgressTable({ modules }: { modules: LearnerModuleRow[] }) {
   return (
     <table className="w-full text-sm">
@@ -99,16 +97,16 @@ export function ModuleProgressTable({ modules }: { modules: LearnerModuleRow[] }
       <tbody>
         {modules.map((row, i) => {
           const prev = modules[i - 1];
-          const showStage = !prev || prev.stage !== row.stage;
+          const showSection = !prev || prev.section !== row.section;
           return (
             <Fragment key={row.cellId}>
-              {showStage && (
+              {showSection && (
                 <tr>
                   <td
                     colSpan={3}
-                    className="pt-4 pb-1 text-[11px] font-bold uppercase tracking-widest text-nava-green"
+                    className="pt-4 pb-1 text-[11px] font-bold uppercase tracking-widest text-nava-plum"
                   >
-                    {STAGE_LABELS[row.stage] ?? row.stage}
+                    {row.section}
                   </td>
                 </tr>
               )}

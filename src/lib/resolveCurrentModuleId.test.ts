@@ -44,6 +44,14 @@ describe('resolveCurrentModuleId', () => {
     expect(result).toBe('m2');
   });
 
+  // Restructure U2: after the re-grouping (or a visibility change), a cached
+  // cursor can reference a module id that is no longer in the visible
+  // curriculum. It must be ignored gracefully, landing on the first incomplete.
+  test('ignores a stale cursor id that is not in the visible curriculum', () => {
+    const result = resolveCurrentModuleId(snap({ completedModuleIds: ['m0'] }), 'gone-id', ALL);
+    expect(result).toBe('m1');
+  });
+
   test('falls back to the first module when everything is incomplete and nothing is set', () => {
     expect(resolveCurrentModuleId(snap({}), undefined, ALL)).toBe('m0');
   });

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { signInAsDemo, openModule, completeStage1a, stubClaude, stubGrade } from './helpers';
+import { signInAsDemo, openModule, stubClaude, stubGrade } from './helpers';
 
 // Cell 2.4 ("Iteration as the literate behavior") renders the iteration lab (P4.5c)
 // after the lesson: conduct a real MULTI-TURN refinement conversation with Claude
@@ -8,8 +8,8 @@ import { signInAsDemo, openModule, completeStage1a, stubClaude, stubGrade } from
 // conversation for an anchor-scored verdict in place. We STUB BOTH the chat Edge
 // Function (the per-turn replies) AND the grade Edge Function (the judge) — no real
 // key. The stubClaude route returns the same canned body for EVERY chat call, so it
-// transparently serves the multiple sequential turns. 2.4 is Stage 2, so we complete
-// Stage 1a to unlock it. The judge scores the QUALITY OF THE LEARNER'S ITERATION, not
+// transparently serves the multiple sequential turns. Nothing is gated (restructure
+// U2), so 2.4 opens directly. The judge scores the QUALITY OF THE LEARNER'S ITERATION, not
 // the model output. The iteration lab is graded PRACTICE — it must NOT gate
 // completion, so we also confirm the inline quiz is still present as the gate. Reuses
 // streamChat + the #48 judge stub + GradeResultCard.
@@ -29,7 +29,6 @@ test('the 2.4 iteration lab runs a multi-turn conversation, grades the learner i
   });
 
   await signInAsDemo(page);
-  await completeStage1a(page);
 
   await openModule(page, '2.4');
   const lab = page.locator('#iteration-lab');

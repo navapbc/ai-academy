@@ -18,6 +18,8 @@ export interface ScoreDistribution {
 export interface CohortSummary {
   cohortId: string;
   cohortName: string;
+  /** U5: archived cohorts stay readable (read-only) and are labeled as such. */
+  archived: boolean;
   learnerCount: number;
   avgCompletionPct: number | null; // 0..1
   glatPassRate: number | null;     // 0..1 — 0 until the GLAT (P4.10) ships
@@ -38,6 +40,7 @@ export interface CohortSummaryRow {
 export interface CohortNameRow {
   id: string;
   name: string;
+  archived_at: string | null;
 }
 export interface DistributionRow {
   cohort_id: string | null;
@@ -61,12 +64,13 @@ export function buildCohortSummaries(
   rows: CohortSummaryRow[],
   names: CohortNameRow[],
 ): CohortSummary[] {
-  const nameById = new Map(names.map((n) => [n.id, n.name]));
+  const nameRowById = new Map(names.map((n) => [n.id, n]));
   return rows
     .filter((r): r is CohortSummaryRow & { cohort_id: string } => r.cohort_id !== null)
     .map((r) => ({
       cohortId: r.cohort_id,
-      cohortName: nameById.get(r.cohort_id) ?? 'Unnamed cohort',
+      cohortName: nameRowById.get(r.cohort_id)?.name ?? 'Unnamed cohort',
+      archived: (nameRowById.get(r.cohort_id)?.archived_at ?? null) !== null,
       learnerCount: r.learner_count,
       avgCompletionPct: toNum(r.avg_completion_pct),
       glatPassRate: toNum(r.glat_pass_rate),
@@ -109,7 +113,7 @@ export async function fetchCohortSummaries(): Promise<CohortSummary[]> {
 
   const { data: names, error: nameError } = await sb
     .from('cohorts')
-    .select('id, name')
+    .select('id, name, archived_at')
     .in('id', ids);
   if (nameError) throw nameError;
 

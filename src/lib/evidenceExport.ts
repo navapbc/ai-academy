@@ -482,6 +482,12 @@ export const CELL_CROSSWALK: Record<string, ComplianceClaims> = {
 export interface EvidenceLearnerRow {
   user_id: string;
   cohort_id: string | null;
+  /**
+   * All of the learner's cohort ids, set by dedupLearnerRows when a learner's
+   * per-cohort view rows (multi-enrollment, U5) have been merged into one.
+   * Absent on raw view rows.
+   */
+  cohort_ids?: string[];
   completion_pct: number | string | null;
   avg_quiz_pct: number | string | null;
   glat_passed: boolean;
@@ -552,6 +558,29 @@ export interface EvidenceCohortRow {
 function displayName(profile: EvidenceProfileRow | undefined): string {
   if (!profile) return 'Unknown';
   return profile.full_name?.trim() || profile.email || 'Unknown';
+}
+
+/**
+ * Pure (U5): merge a learner's per-cohort `learner_progress_summary` rows into
+ * one row per learner. Under multi-enrollment the view returns ONE ROW PER
+ * (learner × cohort); an export that iterated those raw rows would emit a
+ * dual-enrolled learner's evidence once per cohort (learner × cohort × module).
+ * The per-learner metrics are user-scoped (identical on every cohort row), so
+ * the first row's metrics are kept and the cohort ids are collected into
+ * `cohort_ids` (first-seen order). A no-op for single-enrollment data and for
+ * the per-cohort export path (already one row per learner there).
+ */
+export function dedupLearnerRows(learners: EvidenceLearnerRow[]): EvidenceLearnerRow[] {
+  const byUser = new Map<string, EvidenceLearnerRow>();
+  for (const l of learners) {
+    const existing = byUser.get(l.user_id);
+    if (!existing) {
+      byUser.set(l.user_id, { ...l, cohort_ids: l.cohort_id ? [l.cohort_id] : [] });
+    } else if (l.cohort_id && !existing.cohort_ids!.includes(l.cohort_id)) {
+      existing.cohort_ids!.push(l.cohort_id);
+    }
+  }
+  return [...byUser.values()];
 }
 
 // ---------------------------------------------------------------------------
@@ -635,7 +664,16 @@ export function buildEvidenceRows({
 
   for (const learner of learners) {
     const profile = profileById.get(learner.user_id);
-    const cohort = learner.cohort_id ? cohortById.get(learner.cohort_id) : undefined;
+    // Cohort label(s): a deduped multi-enrollment row carries cohort_ids; a raw
+    // single-cohort row falls back to cohort_id. Multiple cohorts render as a
+    // ' | '-joined label in the id/name columns (one evidence row per module,
+    // never one per cohort).
+    const cohortIds = learner.cohort_ids ?? (learner.cohort_id ? [learner.cohort_id] : []);
+    const cohortIdLabel = cohortIds.length > 0 ? cohortIds.join(' | ') : null;
+    const resolvedCohortNames = cohortIds
+      .map((id) => cohortById.get(id)?.name)
+      .filter((n): n is string => n !== undefined);
+    const cohortNameLabel = resolvedCohortNames.length > 0 ? resolvedCohortNames.join(' | ') : null;
 
     for (const mod of modules) {
       const pKey = progressKey(learner.user_id, mod.cell_id);
@@ -656,8 +694,8 @@ export function buildEvidenceRows({
         learnerId: learner.user_id,
         learnerName: displayName(profile),
         learnerEmail: profile?.email ?? null,
-        cohortId: learner.cohort_id,
-        cohortName: cohort?.name ?? null,
+        cohortId: cohortIdLabel,
+        cohortName: cohortNameLabel,
 
         cellId: mod.cell_id,
         cellTitle: mod.title,
@@ -743,11 +781,17 @@ export async function fetchCohortEvidence(cohortId?: string): Promise<EvidenceRo
   const { data: learnerData, error: learnerErr } = await round1Query;
   if (learnerErr) throw learnerErr;
 
-  const learners = (learnerData ?? []) as EvidenceLearnerRow[];
-  if (learners.length === 0) return [];
+  const rawLearners = (learnerData ?? []) as EvidenceLearnerRow[];
+  if (rawLearners.length === 0) return [];
+
+  // U5: the view is one row per (learner × cohort), so the all-cohorts path
+  // must merge a dual-enrolled learner's rows — one evidence row per
+  // (learner × module), with the cohort columns carrying all their cohorts.
+  // A no-op on the per-cohort path (the eq filter already yields one row each).
+  const learners = dedupLearnerRows(rawLearners);
 
   const userIds = learners.map((l) => l.user_id);
-  const cohortIds = [...new Set(learners.map((l) => l.cohort_id).filter(Boolean))] as string[];
+  const cohortIds = [...new Set(rawLearners.map((l) => l.cohort_id).filter(Boolean))] as string[];
 
   // Round 2 — parallel bulk reads
   const [
