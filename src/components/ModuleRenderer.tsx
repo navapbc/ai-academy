@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle, ExternalLink, PlayCircle, Library, Award, FileClock } from 'lucide-react';
+import { CheckCircle, ExternalLink, Library, Award, FileClock } from 'lucide-react';
 import { Module, AIPersona } from '../types';
 import { GLOSSARY_TERMS } from '../constants';
 import { BRANDING, injectBranding } from '../branding';
@@ -345,12 +345,11 @@ export default function ModuleRenderer({
           />
         </div>
       ) : (
-        <div className="aspect-video bg-gray-900 rounded-3xl flex flex-col items-center justify-center text-white space-y-4 border border-gray-800 shadow-2xl group">
-          <PlayCircle className="w-16 h-16 text-white/40 group-hover:text-nava-gold group-hover:scale-110 transition-all" />
-          <div className="text-center">
-            <p className="font-bold text-lg">Lesson Walkthrough</p>
-            <p className="text-sm text-gray-500">Video coming soon</p>
-          </div>
+        <div
+          className="px-8 py-10 sm:px-12"
+          style={{ background: 'linear-gradient(to right, var(--color-nava-plum), var(--color-nava-grey))' }}
+        >
+          <h3 className="text-2xl font-bold text-white">{module.title}</h3>
         </div>
       )}
 
