@@ -6,7 +6,8 @@ function mod(p: Partial<LearnerModuleRow> & { cellId: string }): LearnerModuleRo
   return {
     cellId: p.cellId,
     title: p.title ?? p.cellId,
-    section: p.section ?? 'Supplemental coursework',
+    origin: p.origin ?? 'course',
+    section: p.section ?? 'Course lessons',
     completed: p.completed ?? false,
     bestQuizPct: p.bestQuizPct ?? null,
     quizPassed: p.quizPassed ?? null,
@@ -21,76 +22,126 @@ function lab(p: Partial<LearnerLabRow> & { id: string }): LearnerLabRow {
   };
 }
 
-describe('summarizeOwnProgress', () => {
-  test('completion is completed/total over published modules', () => {
+describe('summarizeOwnProgress — course tier', () => {
+  test('completion counts only origin=course modules', () => {
     const detail: LearnerDetailData = {
       modules: [
-        mod({ cellId: '1.1', completed: true }),
-        mod({ cellId: '1.2', completed: true }),
-        mod({ cellId: '1.3', completed: false }),
-        mod({ cellId: '1.4', completed: false }),
+        mod({ cellId: 'c1-w0-a', origin: 'course', completed: true }),
+        mod({ cellId: 'c1-w0-b', origin: 'course', completed: false }),
+        mod({ cellId: '1.1', origin: 'matrix', completed: true }),
+        mod({ cellId: 'custom-x', origin: 'custom', completed: true }),
       ],
       labs: [],
     };
     const s = summarizeOwnProgress(detail);
-    expect(s.completedCount).toBe(2);
-    expect(s.totalCount).toBe(4);
-    expect(s.completionPct).toBe(0.5);
+    expect(s.course).toMatchObject({ completedCount: 1, totalCount: 2, completionPct: 0.5 });
   });
 
-  test('avg quiz averages only modules with a usable attempt', () => {
+  test('labsCompleted counts distinct lab ids among course-origin modules only', () => {
     const detail: LearnerDetailData = {
       modules: [
-        mod({ cellId: '1.1', bestQuizPct: 1, quizPassed: true }),
-        mod({ cellId: '1.2', bestQuizPct: 0.5, quizPassed: false }),
-        mod({ cellId: '1.3', bestQuizPct: null }), // never attempted → excluded
+        mod({ cellId: 'c1-w1-a', origin: 'course' }),
+        mod({ cellId: '1.1', origin: 'matrix' }),
+      ],
+      labs: [
+        lab({ id: 'a', labId: 'c1-w1-a' }),
+        lab({ id: 'b', labId: 'c1-w1-a' }), // resubmit — same lab, must not double-count
+        lab({ id: 'c', labId: '1.1' }), // supplemental lab — must not count here
+      ],
+    };
+    const s = summarizeOwnProgress(detail);
+    expect(s.course.labsCompleted).toBe(1);
+  });
+
+  test('empty course tier when there are no course-origin modules (unenrolled learner)', () => {
+    const detail: LearnerDetailData = {
+      modules: [mod({ cellId: '1.1', origin: 'matrix', completed: true })],
+      labs: [],
+    };
+    const s = summarizeOwnProgress(detail);
+    expect(s.course).toMatchObject({
+      completedCount: 0,
+      totalCount: 0,
+      completionPct: null,
+      labsCompleted: 0,
+    });
+  });
+});
+
+describe('summarizeOwnProgress — supplemental tier', () => {
+  test('completion combines matrix and custom, excludes course', () => {
+    const detail: LearnerDetailData = {
+      modules: [
+        mod({ cellId: 'c1-w0-a', origin: 'course', completed: true }),
+        mod({ cellId: '1.1', origin: 'matrix', completed: true }),
+        mod({ cellId: '1.2', origin: 'matrix', completed: false }),
+        mod({ cellId: 'custom-x', origin: 'custom', completed: true }),
       ],
       labs: [],
     };
     const s = summarizeOwnProgress(detail);
-    expect(s.avgQuizPct).toBeCloseTo(0.75, 5);
+    expect(s.supplemental.completedCount).toBe(2);
+    expect(s.supplemental.totalCount).toBe(3);
+    expect(s.supplemental.completionPct).toBeCloseTo(2 / 3, 5);
   });
 
-  test('glatPassed is true only when 2.14 best attempt passed', () => {
+  test('avg quiz score is scoped to supplemental modules with a usable attempt', () => {
+    const detail: LearnerDetailData = {
+      modules: [
+        mod({ cellId: 'c1-w0-a', origin: 'course', bestQuizPct: 0 }), // must not count
+        mod({ cellId: '1.1', origin: 'matrix', bestQuizPct: 1 }),
+        mod({ cellId: '1.2', origin: 'matrix', bestQuizPct: 0.5 }),
+        mod({ cellId: '1.3', origin: 'matrix', bestQuizPct: null }), // never attempted
+      ],
+      labs: [],
+    };
+    const s = summarizeOwnProgress(detail);
+    expect(s.supplemental.avgQuizPct).toBeCloseTo(0.75, 5);
+  });
+
+  test('glatPassed is true only when the supplemental 2.14 best attempt passed', () => {
     const passed = summarizeOwnProgress({
-      modules: [mod({ cellId: '2.14', bestQuizPct: 0.9, quizPassed: true })],
+      modules: [mod({ cellId: '2.14', origin: 'matrix', bestQuizPct: 0.9, quizPassed: true })],
       labs: [],
     });
-    expect(passed.glatPassed).toBe(true);
+    expect(passed.supplemental.glatPassed).toBe(true);
 
     const failed = summarizeOwnProgress({
-      modules: [mod({ cellId: '2.14', bestQuizPct: 0.5, quizPassed: false })],
+      modules: [mod({ cellId: '2.14', origin: 'matrix', bestQuizPct: 0.5, quizPassed: false })],
       labs: [],
     });
-    expect(failed.glatPassed).toBe(false);
-
-    const absent = summarizeOwnProgress({
-      modules: [mod({ cellId: '2.1', quizPassed: true })],
-      labs: [],
-    });
-    expect(absent.glatPassed).toBe(false);
+    expect(failed.supplemental.glatPassed).toBe(false);
   });
 
-  test('reviewableLabs counts only reviewable submissions', () => {
-    const s = summarizeOwnProgress({
-      modules: [],
-      labs: [
-        lab({ id: 'a', status: 'reviewable' }),
-        lab({ id: 'b', status: 'reviewed' }),
-        lab({ id: 'c', status: 'reviewable' }),
-        lab({ id: 'd', status: null }),
+  test('reviewableLabs counts only reviewable submissions tied to supplemental modules', () => {
+    const detail: LearnerDetailData = {
+      modules: [
+        mod({ cellId: 'c1-w1-a', origin: 'course' }),
+        mod({ cellId: '2.1', origin: 'matrix' }),
       ],
-    });
-    expect(s.reviewableLabs).toBe(2);
+      labs: [
+        lab({ id: 'a', labId: '2.1', status: 'reviewable' }),
+        lab({ id: 'b', labId: '2.1', status: 'reviewed' }),
+        lab({ id: 'c', labId: 'c1-w1-a', status: 'reviewable' }), // course lab — must not count
+      ],
+    };
+    const s = summarizeOwnProgress(detail);
+    expect(s.supplemental.reviewableLabs).toBe(1);
   });
 
-  test('empty detail → null pcts, zero counts, no GLAT', () => {
-    const s = summarizeOwnProgress({ modules: [], labs: [] });
-    expect(s.completedCount).toBe(0);
-    expect(s.totalCount).toBe(0);
-    expect(s.completionPct).toBeNull();
-    expect(s.avgQuizPct).toBeNull();
-    expect(s.glatPassed).toBe(false);
-    expect(s.reviewableLabs).toBe(0);
+  test('empty supplemental tier when there is no matrix/custom content', () => {
+    const detail: LearnerDetailData = {
+      modules: [mod({ cellId: 'c1-w0-a', origin: 'course', completed: true })],
+      labs: [],
+    };
+    const s = summarizeOwnProgress(detail);
+    expect(s.supplemental).toMatchObject({
+      completedCount: 0,
+      totalCount: 0,
+      completionPct: null,
+      avgQuizPct: null,
+      glatPassed: false,
+      reviewableLabs: 0,
+    });
   });
 });

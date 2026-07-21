@@ -170,10 +170,21 @@ describe('Sidebar course tree (U2)', () => {
 
   test('the headline count intersects completions with the visible set (≤100%)', () => {
     renderSidebar({
-      progress: { completedModuleIds: ['1.3', 'ghost-id', 'another-ghost'], currentModuleId: '1.3' },
+      progress: { completedModuleIds: ['c1-w1-a', 'ghost-id', 'another-ghost'], currentModuleId: 'c1-w1-a' },
     });
-    // 5 visible modules across the fixtures; only 1.3 counts.
-    expect(screen.getByText('1 of 5 complete')).toBeInTheDocument();
+    // 3 completion-eligible modules across the fixtures (2 course + 1 custom;
+    // supplemental is excluded — see the test below); only c1-w1-a counts.
+    expect(screen.getByText('1 of 3 complete')).toBeInTheDocument();
+  });
+
+  test('supplemental (matrix) modules never count toward the "Your Training" headline', () => {
+    renderSidebar({
+      // '1.3' is supplemental and completed, but must not move either the
+      // numerator or the denominator — it's optional practice, not part of
+      // the gated program. Mirrors the My Progress dashboard's exclusion.
+      progress: { completedModuleIds: ['1.3'], currentModuleId: '1.3' },
+    });
+    expect(screen.getByText('0 of 3 complete')).toBeInTheDocument();
   });
 });
 

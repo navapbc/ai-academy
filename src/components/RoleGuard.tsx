@@ -26,7 +26,7 @@ export default function RoleGuard({ role, loading, allow, children, fallback }: 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16" role="status">
-        <Loader2 className="w-6 h-6 text-nava-green animate-spin" aria-hidden="true" />
+        <Loader2 className="w-6 h-6 text-nava-plum animate-spin" aria-hidden="true" />
         <span className="sr-only">Checking access…</span>
       </div>
     );

@@ -175,8 +175,8 @@ const sorterConfig: SorterConfig = {
 
 const learnerDetail: LearnerDetailData = {
   modules: [
-    { cellId: '1.1', title: 'Intro to AI literacy', section: 'Supplemental coursework', completed: true, bestQuizPct: 1, quizPassed: true },
-    { cellId: '2.1', title: 'Prompt construction', section: 'Supplemental coursework', completed: false, bestQuizPct: null, quizPassed: null },
+    { cellId: '1.1', title: 'Intro to AI literacy', origin: 'matrix', section: 'Supplemental coursework', completed: true, bestQuizPct: 1, quizPassed: true },
+    { cellId: '2.1', title: 'Prompt construction', origin: 'matrix', section: 'Supplemental coursework', completed: false, bestQuizPct: null, quizPassed: null },
   ],
   labs: [{ id: 'lab-a', labId: 'lab-2.1', status: 'reviewable', createdAt: '2026-01-01T00:00:00Z' }],
 };
@@ -302,7 +302,7 @@ const CASES: Case[] = [
   {
     // Learner self-view dashboard (P5.3a). Async: detail + portfolio both fetch.
     name: 'LearnerDashboard (self-view)',
-    element: <LearnerDashboard userId="me" />,
+    element: <LearnerDashboard userId="me" sections={[]} />,
     setup: () => {
       fetchLearnerDetail.mockResolvedValue(learnerDetail);
       fetchLearnerPortfolio.mockResolvedValue({
@@ -312,8 +312,12 @@ const CASES: Case[] = [
         useCasePortfolio: null,
       });
     },
-    // Wait for a loaded module row, not the spinner.
-    awaitReady: () => screen.findByText('Prompt construction'),
+    // Supplemental & resources starts collapsed — expand it, then wait for a
+    // loaded module row (not the spinner), so axe scans the populated markup.
+    awaitReady: async () => {
+      await userEvent.click(await screen.findByRole('button', { name: 'Supplemental & resources' }));
+      return screen.findByText('Prompt construction');
+    },
   },
   {
     // Tutor chat FAB — the chat dialog is the high-value interactive surface, so

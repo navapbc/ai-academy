@@ -396,7 +396,7 @@ export default function CourseManagement({ onBack }: { onBack: () => void }) {
 
       {loading && (
         <div className="flex items-center justify-center py-12" role="status">
-          <Loader2 className="w-6 h-6 text-nava-green animate-spin" aria-hidden="true" />
+          <Loader2 className="w-6 h-6 text-nava-plum animate-spin" aria-hidden="true" />
           <span className="sr-only">Loading course structure…</span>
         </div>
       )}

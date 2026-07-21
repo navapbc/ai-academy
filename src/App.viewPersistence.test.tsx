@@ -1,15 +1,13 @@
 // @vitest-environment jsdom
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import App from './App';
 import type { Curriculum, CurriculumSection, Module, UserProgress } from './types';
 
-// Visible-denominator guard (restructure U2, review FIX E-1): the headline
-// progress is numerator = completions ∩ the VISIBLE module set, denominator =
-// visible modules. A learner whose stored completions include ids no longer
-// visible to them (a module unassigned/archived, a lost enrollment, a stale
-// cache) must see ≤ 100%, computed over the intersection — never an inflated
-// percentage. Mirrors App.empty.test.tsx's mock seams.
+// Regression test: the active top-nav tab (Learning/Playground/My progress/
+// Staff) must survive a page refresh instead of always bouncing back to
+// Learning. Mirrors App.progress.test.tsx's mock seams.
 const { useCurriculum, useAuth, useProgress, useRole } = vi.hoisted(() => ({
   useCurriculum: vi.fn(),
   useAuth: vi.fn(),
@@ -32,11 +30,7 @@ function visibleModule(id: string, title: string): Module {
     type: 'content',
     content: `# ${title}`,
     phaseId: 'supplemental',
-    // 'course' (not 'matrix'): this suite's invariant (completions ∩ visible ≤
-    // 100%) is orthogonal to the supplemental-exclusion rule tested elsewhere
-    // (App.sidebarProgress.test.tsx) — matrix origin here would zero out the
-    // completion-eligible denominator and mask what this suite actually checks.
-    origin: 'course',
+    origin: 'matrix',
     stage: '1a',
     visibility: 'public',
     status: 'published',
@@ -47,7 +41,6 @@ function visibleModule(id: string, title: string): Module {
   };
 }
 
-/** Two visible modules — the denominator the UI must compute against. */
 const twoVisible: CurriculumSection[] = [
   {
     kind: 'supplemental',
@@ -74,9 +67,8 @@ function mockProgress(progress: UserProgress) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // jsdom has no scrollIntoView; the (hidden) Playground calls it on mount.
+  localStorage.clear();
   window.HTMLElement.prototype.scrollIntoView = vi.fn();
-  // Gate the landing page for tests by marking the user as entered (Task 2).
   localStorage.setItem('academy-entered-u1', '1');
   useAuth.mockReturnValue({
     loading: false,
@@ -86,33 +78,26 @@ beforeEach(() => {
   });
   useRole.mockReturnValue({ role: 'learner', loading: false, isStaff: false });
   useCurriculum.mockReturnValue({ curriculum, loading: false, error: null });
+  mockProgress({ completedModuleIds: [], currentModuleId: '1.4' });
 });
 
-describe('App — visible-denominator progress guard (U2 / FIX E-1)', () => {
-  test('a completed id NOT in the visible set is excluded: 1 visible completion of 2 renders 50%, not 100%', () => {
-    // 'ghost' is a completion for a module the learner can no longer see.
-    mockProgress({ completedModuleIds: ['1.4', 'ghost'], currentModuleId: '1.4' });
+describe('App — active tab survives a refresh', () => {
+  test('switching to Playground and remounting (simulating a refresh) stays on Playground', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /playground/i }));
+    expect(screen.getByLabelText('Prompting playground')).toBeInTheDocument();
+
+    // A page refresh throws away React state but not localStorage.
+    unmount();
     render(<App />);
 
-    expect(screen.getByText('50%')).toBeInTheDocument();
-    const bar = screen.getByRole('progressbar', { name: /Overall training progress/i });
-    expect(bar).toHaveAttribute('aria-valuenow', '50');
-    // The headline count uses the same intersection.
-    expect(screen.getByText('1 of 2 complete')).toBeInTheDocument();
+    expect(screen.getByLabelText('Prompting playground')).toBeInTheDocument();
   });
 
-  test('invisible completions can never push the percentage past 100%', () => {
-    // Every visible module completed PLUS two stale invisible ids: a raw
-    // completions/visible ratio would be 4/2 = 200%.
-    mockProgress({
-      completedModuleIds: ['1.4', '1.5', 'ghost-a', 'ghost-b'],
-      currentModuleId: '1.5',
-    });
+  test('with no stored tab, a fresh session still defaults to Learning', () => {
     render(<App />);
-
-    expect(screen.getByText('100%')).toBeInTheDocument();
-    const bar = screen.getByRole('progressbar', { name: /Overall training progress/i });
-    expect(bar).toHaveAttribute('aria-valuenow', '100');
-    expect(screen.getByText('2 of 2 complete')).toBeInTheDocument();
+    expect(screen.getByLabelText('Data classification')).toBeInTheDocument();
   });
 });

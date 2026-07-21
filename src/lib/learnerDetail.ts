@@ -130,6 +130,8 @@ export function sectionForOrigin(origin: string): string {
 export interface LearnerModuleRow {
   cellId: string;
   title: string;
+  /** Raw curriculum origin ('course' | 'matrix' | 'custom') — the filterable key. */
+  origin: string;
   /** Display section the row groups under (see SECTION_BY_ORIGIN). */
   section: string;
   completed: boolean;
@@ -212,6 +214,7 @@ export function buildLearnerModuleRows(
         row: {
           cellId: m.cell_id,
           title: m.title,
+          origin: m.origin,
           section: sectionForOrigin(m.origin),
           completed: completedIds.has(m.cell_id),
           bestQuizPct: b ? b.pct : null,
