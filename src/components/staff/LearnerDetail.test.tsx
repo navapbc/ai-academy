@@ -21,8 +21,8 @@ const LEARNER: LearnerRosterEntry = {
 
 const DETAIL: LearnerDetailData = {
   modules: [
-    { cellId: 'c1-w0-setup', title: 'Intro', section: 'Course lessons', completed: true, bestQuizPct: 1, quizPassed: true },
-    { cellId: '2.1', title: 'Prompting', section: 'Supplemental coursework', completed: false, bestQuizPct: null, quizPassed: null },
+    { cellId: 'c1-w0-setup', title: 'Intro', origin: 'course', section: 'Course lessons', completed: true, bestQuizPct: 1, quizPassed: true },
+    { cellId: '2.1', title: 'Prompting', origin: 'matrix', section: 'Supplemental coursework', completed: false, bestQuizPct: null, quizPassed: null },
   ],
   labs: [{ id: 'a', labId: 'lab-2.1', status: 'reviewable', createdAt: '2026-01-01T00:00:00Z' }],
 };

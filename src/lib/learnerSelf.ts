@@ -29,13 +29,18 @@ export interface OwnProgressSummary {
 }
 
 /**
- * Pure: fold one learner's detail into headline metrics. Completion and the quiz
- * average are both scoped to the published-module rows in `detail.modules`, so they
- * line up with the table rendered alongside them.
+ * Pure: fold one learner's detail into headline metrics. The quiz average is
+ * scoped to all of `detail.modules`, so it lines up with the table rendered
+ * alongside it. Completion is narrower: it excludes 'matrix'-origin modules
+ * (the ungated "Supplemental coursework" section) — that work is optional
+ * practice, not part of the gated program, so it must not move the headline
+ * completion number. The module table below still shows those rows; only the
+ * count here excludes them.
  */
 export function summarizeOwnProgress(detail: LearnerDetailData): OwnProgressSummary {
-  const totalCount = detail.modules.length;
-  const completedCount = detail.modules.filter((m) => m.completed).length;
+  const completionEligible = detail.modules.filter((m) => m.origin !== 'matrix');
+  const totalCount = completionEligible.length;
+  const completedCount = completionEligible.filter((m) => m.completed).length;
 
   const attempted = detail.modules.filter((m) => m.bestQuizPct !== null);
   const avgQuizPct =

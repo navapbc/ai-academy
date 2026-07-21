@@ -6,7 +6,8 @@ function mod(p: Partial<LearnerModuleRow> & { cellId: string }): LearnerModuleRo
   return {
     cellId: p.cellId,
     title: p.title ?? p.cellId,
-    section: p.section ?? 'Supplemental coursework',
+    origin: p.origin ?? 'course',
+    section: p.section ?? 'Course lessons',
     completed: p.completed ?? false,
     bestQuizPct: p.bestQuizPct ?? null,
     quizPassed: p.quizPassed ?? null,
@@ -22,20 +23,52 @@ function lab(p: Partial<LearnerLabRow> & { id: string }): LearnerLabRow {
 }
 
 describe('summarizeOwnProgress', () => {
-  test('completion is completed/total over published modules', () => {
+  test('completion is completed/total over course + resources modules', () => {
     const detail: LearnerDetailData = {
       modules: [
-        mod({ cellId: '1.1', completed: true }),
-        mod({ cellId: '1.2', completed: true }),
-        mod({ cellId: '1.3', completed: false }),
-        mod({ cellId: '1.4', completed: false }),
+        mod({ cellId: 'c1-w0-a', origin: 'course', completed: true }),
+        mod({ cellId: 'c1-w0-b', origin: 'course', completed: false }),
+        mod({ cellId: 'custom-x', origin: 'custom', completed: true }),
       ],
       labs: [],
     };
     const s = summarizeOwnProgress(detail);
     expect(s.completedCount).toBe(2);
-    expect(s.totalCount).toBe(4);
-    expect(s.completionPct).toBe(0.5);
+    expect(s.totalCount).toBe(3);
+    expect(s.completionPct).toBeCloseTo(2 / 3, 5);
+  });
+
+  test('matrix-origin (Supplemental coursework) modules never count toward completion', () => {
+    const detail: LearnerDetailData = {
+      modules: [
+        mod({ cellId: 'c1-w0-a', origin: 'course', completed: true }),
+        // All matrix rows completed — a raw count over every module would read
+        // 4/4 (100%); completion must stay 1/1 (still 100%, but for the right
+        // reason) once supplemental is excluded.
+        mod({ cellId: '1.1', origin: 'matrix', completed: true }),
+        mod({ cellId: '1.2', origin: 'matrix', completed: true }),
+        mod({ cellId: '2.14', origin: 'matrix', completed: true }),
+      ],
+      labs: [],
+    };
+    const s = summarizeOwnProgress(detail);
+    expect(s.completedCount).toBe(1);
+    expect(s.totalCount).toBe(1);
+    expect(s.completionPct).toBe(1);
+  });
+
+  test('an entirely-matrix curriculum yields a null completionPct, not a false 0/0', () => {
+    const detail: LearnerDetailData = {
+      modules: [
+        mod({ cellId: '1.1', origin: 'matrix', completed: true }),
+        mod({ cellId: '1.2', origin: 'matrix', completed: false }),
+      ],
+      labs: [],
+    };
+    const s = summarizeOwnProgress(detail);
+    expect(s.completedCount).toBe(0);
+    expect(s.totalCount).toBe(0);
+    expect(s.completionPct).toBeNull();
   });
 
   test('avg quiz averages only modules with a usable attempt', () => {

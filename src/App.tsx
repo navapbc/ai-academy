@@ -1,25 +1,26 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Loader2, AlertTriangle } from 'lucide-react';
 import { AIPersona, CurriculumSection, View } from './types';
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 import { BRANDING } from './branding';
-import { useAuth } from './lib/auth';
 import type { CompletedVia } from './lib/progress';
-import { useProgress } from './lib/useProgress';
-import { useRole } from './lib/useRole';
-import { useCurriculum } from './lib/useCurriculum';
+import ContentContainer from './components/layout/ContentContainer';
+import Header from './components/layout/Header';
+import LandingPage from './components/LandingPage';
+import LearnerDashboard from './components/LearnerDashboard';
+import LocalTutorFAB from './components/LocalTutorFAB';
 import Login from './components/Login';
-import ModuleRenderer from './components/ModuleRenderer';
 import ModulePager from './components/ModulePager';
+import ModuleRenderer from './components/ModuleRenderer';
 import Playground from './components/Playground';
 import RoleGuard from './components/RoleGuard';
-import StaffArea from './components/StaffArea';
-import LearnerDashboard from './components/LearnerDashboard';
 import Sidebar from './components/layout/Sidebar';
-import Header from './components/layout/Header';
-import ContentContainer from './components/layout/ContentContainer';
+import StaffArea from './components/StaffArea';
 import SupportModal from './components/SupportModal';
-import LocalTutorFAB from './components/LocalTutorFAB';
-import LandingPage from './components/LandingPage';
+import { useAuth } from './lib/auth';
+import { useCurriculum } from './lib/useCurriculum';
+import { useProgress } from './lib/useProgress';
+import { useRole } from './lib/useRole';
 
 export default function App() {
   const { loading, session, signOut } = useAuth();
@@ -32,7 +33,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-nava-grey flex items-center justify-center" role="status">
-        <Loader2 className="w-8 h-8 text-nava-green animate-spin" aria-hidden="true" />
+        <Loader2 className="w-8 h-8 text-nava-plum animate-spin" aria-hidden="true" />
         <span className="sr-only">Loading…</span>
       </div>
     );
@@ -53,7 +54,7 @@ function AcademyApp({ userId, onSignOut }: { userId: string; onSignOut: () => vo
   if (loading) {
     return (
       <div className="min-h-screen bg-nava-grey flex items-center justify-center" role="status">
-        <Loader2 className="w-8 h-8 text-nava-green animate-spin" aria-hidden="true" />
+        <Loader2 className="w-8 h-8 text-nava-plum animate-spin" aria-hidden="true" />
         <span className="sr-only">Loading…</span>
       </div>
     );
@@ -96,6 +97,8 @@ function AcademyApp({ userId, onSignOut }: { userId: string; onSignOut: () => vo
   return <Academy sections={curriculum.sections} userId={userId} onSignOut={onSignOut} />;
 }
 
+const VIEWS: readonly View[] = ['learning', 'playground', 'staff', 'progress'];
+
 function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[]; userId: string; onSignOut: () => void }) {
   const allModules = useMemo(() => sections.flatMap(s => s.modules), [sections]);
   const allModuleIds = useMemo(() => allModules.map(m => m.id), [allModules]);
@@ -119,7 +122,24 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
   // never leaks an elevated role across sign-out/sign-in (the D-01 class).
   const { role, loading: roleLoading, isStaff } = useRole();
 
-  const [view, setView] = useState<View>('learning');
+  // The active top-nav tab persists across a refresh (per user), so reloading
+  // mid-Playground-session doesn't silently bounce the learner back to Learning.
+  const [view, setViewState] = useState<View>(() => {
+    try {
+      const stored = localStorage.getItem(`academy-view-${userId}`);
+      return (VIEWS as readonly string[]).includes(stored ?? '') ? (stored as View) : 'learning';
+    } catch {
+      return 'learning';
+    }
+  });
+  const setView = (next: View) => {
+    setViewState(next);
+    try {
+      localStorage.setItem(`academy-view-${userId}`, next);
+    } catch {
+      /* storage disabled — view still switches for this session */
+    }
+  };
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     try {
       return localStorage.getItem('sidebar-collapsed') !== '1';
@@ -229,12 +249,24 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
   // Progress denominators (restructure U2): numerator = completions ∩ the
   // VISIBLE module set, denominator = visible modules — a learner with stored
   // completions for ids no longer visible to them must never exceed 100%.
+  // 'matrix'-origin modules (the ungated "Supplemental coursework" section) are
+  // excluded from both — optional practice must not move the overall completion
+  // number, matching the same exclusion in the My Progress dashboard
+  // (summarizeOwnProgress) and the Sidebar's own headline count.
+  const completionEligibleCount = useMemo(
+    () => allModules.filter((m) => m.origin !== 'matrix').length,
+    [allModules],
+  );
   const completedVisibleCount = useMemo(
-    () => progress.completedModuleIds.filter((id) => moduleById.has(id)).length,
+    () =>
+      progress.completedModuleIds.filter((id) => {
+        const m = moduleById.get(id);
+        return !!m && m.origin !== 'matrix';
+      }).length,
     [progress.completedModuleIds, moduleById],
   );
   const overallProgress =
-    allModules.length > 0 ? Math.round((completedVisibleCount / allModules.length) * 100) : 0;
+    completionEligibleCount > 0 ? Math.round((completedVisibleCount / completionEligibleCount) * 100) : 0;
 
   if (!hasEntered) {
     return <LandingPage onEnter={handleEnter} />;

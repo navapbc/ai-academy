@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { BarChart3, PanelLeftClose, CheckCircle2, ChevronDown, LifeBuoy, Terminal, ShieldCheck, GraduationCap } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { BarChart3, CheckCircle2, ChevronDown, GraduationCap, LifeBuoy, PanelLeftClose, ShieldCheck, Terminal } from 'lucide-react';
 import { CurriculumSection, Module, UserProgress, View } from '../../types';
-import { isModuleLive } from '../../lib/modules';
+import { useEffect, useMemo, useState } from 'react';
+
 import { BRANDING } from '../../branding';
+import { isModuleLive } from '../../lib/modules';
 
 // Course-tree navigation (cohort-restructure U2): Course 1's weeks, then
 // "Supplemental coursework", then "Resources & additional lessons" — every
@@ -34,11 +35,20 @@ function sectionIdOf(sections: CurriculumSection[], moduleId: string): string | 
 
 export default function Sidebar({ isOpen, onClose, sections, progress, onModuleSelect, overallProgress, onOpenSupport, activeView, onViewChange, isStaff }: SidebarProps) {
   const completed = new Set(progress.completedModuleIds);
-  const totalModules = sections.reduce((n, s) => n + s.modules.length, 0);
-  // Count only completed ids that are still in the visible curriculum, so the
-  // headline count can't exceed the total (U2 denominator rule).
+  // The "Your Training" headline excludes 'matrix'-origin modules (the ungated
+  // "Supplemental coursework" section) — optional practice, not part of the
+  // gated program, so it must not move the overall completion number. Mirrors
+  // the same exclusion in the My Progress dashboard (summarizeOwnProgress).
+  // Per-section counts below (sectionCompleted/section.modules.length) are
+  // unaffected — those are section-scoped, not "overall".
+  const totalModules = sections.reduce(
+    (n, s) => n + s.modules.filter(m => m.origin !== 'matrix').length,
+    0,
+  );
+  // Count only completed ids that are still in the visible, completion-eligible
+  // curriculum, so the headline count can't exceed the total (U2 denominator rule).
   const completedCount = sections.reduce(
-    (n, s) => n + s.modules.filter(m => completed.has(m.id)).length,
+    (n, s) => n + s.modules.filter(m => completed.has(m.id) && m.origin !== 'matrix').length,
     0,
   );
   // "Soon" badge tracks which cells are still stubs — derived from the fetched
@@ -178,7 +188,7 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
         >
           <div className="p-6 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <BarChart3 className="w-6 h-6 text-nava-plum" aria-hidden="true" />
+              <img src="/favicon.svg" alt="" className="w-6 h-6" />
               {/* A logo/wordmark, not the page heading — kept out of the heading
                   outline so the lesson title is the single page-level h1 (A11Y-09). */}
               <span className="font-bold text-xl tracking-tight whitespace-nowrap">{BRANDING.name}</span>
@@ -192,7 +202,7 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
             </button>
           </div>
 
-          <nav aria-label="Course navigation" className="flex-1 overflow-y-auto py-4 px-3 space-y-8">
+          <nav aria-label="Course navigation" className="flex-1 overflow-y-auto py-4 px-3 space-y-4">
             {/* Playground */}
             <div className="px-3 pb-2">
               <button

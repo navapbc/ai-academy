@@ -15,9 +15,10 @@ vi.mock('../lib/learnerPortfolio', () => ({ fetchLearnerPortfolio }));
 
 const DETAIL: LearnerDetailData = {
   modules: [
-    { cellId: 'c1-w0-setup', title: 'Intro', section: 'Course lessons', completed: true, bestQuizPct: 1, quizPassed: true },
-    { cellId: '2.1', title: 'Prompting', section: 'Supplemental coursework', completed: false, bestQuizPct: null, quizPassed: null },
-    { cellId: '2.14', title: 'GLAT', section: 'Supplemental coursework', completed: true, bestQuizPct: 0.9, quizPassed: true },
+    { cellId: 'c1-w0-setup', title: 'Intro', origin: 'course', section: 'Course lessons', completed: true, bestQuizPct: 1, quizPassed: true },
+    { cellId: 'c1-w0-wrap', title: 'Wrap-up', origin: 'course', section: 'Course lessons', completed: false, bestQuizPct: null, quizPassed: null },
+    { cellId: '2.1', title: 'Prompting', origin: 'matrix', section: 'Supplemental coursework', completed: false, bestQuizPct: null, quizPassed: null },
+    { cellId: '2.14', title: 'GLAT', origin: 'matrix', section: 'Supplemental coursework', completed: true, bestQuizPct: 0.9, quizPassed: true },
   ],
   labs: [{ id: 'a', labId: 'lab-2.1', status: 'reviewable', createdAt: '2026-01-01T00:00:00Z' }],
 };
@@ -42,7 +43,9 @@ describe('LearnerDashboard (self-view)', () => {
 
     // Cards computed locally from the detail.
     expect(await screen.findByText('Prompting')).toBeInTheDocument();
-    expect(screen.getByText('2 of 3 modules')).toBeInTheDocument(); // completion note
+    // Completion excludes supplemental (matrix) modules — only the 2 course
+    // rows count, 1 of them completed — even though 3 of the 4 total rows are.
+    expect(screen.getByText('1 of 2 modules')).toBeInTheDocument(); // completion note
     expect(screen.getByText('Passed')).toBeInTheDocument(); // GLAT card (2.14 passed)
     // Section headings (U13): grouped by curriculum section, not stage.
     expect(screen.getByText('Course lessons')).toBeInTheDocument();
