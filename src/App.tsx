@@ -177,7 +177,11 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
   const handleModuleSelect = (moduleId: string) => {
     // Arm focus only for a real move; re-selecting the current module changes no
     // dep, so the flag would otherwise linger and be consumed by a later reconcile.
-    if (moduleId !== progress.currentModuleId) navIntentRef.current = true;
+    if (moduleId !== progress.currentModuleId || view !== 'learning') navIntentRef.current = true;
+    // Selecting a module (e.g. from the sidebar) must always land on the Learning
+    // view's content pane — otherwise the selection updates state invisibly while
+    // Playground/Progress/Staff stays on screen.
+    setView('learning');
     selectModule(moduleId);
     // Auto-close sidebar on mobile
     if (window.innerWidth < 1024) {
