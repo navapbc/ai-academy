@@ -72,7 +72,7 @@ export default function LearnerDashboard({
           Your progress
         </h1>
         <p className="text-sm text-gray-600">
-          Your Course 1 progress, plus anything you've explored in supplemental coursework and resources.
+          Your Course 1 progress, plus anything you’ve explored in supplemental coursework and resources.
         </p>
       </header>
 
@@ -122,7 +122,7 @@ export default function LearnerDashboard({
             </section>
           ) : (
             <section className="rounded-xl border border-gray-200 bg-white p-4">
-              <p className="text-sm text-gray-600">You're not enrolled in Course 1 yet.</p>
+              <p className="text-sm text-gray-600">You’re not enrolled in Course 1 yet.</p>
             </section>
           )}
 
@@ -151,7 +151,7 @@ export default function LearnerDashboard({
             <h2 className="text-lg font-bold text-gray-900">Your lab submissions</h2>
             <LabSubmissionsList
               labs={detail.labs}
-              emptyText="You haven't submitted any labs yet."
+              emptyText="You haven’t submitted any labs yet."
             />
           </section>
         </>

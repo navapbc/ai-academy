@@ -146,7 +146,7 @@ describe('LearnerDashboard (self-view)', () => {
   test('shows the empty lab message when there are no submissions', async () => {
     fetchLearnerDetail.mockResolvedValue({ modules: DETAIL.modules, labs: [] });
     render(<LearnerDashboard userId="me" sections={SECTIONS} />);
-    expect(await screen.findByText(/haven't submitted any labs/i)).toBeInTheDocument();
+    expect(await screen.findByText(/haven’t submitted any labs/i)).toBeInTheDocument();
   });
 
   test('shows an error + retry when the fetch fails', async () => {
