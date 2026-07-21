@@ -141,7 +141,7 @@ anything else that needs it.
 
 ## Component & layout — `src/components/LearnerDashboard.tsx`
 
-```
+```text
 Your progress
 ├── Course 1                                          (hidden if buildWeekProgress → [])
 │   ├── StatCard "Completion"      — {course.completionPct} / "{completedCount} of {totalCount} modules"
