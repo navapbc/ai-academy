@@ -1,63 +1,102 @@
 import type { LearnerDetailData } from './learnerDetail';
 
-// Learner self-view summary (P5.3a). Pure derivation of the headline metrics from
-// the already-fetched per-learner detail (the P5.2c `fetchLearnerDetail` reused at
-// the owner-RLS path for one's own id). Computed client-side from the detail — no
-// dependency on the P5.2a aggregation views — so the cards are self-consistent
-// with the published-module table the learner sees, and the slice stays
-// independent of the staff aggregation layer. INVARIANT (U13): keep it that way —
-// learner surfaces never read `learner_progress_summary` (staff denominator
-// semantics differ by design); asserted by learnerDetail.test.ts.
+// Learner self-view summary (P5.3a, redesigned 2026-07-21 for the Course 1
+// restructure — see docs/superpowers/specs/2026-07-21-learner-dashboard-redesign-design.md).
+// Pure derivation of the headline metrics from the already-fetched per-learner
+// detail (the P5.2c `fetchLearnerDetail` reused at the owner-RLS path for one's own
+// id). Computed client-side from the detail — no dependency on the P5.2a aggregation
+// views — so the cards are self-consistent with the published-module table the
+// learner sees, and the slice stays independent of the staff aggregation layer.
+// INVARIANT (U13): keep it that way — learner surfaces never read
+// `learner_progress_summary` (staff denominator semantics differ by design);
+// asserted by learnerDetail.test.ts.
+//
+// Course 1 has no quizzes and no judge-graded ('reviewable') labs, so those metrics
+// only make sense for the Supplemental coursework + Resources slice
+// (origin !== 'course') — hence the two-tier split below instead of one flat
+// completion number.
 
-// The GLAT exit-credential cell (P4.10 / D7). Same canonical id the P5.2a view and
-// the GLAT lab use; a pass here is the program completion marker.
 const GLAT_CELL_ID = '2.14';
 
-export interface OwnProgressSummary {
-  /** Completed published modules. */
+export interface CourseProgress {
+  /** Completed course-origin modules. */
   completedCount: number;
-  /** Total published modules. */
+  /** Total course-origin modules. */
   totalCount: number;
-  /** completedCount / totalCount as 0..1, or null when there are no published modules. */
+  /** completedCount / totalCount, or null when there are no course modules visible. */
   completionPct: number | null;
-  /** Mean best-quiz fraction over modules with at least one usable attempt, or null. */
+  /** Distinct lab ids submitted among course-origin modules (a resubmit doesn't double-count). */
+  labsCompleted: number;
+}
+
+export interface SupplementalProgress {
+  /** Completed supplemental (matrix + custom) modules. */
+  completedCount: number;
+  /** Total supplemental (matrix + custom) modules. */
+  totalCount: number;
+  completionPct: number | null;
+  /** Mean best-quiz fraction over supplemental modules with a usable attempt, or null. */
   avgQuizPct: number | null;
   /** Whether the learner's best GLAT (2.14) attempt passed. */
   glatPassed: boolean;
-  /** Lab submissions currently awaiting champion review. */
+  /** Supplemental lab submissions currently awaiting champion review. */
   reviewableLabs: number;
 }
 
+export interface OwnProgressSummary {
+  course: CourseProgress;
+  supplemental: SupplementalProgress;
+}
+
 /**
- * Pure: fold one learner's detail into headline metrics. The quiz average is
- * scoped to all of `detail.modules`, so it lines up with the table rendered
- * alongside it. Completion is narrower: it excludes 'matrix'-origin modules
- * (the ungated "Supplemental coursework" section) — that work is optional
- * practice, not part of the gated program, so it must not move the headline
- * completion number. The module table below still shows those rows; only the
- * count here excludes them.
+ * Pure: fold one learner's detail into the two-tier headline metrics. `course`
+ * covers origin === 'course' only; `supplemental` covers everything else (matrix +
+ * custom) combined — matching the Module progress table's own section grouping.
  */
 export function summarizeOwnProgress(detail: LearnerDetailData): OwnProgressSummary {
-  const completionEligible = detail.modules.filter((m) => m.origin !== 'matrix');
-  const totalCount = completionEligible.length;
-  const completedCount = completionEligible.filter((m) => m.completed).length;
+  const courseModules = detail.modules.filter((m) => m.origin === 'course');
+  const supplementalModules = detail.modules.filter((m) => m.origin !== 'course');
 
-  const attempted = detail.modules.filter((m) => m.bestQuizPct !== null);
+  const courseCompletedCount = courseModules.filter((m) => m.completed).length;
+  const courseTotalCount = courseModules.length;
+  const courseCellIds = new Set(courseModules.map((m) => m.cellId));
+  const courseLabsCompleted = new Set(
+    detail.labs.filter((l) => courseCellIds.has(l.labId)).map((l) => l.labId),
+  ).size;
+
+  const supplementalCompletedCount = supplementalModules.filter((m) => m.completed).length;
+  const supplementalTotalCount = supplementalModules.length;
+
+  const attempted = supplementalModules.filter((m) => m.bestQuizPct !== null);
   const avgQuizPct =
     attempted.length === 0
       ? null
       : attempted.reduce((sum, m) => sum + (m.bestQuizPct ?? 0), 0) / attempted.length;
 
-  const glatPassed = detail.modules.some((m) => m.cellId === GLAT_CELL_ID && m.quizPassed === true);
+  const glatPassed = supplementalModules.some(
+    (m) => m.cellId === GLAT_CELL_ID && m.quizPassed === true,
+  );
 
-  const reviewableLabs = detail.labs.filter((l) => l.status === 'reviewable').length;
+  const supplementalCellIds = new Set(supplementalModules.map((m) => m.cellId));
+  const reviewableLabs = detail.labs.filter(
+    (l) => l.status === 'reviewable' && supplementalCellIds.has(l.labId),
+  ).length;
 
   return {
-    completedCount,
-    totalCount,
-    completionPct: totalCount === 0 ? null : completedCount / totalCount,
-    avgQuizPct,
-    glatPassed,
-    reviewableLabs,
+    course: {
+      completedCount: courseCompletedCount,
+      totalCount: courseTotalCount,
+      completionPct: courseTotalCount === 0 ? null : courseCompletedCount / courseTotalCount,
+      labsCompleted: courseLabsCompleted,
+    },
+    supplemental: {
+      completedCount: supplementalCompletedCount,
+      totalCount: supplementalTotalCount,
+      completionPct:
+        supplementalTotalCount === 0 ? null : supplementalCompletedCount / supplementalTotalCount,
+      avgQuizPct,
+      glatPassed,
+      reviewableLabs,
+    },
   };
 }
