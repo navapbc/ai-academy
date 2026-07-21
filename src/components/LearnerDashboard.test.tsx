@@ -82,18 +82,36 @@ beforeEach(() => {
 });
 
 describe('LearnerDashboard (self-view)', () => {
+  test('Course 1 starts expanded; Supplemental & resources starts collapsed', async () => {
+    fetchLearnerDetail.mockResolvedValue(DETAIL);
+    render(<LearnerDashboard userId="me" sections={SECTIONS} />);
+    await screen.findByRole('button', { name: 'Course 1' });
+
+    expect(screen.getByRole('button', { name: 'Course 1' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Week 0')).toBeInTheDocument(); // Course 1 content visible immediately
+
+    const supplementalToggle = screen.getByRole('button', { name: 'Supplemental & resources' });
+    expect(supplementalToggle).toHaveAttribute('aria-expanded', 'false');
+    // Collapsed content is unmounted, not just hidden — 'Prompting' (a supplemental
+    // module title) must not be in the document at all yet.
+    expect(screen.queryByText('Prompting')).not.toBeInTheDocument();
+
+    await userEvent.click(supplementalToggle);
+    expect(supplementalToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(await screen.findByText('Prompting')).toBeInTheDocument();
+  });
+
   test('renders Course 1 and Supplemental blocks with the right numbers', async () => {
     fetchLearnerDetail.mockResolvedValue(DETAIL);
     render(<LearnerDashboard userId="me" sections={SECTIONS} />);
 
     expect(screen.getByRole('heading', { name: 'Your progress' })).toBeInTheDocument();
-    expect(await screen.findByText('Prompting')).toBeInTheDocument();
+    await screen.findByRole('button', { name: 'Course 1' });
 
     // Course 1: 2 of 3 course modules complete; Week 0 is fully done, Week 1 isn't
-    // — so Week 1 is the current week; 1 distinct course lab submitted.
-    expect(screen.getByRole('heading', { name: 'Course 1' })).toBeInTheDocument();
+    // — so Week 1 is the current week. Expanded by default, so no click needed.
+    const course1Section = screen.getByRole('heading', { name: 'Course 1' }).closest('section')!;
     expect(screen.getByText('2 of 3 modules')).toBeInTheDocument();
-    expect(screen.getByText('Labs completed')).toBeInTheDocument();
 
     const currentWeekCard = screen.getByText('Current week').parentElement!;
     expect(within(currentWeekCard).getByText('Week 1')).toBeInTheDocument();
@@ -104,19 +122,31 @@ describe('LearnerDashboard (self-view)', () => {
     expect(screen.getByText('2 of 2')).toBeInTheDocument(); // Week 0 row count
     expect(screen.getByText('0 of 1')).toBeInTheDocument(); // Week 1 row count
 
-    // Supplemental & resources: 1 of 2 explored, GLAT passed, quiz avg 90%.
+    // Course 1's own module list is nested in the same section, right below the
+    // week list, and — since Course 1 has no quizzes — has no "Best quiz" column.
+    expect(within(course1Section).getByText('Course lessons')).toBeInTheDocument();
+    expect(within(course1Section).getByText('Ground rules')).toBeInTheDocument();
+    expect(within(course1Section).queryByText('Best quiz')).not.toBeInTheDocument();
+
+    // Supplemental & resources starts collapsed — expand it to check its content.
+    await userEvent.click(screen.getByRole('button', { name: 'Supplemental & resources' }));
     const supplementalSection = screen.getByRole('heading', { name: 'Supplemental & resources' }).closest('section')!;
-    expect(supplementalSection).toBeInTheDocument();
+
+    // 1 of 2 explored, GLAT passed, quiz avg 90% — and its own module list DOES
+    // have the "Best quiz" column (real data here).
     expect(within(supplementalSection).getByText('1 of 2')).toBeInTheDocument();
-    expect(within(supplementalSection).getByText('90%')).toBeInTheDocument();
     expect(within(supplementalSection).getByText('Passed')).toBeInTheDocument();
     expect(within(supplementalSection).getByText('Labs in review')).toBeInTheDocument();
+    expect(within(supplementalSection).getByText('Best quiz')).toBeInTheDocument();
+    const avgQuizCard = within(supplementalSection).getByText('Avg quiz score').parentElement!;
+    expect(within(avgQuizCard).getByText('90%')).toBeInTheDocument();
+    expect(within(supplementalSection).getByText('Supplemental coursework')).toBeInTheDocument();
 
-    // Section headings + lab statuses from the (unchanged) shared tables.
-    expect(screen.getByText('Course lessons')).toBeInTheDocument();
-    expect(screen.getByText('Supplemental coursework')).toBeInTheDocument();
-    expect(screen.getByText('submitted')).toBeInTheDocument();
-    expect(screen.getByText('reviewable')).toBeInTheDocument();
+    // Lab statuses — the submissions list is grouped inside Supplemental &
+    // resources (labs are supplemental work), not its own top-level section.
+    expect(within(supplementalSection).getByText('Your lab submissions')).toBeInTheDocument();
+    expect(within(supplementalSection).getByText('submitted')).toBeInTheDocument();
+    expect(within(supplementalSection).getByText('reviewable')).toBeInTheDocument();
 
     expect(fetchLearnerDetail).toHaveBeenCalledWith('me');
   });
@@ -125,11 +155,14 @@ describe('LearnerDashboard (self-view)', () => {
     fetchLearnerDetail.mockResolvedValue(DETAIL);
     render(<LearnerDashboard userId="me" sections={[]} />);
 
-    expect(await screen.findByText('Prompting')).toBeInTheDocument();
+    await screen.findByRole('heading', { name: 'Supplemental & resources' });
     expect(screen.queryByRole('heading', { name: 'Course 1' })).not.toBeInTheDocument();
     expect(screen.getByText(/not enrolled in Course 1/i)).toBeInTheDocument();
-    // Supplemental still renders — it's ungated.
-    expect(screen.getByRole('heading', { name: 'Supplemental & resources' })).toBeInTheDocument();
+    // Supplemental still renders (collapsed) — it's ungated.
+    expect(screen.getByRole('button', { name: 'Supplemental & resources' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
   });
 
   test('omits the Supplemental block when there is no matrix/custom content', async () => {
@@ -146,6 +179,8 @@ describe('LearnerDashboard (self-view)', () => {
   test('shows the empty lab message when there are no submissions', async () => {
     fetchLearnerDetail.mockResolvedValue({ modules: DETAIL.modules, labs: [] });
     render(<LearnerDashboard userId="me" sections={SECTIONS} />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Supplemental & resources' }));
     expect(await screen.findByText(/haven’t submitted any labs/i)).toBeInTheDocument();
   });
 
@@ -158,6 +193,6 @@ describe('LearnerDashboard (self-view)', () => {
 
     fetchLearnerDetail.mockResolvedValue(DETAIL);
     await userEvent.click(screen.getByRole('button', { name: /retry/i }));
-    expect(await screen.findByText('Prompting')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Course 1' })).toBeInTheDocument();
   });
 });

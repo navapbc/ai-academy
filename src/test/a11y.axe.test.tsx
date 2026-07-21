@@ -312,8 +312,12 @@ const CASES: Case[] = [
         useCasePortfolio: null,
       });
     },
-    // Wait for a loaded module row, not the spinner.
-    awaitReady: () => screen.findByText('Prompt construction'),
+    // Supplemental & resources starts collapsed — expand it, then wait for a
+    // loaded module row (not the spinner), so axe scans the populated markup.
+    awaitReady: async () => {
+      await userEvent.click(await screen.findByRole('button', { name: 'Supplemental & resources' }));
+      return screen.findByText('Prompt construction');
+    },
   },
   {
     // Tutor chat FAB — the chat dialog is the high-value interactive surface, so

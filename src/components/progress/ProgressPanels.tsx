@@ -1,6 +1,7 @@
-import { Fragment } from 'react';
+import type { LearnerLabRow, LearnerModuleRow } from '../../lib/learnerDetail';
+
 import { Check } from 'lucide-react';
-import type { LearnerModuleRow, LearnerLabRow } from '../../lib/learnerDetail';
+import { Fragment } from 'react';
 
 // Shared progress presentational primitives (P5.3a). Lifted verbatim from the
 // staff per-learner drill-down (P5.2c) so the staff view (LearnerDetail) and the
@@ -43,11 +44,11 @@ export function LabStatusBadge({ status }: { status: string | null }) {
   );
 }
 
-function ModuleRowItem({ row }: { row: LearnerModuleRow }) {
+function ModuleRowItem({ row, showQuizColumn }: { row: LearnerModuleRow; showQuizColumn: boolean }) {
   return (
     <tr className="border-t border-gray-100">
       <td className="py-2 pr-3">
-        <span className="font-mono text-xs text-gray-500">{row.cellId}</span>{' '}
+        {/* <span className="font-mono text-xs text-gray-500">{row.cellId}</span>{' '} */}
         <span className="text-gray-900">{row.title}</span>
       </td>
       <td className="py-2 px-3 text-center">
@@ -63,18 +64,20 @@ function ModuleRowItem({ row }: { row: LearnerModuleRow }) {
           </span>
         )}
       </td>
-      <td className="py-2 pl-3 text-right">
-        {row.bestQuizPct === null ? (
-          <span className="text-gray-400">
-            <span aria-hidden="true">—</span>
-            <span className="sr-only">No quiz attempt</span>
-          </span>
-        ) : (
-          <span className={row.quizPassed ? 'text-gray-900' : 'text-red-600'}>
-            {formatPct(row.bestQuizPct)}
-          </span>
-        )}
-      </td>
+      {showQuizColumn && (
+        <td className="py-2 pl-3 text-right">
+          {row.bestQuizPct === null ? (
+            <span className="text-gray-400">
+              <span aria-hidden="true">—</span>
+              <span className="sr-only">No quiz attempt</span>
+            </span>
+          ) : (
+            <span className={row.quizPassed ? 'text-gray-900' : 'text-red-600'}>
+              {formatPct(row.bestQuizPct)}
+            </span>
+          )}
+        </td>
+      )}
     </tr>
   );
 }
@@ -83,15 +86,24 @@ function ModuleRowItem({ row }: { row: LearnerModuleRow }) {
  * Best-per-module rollup table, grouped by curriculum section (U13): course
  * lessons → Supplemental coursework → Resources — the same sections the
  * learner nav renders (rows arrive pre-ordered from buildLearnerModuleRows).
+ * `showQuizColumn` (default true) hides the "Best quiz" column entirely — Course 1
+ * modules never have quizzes, so callers rendering a course-only slice pass `false`
+ * rather than showing a column that's always an em dash.
  */
-export function ModuleProgressTable({ modules }: { modules: LearnerModuleRow[] }) {
+export function ModuleProgressTable({
+  modules,
+  showQuizColumn = true,
+}: {
+  modules: LearnerModuleRow[];
+  showQuizColumn?: boolean;
+}) {
   return (
     <table className="w-full text-sm">
       <thead>
         <tr className="text-left text-[11px] font-bold uppercase tracking-widest text-gray-500">
           <th className="py-1 pr-3">Module</th>
           <th className="py-1 px-3 text-center">Completed</th>
-          <th className="py-1 pl-3 text-right">Best quiz</th>
+          {showQuizColumn && <th className="py-1 pl-3 text-right">Best quiz</th>}
         </tr>
       </thead>
       <tbody>
@@ -103,14 +115,14 @@ export function ModuleProgressTable({ modules }: { modules: LearnerModuleRow[] }
               {showSection && (
                 <tr>
                   <td
-                    colSpan={3}
+                    colSpan={showQuizColumn ? 3 : 2}
                     className="pt-4 pb-1 text-[11px] font-bold uppercase tracking-widest text-nava-plum"
                   >
                     {row.section}
                   </td>
                 </tr>
               )}
-              <ModuleRowItem row={row} />
+              <ModuleRowItem row={row} showQuizColumn={showQuizColumn} />
             </Fragment>
           );
         })}
