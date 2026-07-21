@@ -28,7 +28,7 @@ const module14: Module = {
   cellId: '1.4',
   title: 'Data classification',
   type: 'content',
-  content: '# Data classification',
+  content: 'Some lesson content about handling sensitive data.',
   phaseId: 'supplemental',
   origin: 'matrix',
   stage: '1a',

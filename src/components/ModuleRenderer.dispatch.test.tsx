@@ -88,6 +88,20 @@ describe('renderInteractive — dispatch by module.type', () => {
   });
 });
 
+describe('video slot — videoUrl presence', () => {
+  test('no videoUrl renders the title header, no iframe', () => {
+    renderModule({ videoUrl: undefined, title: 'Recognizing When AI Fits' });
+    expect(screen.getByRole('heading', { name: 'Recognizing When AI Fits' })).toBeInTheDocument();
+    expect(screen.queryByTitle('Recognizing When AI Fits')).not.toBeInTheDocument(); // no iframe
+  });
+
+  test('a videoUrl renders the iframe, no title header', () => {
+    renderModule({ videoUrl: 'https://youtu.be/abc123', title: 'Recognizing When AI Fits' });
+    expect(screen.getByTitle('Recognizing When AI Fits')).toBeInTheDocument(); // the iframe
+    expect(screen.queryByRole('heading', { name: 'Recognizing When AI Fits' })).not.toBeInTheDocument();
+  });
+});
+
 describe('renderExercise — dispatch by labConfig.kind', () => {
   const kinds: [LabConfig['kind'], string][] = [
     ['prompt-construction', 'STUB:Lab'],
