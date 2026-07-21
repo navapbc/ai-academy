@@ -93,3 +93,33 @@ describe.skipIf(!RUN)('service_role role assignment (P5.1a)', () => {
     expect(clientRead ?? []).toHaveLength(0);
   });
 });
+
+describe.skipIf(!RUN)('handle_new_user() OAuth full_name capture', () => {
+  test('signup metadata full_name lands on the profiles row', async () => {
+    const user = anonClient();
+    const signup = await user.auth.signUp({
+      email: uniqueEmail('named'),
+      password: PASSWORD,
+      options: { data: { full_name: 'Ada Lovelace' } },
+    });
+    expect(signup.error).toBeNull();
+    const uid = signup.data.user!.id;
+
+    const svc = serviceClient();
+    const { data, error } = await svc.from('profiles').select('full_name').eq('id', uid).single();
+    expect(error).toBeNull();
+    expect(data?.full_name).toBe('Ada Lovelace');
+  });
+
+  test('signup with no name metadata leaves full_name null', async () => {
+    const user = anonClient();
+    const signup = await user.auth.signUp({ email: uniqueEmail('unnamed'), password: PASSWORD });
+    expect(signup.error).toBeNull();
+    const uid = signup.data.user!.id;
+
+    const svc = serviceClient();
+    const { data, error } = await svc.from('profiles').select('full_name').eq('id', uid).single();
+    expect(error).toBeNull();
+    expect(data?.full_name).toBeNull();
+  });
+});
