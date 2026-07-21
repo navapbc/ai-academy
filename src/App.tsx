@@ -341,7 +341,7 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
               fetches fresh on each open and reflects a just-completed module. */}
           {view === 'progress' && (
             <ContentContainer wide>
-              <LearnerDashboard userId={userId} />
+              <LearnerDashboard userId={userId} sections={sections} />
             </ContentContainer>
           )}
           <ContentContainer active={view === 'learning'}>

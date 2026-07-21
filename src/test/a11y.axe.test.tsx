@@ -302,7 +302,7 @@ const CASES: Case[] = [
   {
     // Learner self-view dashboard (P5.3a). Async: detail + portfolio both fetch.
     name: 'LearnerDashboard (self-view)',
-    element: <LearnerDashboard userId="me" />,
+    element: <LearnerDashboard userId="me" sections={[]} />,
     setup: () => {
       fetchLearnerDetail.mockResolvedValue(learnerDetail);
       fetchLearnerPortfolio.mockResolvedValue({
