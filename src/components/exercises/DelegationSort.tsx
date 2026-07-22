@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ListChecks, Check, Sparkles, ClipboardCheck } from 'lucide-react';
+import { ListChecks, Lightbulb, Sparkles, ClipboardCheck } from 'lucide-react';
 import type { DelegationSortConfig } from '../../types';
 import { useAuth } from '../../lib/auth';
 import { recordLabSubmission } from '../../lib/progress';
@@ -134,10 +134,10 @@ export default function DelegationSort({ config, labId }: Props) {
                     animate={{ opacity: 1, y: 0 }}
                     role="status"
                     aria-live="polite"
-                    className="flex gap-3 rounded-xl bg-nava-mint/40 p-4"
+                    className="flex gap-3 rounded-xl bg-nava-plum/5 p-4"
                   >
-                    <div className="w-7 h-7 rounded-full bg-nava-mint flex items-center justify-center shrink-0">
-                      <Check className="w-4 h-4 text-nava-green" />
+                    <div className="w-7 h-7 rounded-full bg-nava-plum/15 flex items-center justify-center shrink-0">
+                      <Lightbulb className="w-4 h-4 text-nava-plum" />
                     </div>
                     <p className="text-xs leading-relaxed text-gray-700">
                       <span className="font-bold">A defensible call: {labelFor(item.suggested)}.</span> {item.rationale}

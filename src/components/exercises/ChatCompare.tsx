@@ -340,12 +340,18 @@ export default function ChatCompare({ config, labId }: Props) {
                 <p className="text-sm text-gray-500 italic">Send a prompt to see this response.</p>
               )}
               {run.status === 'streaming' && (
-                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap" aria-busy="true">
-                  {run.text || <span className="text-gray-500 italic">Waiting for Claude…</span>}
+                <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed" aria-busy="true">
+                  {run.text ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{run.text}</ReactMarkdown>
+                  ) : (
+                    <span className="text-gray-500 italic">Waiting for Claude…</span>
+                  )}
                 </div>
               )}
               {run.status === 'done' && (
-                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{run.text}</div>
+                <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{run.text}</ReactMarkdown>
+                </div>
               )}
               {run.status === 'error' && (
                 <div className="space-y-2">
