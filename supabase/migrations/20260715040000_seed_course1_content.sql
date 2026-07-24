@@ -27,9 +27,9 @@ insert into public.modules
 values
   ('c1-w0-claude-setup', null, 'course', 'public', 'published', 'Claude Set-up', 'content',
    ARRAY[]::text[], 'reflection', 'na', 900,
-   $md$Welcome! This short guide gets you started with Claude at Nava: logging in, installing the desktop app, finding your way around, choosing starter settings, and the basics of writing a prompt.
+   $md$Welcome! This short guide gets you started with Claude at Nava: logging in, installing the desktop app, finding your way around, choosing starter settings, the basics of writing a prompt, and adding Skills.
 
-**Total time: about 10–15 minutes.** We are not going in depth on any of these topics — just getting everyone started. If you are already comfortable with everything on the agenda below, feel free to skip this activity entirely, or jump straight to the section(s) that are relevant to you.
+**Total time: about 15 minutes.** We are not going in depth on any of these topics — just getting everyone started. If you are already comfortable with everything on the agenda below, feel free to skip this activity entirely, or jump straight to the section(s) that are relevant to you.
 
 **Agenda**
 
@@ -38,6 +38,7 @@ values
 3. A tour of the key areas in the tool
 4. Recommended starter settings (including custom instructions)
 5. Prompting basics
+6. Installing and using Skills
 
 ## 1. Logging in
 
@@ -94,6 +95,32 @@ A **prompt** is simply what you send Claude: the request plus everything you inc
 - **What good looks like** — an example, or a sentence about what you'd consider a great answer.
 
 You'll practice all of this during the course — no need to master it today.
+
+## 6. Skills
+
+A **skill** is a reusable set of instructions — sometimes bundled with templates or reference files — that teaches Claude how to do a specific task the way you (or your team) want it done. Instead of re-explaining "here's how we format a project update at Nava" every time, you set the skill up once and Claude follows it automatically whenever it's relevant.
+
+Nava has a shared library of skills at [hub.navapbc.com](https://hub.navapbc.com) — practical skills that Nava people have built for real Nava work. Sign in with your Nava Google account to browse them.
+
+**Turn skills on (one-time)**
+
+- Open **Settings → Capabilities** and make sure **Code execution and file creation** is on — skills rely on it.
+- Then open **Customize → Skills**. Claude ships with a few built-in skills (like creating Word, Excel, and PowerPoint files); toggle on any that look useful.
+
+**Install a skill from the Nava hub**
+
+1. Go to [hub.navapbc.com](https://hub.navapbc.com), sign in, and find a skill that fits your work.
+2. **Download** it — it comes as a `.zip` file.
+3. Back in claude.ai, open **Customize → Skills**, click the **+** button, choose **Create skill**, then **Upload a skill**.
+4. Upload the `.zip`. The skill appears in your list — toggle it **on**.
+
+**Using a skill**
+
+You don't need to do anything special. Once a skill is on, Claude uses it automatically when your request matches — ask for a formatted deck, for example, and a slides skill kicks in. You can also type `/` in the message box to see your skills and pick one directly.
+
+**Making and sharing your own**
+
+Notice yourself explaining the same process to Claude again and again? That's a skill waiting to happen. Under the hood a skill is just a folder with a plain-text instructions file (`SKILL.md`) describing the task. Once you have one that works, you can publish it to [hub.navapbc.com](https://hub.navapbc.com) so the rest of Nava can use it too — the hub and the AI Slack channels have the details on how to contribute.
 
 ## Where to go with questions
 
