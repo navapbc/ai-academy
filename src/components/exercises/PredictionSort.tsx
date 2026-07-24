@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Shuffle, Lightbulb, Sparkles, ClipboardCheck } from 'lucide-react';
-import type { PredictionSortConfig } from '../../types';
+import { Shuffle, Lightbulb, Sparkles, ClipboardCheck, Bot } from 'lucide-react';
+import type { PredictionSortConfig, PredictionSortItem } from '../../types';
 import { useAuth } from '../../lib/auth';
+import { streamChat } from '../../lib/llm';
+import { DEFAULT_MODEL_ID } from '../../lib/models';
 import { recordLabSubmission } from '../../lib/progress';
 
 interface Props {
@@ -13,6 +15,17 @@ interface Props {
 }
 
 type Bucket = 'lookup' | 'predict';
+
+// Per-item "Run prompt" state, keyed by item id. An absent key means the learner
+// has never run that prompt (idle). Running streams Claude's live answer into a
+// small window between the question and the two buckets, so the learner can see
+// what Claude actually produces before choosing "looking it up" vs "making it up".
+type RunStatus = 'streaming' | 'done' | 'error';
+interface RunState {
+  status: RunStatus;
+  text: string;
+  error: string | null;
+}
 
 // Course 1, Week 1 intuition-then-reveal sort (1.01). The learner places each task
 // into one of two buckets by what it FEELS like; on submit every card reveals the
@@ -27,12 +40,71 @@ export default function PredictionSort({ config, labId }: Props) {
   const [graded, setGraded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [runs, setRuns] = useState<Record<string, RunState>>({});
+
+  // One AbortController per item so a re-run (or unmount) cancels that item's
+  // stream without touching any other item's in-flight run.
+  const runAbortRef = useRef<Record<string, AbortController>>({});
+  // Abort every in-flight run on unmount so no orphan stream writes into a dead
+  // component (mirrors PairedCalibration's abort-on-unmount, scaled to N runs).
+  useEffect(
+    () => () => {
+      for (const c of Object.values(runAbortRef.current)) c.abort();
+    },
+    [],
+  );
 
   const allPlaced = items.every((it) => placements[it.id] !== undefined);
 
   const place = (id: string, bucket: Bucket) => {
     if (graded) return;
     setPlacements((prev) => ({ ...prev, [id]: bucket }));
+  };
+
+  // Run an item's prompt through Claude Haiku and stream the answer live. Runnable
+  // regardless of `graded` (and while signed out — streamChat falls back to the anon
+  // key): the point is to try the prompt BEFORE choosing a bucket. Only re-running
+  // the same item mid-stream is blocked (the button disables while it streams).
+  const runPrompt = async (item: PredictionSortItem) => {
+    runAbortRef.current[item.id]?.abort(); // cancel a prior run of THIS item
+    const controller = new AbortController();
+    runAbortRef.current[item.id] = controller;
+
+    setRuns((prev) => ({ ...prev, [item.id]: { status: 'streaming', text: '', error: null } }));
+
+    try {
+      await streamChat(
+        [{ role: 'user', content: item.prompt }],
+        // Cap output so long answers (e.g. "three offsite ideas") stay slim.
+        { model: DEFAULT_MODEL_ID, maxTokens: 300, signal: controller.signal },
+        (chunk) =>
+          setRuns((prev) => ({
+            ...prev,
+            [item.id]: {
+              status: 'streaming',
+              text: (prev[item.id]?.text ?? '') + chunk,
+              error: null,
+            },
+          })),
+      );
+      // Aborting resolves streamChat cleanly (no throw); a superseded/unmounted run
+      // must not flip its stale controller's result to "done".
+      if (controller.signal.aborted) return;
+      setRuns((prev) => ({
+        ...prev,
+        [item.id]: { status: 'done', text: prev[item.id]?.text ?? '', error: null },
+      }));
+    } catch (err) {
+      if (controller.signal.aborted) return;
+      setRuns((prev) => ({
+        ...prev,
+        [item.id]: {
+          status: 'error',
+          text: prev[item.id]?.text ?? '',
+          error: err instanceof Error ? err.message : 'Request to Claude failed.',
+        },
+      }));
+    }
   };
 
   const handleSubmit = async () => {
@@ -63,6 +135,10 @@ export default function PredictionSort({ config, labId }: Props) {
   };
 
   const handleRetry = () => {
+    // Kill any orphan streams so they can't append into a reset card.
+    for (const c of Object.values(runAbortRef.current)) c.abort();
+    runAbortRef.current = {};
+    setRuns({});
     setPlacements({});
     setGraded(false);
     setSaveError(null);
@@ -89,6 +165,8 @@ export default function PredictionSort({ config, labId }: Props) {
       <div className="space-y-6">
         {items.map((item) => {
           const chosen = placements[item.id];
+          const run = runs[item.id];
+          const running = run?.status === 'streaming';
           return (
             <div
               key={item.id}
@@ -96,7 +174,50 @@ export default function PredictionSort({ config, labId }: Props) {
                 graded ? 'border-nava-plum/20 bg-nava-plum/5' : 'border-gray-100'
               }`}
             >
-              <p className="text-sm font-semibold text-gray-800 leading-relaxed">{item.prompt}</p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-semibold text-gray-800 leading-relaxed">{item.prompt}</p>
+                <button
+                  type="button"
+                  onClick={() => runPrompt(item)}
+                  disabled={running}
+                  aria-busy={running}
+                  aria-label={`Run prompt: ${item.prompt}`}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-nava-green text-white rounded-lg font-bold text-xs hover:bg-nava-green/90 disabled:opacity-50 transition-all active:scale-95"
+                >
+                  {running ? (
+                    <>
+                      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+                        <Sparkles className="w-3.5 h-3.5" />
+                      </motion.div>
+                      Running…
+                    </>
+                  ) : (
+                    <>
+                      <Bot className="w-3.5 h-3.5" /> {run ? 'Run again' : 'Run prompt'}
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Claude's live answer — small and scrollable so long answers can't
+                  blow out the card — shown between the question and the buckets. */}
+              <AnimatePresence>
+                {run && (running || run.text) && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    role="status"
+                    aria-live="polite"
+                    aria-busy={running}
+                    className="max-h-40 overflow-y-auto bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-700 whitespace-pre-wrap leading-relaxed"
+                  >
+                    {run.text || <span className="text-gray-500 italic">Waiting for Claude…</span>}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {run?.status === 'error' && (
+                <p role="alert" className="text-xs text-red-600 font-medium">{run.error}</p>
+              )}
 
               <div className="flex flex-col sm:flex-row gap-2" role="radiogroup" aria-label={item.prompt}>
                 {(['lookup', 'predict'] as Bucket[]).map((bucket) => {
