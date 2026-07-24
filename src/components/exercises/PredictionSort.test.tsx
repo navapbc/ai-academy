@@ -4,15 +4,20 @@ import { render, screen, waitFor, fireEvent, within, act } from '@testing-librar
 import PredictionSort from './PredictionSort';
 import type { PredictionSortConfig } from '../../types';
 
-const { recordLabSubmission, useAuth } = vi.hoisted(() => ({
+const { recordLabSubmission, useAuth, streamChat } = vi.hoisted(() => ({
   recordLabSubmission: vi.fn(async () => 'sub-1'),
   useAuth: vi.fn((): { user: { id: string } | null } => ({ user: { id: 'u1' } })),
+  streamChat: vi.fn(),
 }));
 vi.mock('../../lib/auth', () => ({ useAuth }));
 vi.mock('../../lib/progress', () => ({ recordLabSubmission }));
+vi.mock('../../lib/llm', () => ({ streamChat }));
+// The component reads DEFAULT_MODEL_ID from here; assert against it below.
+import { DEFAULT_MODEL_ID } from '../../lib/models';
 
 beforeEach(() => {
   recordLabSubmission.mockClear();
+  streamChat.mockReset();
   useAuth.mockReturnValue({ user: { id: 'u1' } });
 });
 
@@ -107,5 +112,114 @@ describe('PredictionSort', () => {
     fireEvent.click(screen.getByRole('button', { name: /submit/i }));
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(recordLabSubmission).not.toHaveBeenCalled();
+  });
+
+  test('run prompt: streams Claude\'s answer into the card with the item prompt + Haiku', async () => {
+    streamChat.mockImplementation(async (_messages, _opts, onChunk) => {
+      onChunk('Paris.');
+    });
+    render(<PredictionSort config={config} labId="c1-w1-lookup-vs-predict" />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: "Run prompt: What's the capital of France?" }));
+    });
+    expect(await screen.findByText('Paris.')).toBeTruthy();
+    expect(streamChat).toHaveBeenCalledWith(
+      [{ role: 'user', content: "What's the capital of France?" }],
+      // maxTokens keeps the answer slim; signal is the abort handle — both load-bearing.
+      expect.objectContaining({ model: DEFAULT_MODEL_ID, maxTokens: 300 }),
+      expect.any(Function),
+    );
+    const opts = streamChat.mock.calls[0][1] as { signal?: unknown };
+    expect(opts.signal).toBeInstanceOf(AbortSignal);
+    // Button relabels to "Run again" once a run has happened.
+    expect(screen.getByRole('button', { name: "Run prompt: What's the capital of France?" }).textContent).toContain('Run again');
+  });
+
+  test('run prompt: shows a streaming indicator and disables the button while in flight', async () => {
+    let resolveRun!: () => void;
+    streamChat.mockImplementation(
+      () => new Promise<void>((resolve) => { resolveRun = resolve; }),
+    );
+    render(<PredictionSort config={config} labId="c1-w1-lookup-vs-predict" />);
+    const runBtn = screen.getByRole('button', { name: "Run prompt: What's the capital of France?" });
+    fireEvent.click(runBtn);
+    await waitFor(() => expect((runBtn as HTMLButtonElement).disabled).toBe(true));
+    expect(runBtn.getAttribute('aria-busy')).toBe('true');
+    expect(runBtn.textContent).toContain('Running…');
+    await act(async () => { resolveRun(); });
+    await waitFor(() => expect((runBtn as HTMLButtonElement).disabled).toBe(false));
+  });
+
+  test('run prompt: surfaces an error alert when the request fails', async () => {
+    streamChat.mockRejectedValue(new Error('network boom'));
+    render(<PredictionSort config={config} labId="c1-w1-lookup-vs-predict" />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: "Run prompt: What's the capital of France?" }));
+    });
+    expect(await screen.findByText('network boom')).toBeTruthy();
+  });
+
+  test('run prompt: works while signed out (does not require auth)', async () => {
+    useAuth.mockReturnValue({ user: null });
+    streamChat.mockImplementation(async (_messages, _opts, onChunk) => {
+      onChunk('Paris.');
+    });
+    render(<PredictionSort config={config} labId="c1-w1-lookup-vs-predict" />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: "Run prompt: What's the capital of France?" }));
+    });
+    expect(streamChat).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Paris.')).toBeTruthy();
+  });
+
+  test('run prompt: unmounting aborts an in-flight stream', async () => {
+    let capturedSignal: AbortSignal | undefined;
+    streamChat.mockImplementation(
+      (_messages, opts: { signal?: AbortSignal }) => {
+        capturedSignal = opts.signal;
+        return new Promise<void>(() => {}); // never resolves — stays in flight
+      },
+    );
+    const { unmount } = render(<PredictionSort config={config} labId="c1-w1-lookup-vs-predict" />);
+    fireEvent.click(screen.getByRole('button', { name: "Run prompt: What's the capital of France?" }));
+    await waitFor(() => expect(capturedSignal).toBeInstanceOf(AbortSignal));
+    expect(capturedSignal!.aborted).toBe(false);
+    unmount();
+    expect(capturedSignal!.aborted).toBe(true);
+  });
+
+  test('try again aborts an in-flight run so no orphan stream writes into the reset card', async () => {
+    let capturedSignal: AbortSignal | undefined;
+    streamChat.mockImplementation(
+      (_messages, opts: { signal?: AbortSignal }) => {
+        capturedSignal = opts.signal;
+        return new Promise<void>(() => {}); // never resolves — stays in flight
+      },
+    );
+    render(<PredictionSort config={config} labId="c1-w1-lookup-vs-predict" />);
+    fireEvent.click(screen.getByRole('button', { name: "Run prompt: What's the capital of France?" }));
+    await waitFor(() => expect(capturedSignal).toBeInstanceOf(AbortSignal));
+    // Placing + submitting is independent of the streaming run.
+    placeAll();
+    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /try again/i }));
+    expect(capturedSignal!.aborted).toBe(true);
+  });
+
+  test('run prompt: is independent of grading and persists through the reveal', async () => {
+    streamChat.mockImplementation(async (_messages, _opts, onChunk) => {
+      onChunk('Paris.');
+    });
+    render(<PredictionSort config={config} labId="c1-w1-lookup-vs-predict" />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: "Run prompt: What's the capital of France?" }));
+    });
+    expect(await screen.findByText('Paris.')).toBeTruthy();
+    placeAll();
+    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
+    await waitFor(() => expect(screen.getByText('The twist')).toBeTruthy());
+    // The run output survives grading; only item 'a' ran, so item 'b' has no window.
+    expect(screen.getByText('Paris.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Run prompt: Give me three offsite ideas.' }).textContent).toContain('Run prompt');
   });
 });
