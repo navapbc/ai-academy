@@ -47,7 +47,7 @@ function VerdictButton({
           ? verdict === 'helps'
             ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
             : 'border-orange-400 bg-orange-50 text-orange-700'
-          : 'border-gray-100 text-gray-500 hover:border-nava-green/30'
+          : 'border-gray-100 text-gray-500 hover:border-nava-plum/30'
       }`}
     >
       {icon}

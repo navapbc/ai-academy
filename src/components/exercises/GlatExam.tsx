@@ -220,7 +220,7 @@ export default function GlatExam({
                   className={`w-full p-3 rounded-xl text-left text-sm font-medium border-2 transition-all ${
                     sectionBC[q.id] === oi
                       ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
-                      : 'border-gray-100 hover:border-nava-green/30'
+                      : 'border-gray-100 hover:border-nava-plum/30'
                   }`}
                 >
                   {opt}

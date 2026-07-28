@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { ShieldCheck, Check, X, Sparkles, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Check, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import type { FailureSpotterConfig, FailureSpotterQuestion } from '../../types';
-import { useAuth } from '../../lib/auth';
+
+import ReactMarkdown from 'react-markdown';
 import { recordLabSubmission } from '../../lib/progress';
+import remarkGfm from 'remark-gfm';
+import { useAuth } from '../../lib/auth';
+import { useState } from 'react';
 
 interface Props {
   config: FailureSpotterConfig;
@@ -112,7 +113,7 @@ export default function FailureSpotter({ config, labId }: Props) {
                       ? 'border-red-600 bg-red-50 text-red-900'
                       : selected
                         ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
-                        : 'border-gray-100 text-gray-700 hover:border-nava-green/30'
+                        : 'border-gray-100 text-gray-700 hover:border-nava-plum/30'
                 }`}
               >
                 <div className="flex items-center justify-between gap-3">

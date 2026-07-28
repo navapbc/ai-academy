@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { motion } from 'motion/react';
-import { ClipboardCheck, Check, Sparkles } from 'lucide-react';
+import { Check, ClipboardCheck, Sparkles } from 'lucide-react';
+
 import type { SignoffConfig } from '../../types';
-import { useAuth } from '../../lib/auth';
+import { motion } from 'motion/react';
 import { recordLabSubmission } from '../../lib/progress';
+import { useAuth } from '../../lib/auth';
+import { useState } from 'react';
 
 interface Props {
   config: SignoffConfig;
@@ -101,7 +102,7 @@ export default function SignoffChecklist({ config, labId }: Props) {
                 aria-checked={sel}
                 onClick={() => setRole(r.id)}
                 className={`text-left rounded-xl px-4 py-3 border-2 transition-all ${
-                  sel ? 'border-nava-green bg-nava-mint' : 'border-gray-100 hover:border-nava-green/30'
+                  sel ? 'border-nava-green bg-nava-mint' : 'border-gray-100 hover:border-nava-plum/30'
                 }`}
               >
                 <span className={`text-sm font-bold ${sel ? 'text-nava-green' : 'text-gray-700'}`}>{r.label}</span>
@@ -125,7 +126,7 @@ export default function SignoffChecklist({ config, labId }: Props) {
                 aria-checked={on}
                 onClick={() => toggle(c.id)}
                 className={`w-full text-left flex items-start gap-3 rounded-xl px-4 py-3 border-2 transition-all ${
-                  on ? 'border-nava-green bg-nava-mint/50' : 'border-gray-100 hover:border-nava-green/30'
+                  on ? 'border-nava-green bg-nava-mint/50' : 'border-gray-100 hover:border-nava-plum/30'
                 }`}
               >
                 <span

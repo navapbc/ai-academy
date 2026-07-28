@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { ListChecks, Lightbulb, Sparkles, ClipboardCheck } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { ClipboardCheck, Lightbulb, ListChecks, Sparkles } from 'lucide-react';
+
 import type { DelegationSortConfig } from '../../types';
-import { useAuth } from '../../lib/auth';
+import ReactMarkdown from 'react-markdown';
 import { recordLabSubmission } from '../../lib/progress';
+import remarkGfm from 'remark-gfm';
+import { useAuth } from '../../lib/auth';
+import { useState } from 'react';
 
 interface Props {
   config: DelegationSortConfig;
@@ -118,7 +119,7 @@ export default function DelegationSort({ config, labId }: Props) {
                       className={`flex-1 text-left text-sm font-medium rounded-xl px-4 py-2.5 border-2 transition-all ${
                         selected
                           ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
-                          : 'border-gray-100 text-gray-700 hover:border-nava-green/30'
+                          : 'border-gray-100 text-gray-700 hover:border-nava-plum/30'
                       }`}
                     >
                       {c.label}
