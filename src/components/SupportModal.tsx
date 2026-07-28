@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Send, Bug, AlertCircle } from 'lucide-react';
+import { AlertCircle, Bug, Send, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+
 import { useDialogA11y } from '../lib/useDialogA11y';
+import { useState } from 'react';
 
 interface SupportModalProps {
   isOpen: boolean;
@@ -16,7 +17,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
   const isValid = description.trim().length > 10;
   const showWarning = touched && !isValid;
 
-  const githubUrl = `https://github.com/navapbc/ai-literacy-sprint/issues/new?body=${encodeURIComponent(description)}`;
+  const githubUrl = `https://github.com/navapbc/ai-academy/issues/new?body=${encodeURIComponent(description)}`;
 
   return (
     <AnimatePresence>
