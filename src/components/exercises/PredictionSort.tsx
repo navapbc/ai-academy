@@ -1,13 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { Shuffle, Lightbulb, Sparkles, ClipboardCheck, Bot } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { Bot, ClipboardCheck, Lightbulb, Shuffle, Sparkles } from 'lucide-react';
 import type { PredictionSortConfig, PredictionSortItem } from '../../types';
-import { useAuth } from '../../lib/auth';
-import { streamChat } from '../../lib/llm';
+import { useEffect, useRef, useState } from 'react';
+
 import { DEFAULT_MODEL_ID } from '../../lib/models';
+import ReactMarkdown from 'react-markdown';
 import { recordLabSubmission } from '../../lib/progress';
+import remarkGfm from 'remark-gfm';
+import { streamChat } from '../../lib/llm';
+import { useAuth } from '../../lib/auth';
 
 interface Props {
   config: PredictionSortConfig;
@@ -232,7 +233,7 @@ export default function PredictionSort({ config, labId }: Props) {
                       className={`flex-1 text-left text-sm font-medium rounded-xl px-4 py-2.5 border-2 transition-all ${
                         selected
                           ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
-                          : 'border-gray-100 text-gray-700 hover:border-nava-green/30'
+                          : 'border-gray-100 text-gray-700 hover:border-nava-plum/30'
                       }`}
                     >
                       {bucketLabels[bucket]}

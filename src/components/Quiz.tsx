@@ -192,7 +192,7 @@ export default function Quiz({
                 onClick={() => setSelected(idx)}
                 className={`
                   w-full p-4 rounded-xl text-left text-sm font-medium transition-all border-2
-                  ${selected === idx ? 'border-nava-plum bg-nava-plum/10 text-nava-plum shadow-sm' : 'border-gray-100 hover:border-nava-green/30'}
+                  ${selected === idx ? 'border-nava-plum bg-nava-plum/10 text-nava-plum shadow-sm' : 'border-gray-100 hover:border-nava-plum/30'}
                   ${isAnswer ? 'border-green-600 bg-green-50 text-green-900' : ''}
                   ${wrongPick ? 'border-red-600 bg-red-50 text-red-900' : ''}
                 `}

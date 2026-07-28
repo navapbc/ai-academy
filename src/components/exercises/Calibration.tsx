@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Gauge, Check, X, Sparkles, AlertTriangle, ArrowUp, ArrowDown } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, Check, Gauge, Sparkles, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+
 import type { CalibrationConfig } from '../../types';
-import { useAuth } from '../../lib/auth';
-import { recordLabSubmission } from '../../lib/progress';
 import { gradeCalibration } from '../calibration.grade';
+import { recordLabSubmission } from '../../lib/progress';
+import { useAuth } from '../../lib/auth';
+import { useState } from 'react';
 
 interface Props {
   config: CalibrationConfig;
@@ -150,7 +151,7 @@ export default function Calibration({ config, labId }: Props) {
                             ? 'border-red-600 bg-red-50 text-red-900'
                             : selected
                               ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
-                              : 'border-gray-100 text-gray-700 hover:border-nava-green/30'
+                              : 'border-gray-100 text-gray-700 hover:border-nava-plum/30'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-3">

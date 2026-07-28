@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { ShieldCheck, Check, X, Sparkles, Scale } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { Check, Scale, ShieldCheck, Sparkles, X } from 'lucide-react';
+
 import type { HarmRubricConfig } from '../../types';
-import { useAuth } from '../../lib/auth';
-import { recordLabSubmission } from '../../lib/progress';
 import { gradeHarmRubric } from './harmRubric.grade';
+import { recordLabSubmission } from '../../lib/progress';
+import { useAuth } from '../../lib/auth';
+import { useState } from 'react';
 
 interface Props {
   config: HarmRubricConfig;
@@ -123,7 +124,7 @@ export default function HarmRubric({ config, labId }: Props) {
                             ? 'border-red-600 bg-red-50 text-red-900'
                             : sel
                               ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
-                              : 'border-gray-100 text-gray-600 hover:border-nava-green/30'
+                              : 'border-gray-100 text-gray-600 hover:border-nava-plum/30'
                       }`}
                     >
                       {p.label}

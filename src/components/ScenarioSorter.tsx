@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Check, X, ShieldCheck, RotateCcw } from 'lucide-react';
+import { Check, RotateCcw, ShieldCheck, X } from 'lucide-react';
 import type { SorterCategory, SorterConfig } from '../types';
+
 import { gradeScenarios } from './scenarioSorter.grade';
+import { useState } from 'react';
 
 // The four categories are a fixed taxonomy (not per-cell), so their labels and
 // one-line definitions live here; the per-cell scenarios come from the DB config.
@@ -92,7 +93,7 @@ export default function ScenarioSorter({
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-all ${
                       picked === c.id
                         ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
-                        : 'border-gray-100 text-gray-600 hover:border-nava-green/30'
+                        : 'border-gray-100 text-gray-600 hover:border-nava-plum/30'
                     }`}
                   >
                     {c.label}

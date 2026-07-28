@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { ShieldCheck, Check, X, Sparkles, ListChecks, ClipboardCheck } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { Check, ClipboardCheck, ListChecks, ShieldCheck, Sparkles, X } from 'lucide-react';
+
 import type { ScenarioExerciseConfig } from '../../types';
-import { useAuth } from '../../lib/auth';
 import { recordLabSubmission } from '../../lib/progress';
+import { useAuth } from '../../lib/auth';
+import { useState } from 'react';
 
 interface Props {
   config: ScenarioExerciseConfig;
@@ -139,7 +140,7 @@ export default function ScenarioExercise({ config, labId }: Props) {
                             ? 'border-red-600 bg-red-50 text-red-900'
                             : selected
                               ? 'border-nava-plum bg-nava-plum/10 text-nava-plum'
-                              : 'border-gray-100 text-gray-700 hover:border-nava-green/30'
+                              : 'border-gray-100 text-gray-700 hover:border-nava-plum/30'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-3">
