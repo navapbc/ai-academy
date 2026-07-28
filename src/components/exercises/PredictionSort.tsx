@@ -210,9 +210,15 @@ export default function PredictionSort({ config, labId }: Props) {
                     role="status"
                     aria-live="polite"
                     aria-busy={running}
-                    className="max-h-40 overflow-y-auto bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-700 whitespace-pre-wrap leading-relaxed"
+                    className="max-h-40 overflow-y-auto bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-700 leading-relaxed"
                   >
-                    {run.text || <span className="text-gray-500 italic">Waiting for Claude…</span>}
+                    {run.text ? (
+                      <div className="prose prose-sm max-w-none prose-p:my-1 prose-pre:my-1">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{run.text}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <span className="text-gray-500 italic">Waiting for Claude…</span>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
