@@ -112,6 +112,12 @@ export async function streamChat(
       const text = decoder.decode(value, { stream: true });
       if (text) onChunk(text);
     }
+    // Flush whatever the streaming decoder is still holding. Without this final
+    // (non-streaming) decode, bytes buffered from an incomplete multi-byte
+    // sequence at the end of the stream are dropped silently instead of being
+    // emitted, so a truncated stream loses its last character outright.
+    const tail = decoder.decode();
+    if (tail) onChunk(tail);
   } catch (err) {
     // An abort is intentional cancellation, not a failure to surface.
     if (options.signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) {

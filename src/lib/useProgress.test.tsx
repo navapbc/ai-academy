@@ -201,6 +201,36 @@ describe('selectModule', () => {
     expect(result.current.progress.currentModuleId).toBe('m2');
     expect(setModuleStatus).toHaveBeenCalledWith('u1', 'm2', 'in_progress');
   });
+
+  // Regression: the reconcile re-resolves the cursor, and resolveCurrentModuleId
+  // deliberately refuses a cursor pointing at a COMPLETED module (a cached
+  // cursor should resume unfinished work). That bounced a learner who
+  // deliberately opened an already-completed module while the reconcile was
+  // still in flight. An explicit selection now wins.
+  test('an explicit selection is not overridden by a late reconcile', async () => {
+    let resolveFetch: (v: unknown) => void = () => {};
+    fetchModuleProgress.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    const { result } = renderHook(() => useProgress('u1', ALL));
+
+    // The learner opens a module the server already has as completed.
+    act(() => result.current.selectModule('m1'));
+    expect(result.current.progress.currentModuleId).toBe('m1');
+
+    await act(async () => {
+      resolveFetch({
+        completedModuleIds: ['m1'],
+        inProgressModuleIds: ['m0'],
+        latestInProgressId: 'm0',
+      });
+    });
+
+    expect(result.current.progress.completedModuleIds).toContain('m1');
+    expect(result.current.progress.currentModuleId).toBe('m1');
+  });
 });
 
 describe('sync-failure handling', () => {
@@ -252,6 +282,27 @@ describe('sync-failure handling', () => {
     // The completion survives reconcile (merge, not replace).
     expect(result.current.progress.completedModuleIds).toContain('m0');
     await waitFor(() => expect(readPendingCompletions('u1')).toEqual([]));
+    // Regression: the "could not sync" banner used to survive the very retry
+    // that resolved it, telling the learner their work was unsynced when it was
+    // already on the server. It retires once the outbox drains.
+    await waitFor(() => expect(result.current.error).toBeNull());
+  });
+
+  // …but a still-parked entry keeps the banner up: draining is the signal, not
+  // "some write succeeded".
+  test('the sync banner stays while another completion is still parked', async () => {
+    submitCompletion.mockResolvedValue('retry');
+    const { result } = renderHook(() => useProgress('u1', ALL));
+    await waitFor(() => expect(result.current.progress.currentModuleId).toBe('m0'));
+
+    act(() => result.current.completeModule('m0', 'explored'));
+    await waitFor(() => expect(result.current.error).toBeTruthy());
+
+    // A second completion lands, but m0 is still parked.
+    submitCompletion.mockResolvedValue('ok');
+    act(() => result.current.completeModule('m1', 'explored'));
+    await waitFor(() => expect(readPendingCompletions('u1').map((p) => p.id)).toEqual(['m0']));
+    expect(result.current.error).toBeTruthy();
   });
 
   // U10 — THE resurrection guard at hook level (mirrors the DB acceptance

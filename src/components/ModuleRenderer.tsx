@@ -119,12 +119,20 @@ export default function ModuleRenderer({
       case 'quiz':
         // Ungated practice (U9): finishing at any score records the attempt,
         // which auto-completes the module via the participation seam.
-        return <Quiz moduleId={module.id} questions={module.quiz ?? []} />;
+        // Return null (not the widget) when the row carries no questions: Quiz
+        // renders null internally, so handing back an element would make
+        // `interactive` truthy and suppress the FE-06 missing-activity notice,
+        // leaving a silently blank module.
+        return hasQuiz ? <Quiz moduleId={module.id} questions={module.quiz ?? []} /> : null;
       case 'sorter':
         // The sorter grades entirely client-side and persists nothing, so no
         // data-layer participation event exists — its Continue button is the
-        // completion and stamps 'sorter'.
-        return <ScenarioSorter config={module.sorterConfig} onComplete={() => onComplete('sorter')} />;
+        // completion and stamps 'sorter'. Same FE-06 reasoning as 'quiz' above:
+        // ScenarioSorter renders null with no scenarios, so an unconfigured
+        // sorter must fall through to the notice.
+        return (module.sorterConfig?.scenarios?.length ?? 0) > 0 ? (
+          <ScenarioSorter config={module.sorterConfig} onComplete={() => onComplete('sorter')} />
+        ) : null;
       case 'glossary':
         return <Glossary />;
       default:

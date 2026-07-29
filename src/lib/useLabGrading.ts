@@ -30,9 +30,16 @@ export function useLabGrading() {
   const [gradeError, setGradeError] = useState<string | null>(null);
   // The last request, so `retry` can re-grade the same saved submission.
   const lastRequest = useRef<GradeRequest | null>(null);
+  // Generation counter for in-flight grades. "Try grading again" (GradeError) is
+  // an always-enabled button, so two judge calls can overlap; without this a
+  // slower EARLIER call settling last would overwrite the newer verdict in both
+  // React state and the lab_submissions row, and its `finally` would clear the
+  // spinner while the newer call is still running.
+  const generation = useRef(0);
 
   const grade = useCallback(async (req: GradeRequest) => {
     lastRequest.current = req;
+    const mine = ++generation.current;
     setGrading(true);
     // Clear both sides of the prior verdict so a re-grade never renders a stale
     // card next to a fresh error (or vice versa).
@@ -40,12 +47,17 @@ export function useLabGrading() {
     setGradeResult(null);
     try {
       const result = await requestLlmGrade({ rubric: req.rubric, submission: req.submission });
+      // A newer grade owns the submission from here on — don't write its row.
+      if (mine !== generation.current) return;
       await saveGrade(req.submissionId, result, 'reviewable');
+      if (mine !== generation.current) return;
       setGradeResult(result);
     } catch {
+      if (mine !== generation.current) return;
       setGradeError(req.failureNote);
     } finally {
-      setGrading(false);
+      // Only the newest run owns the spinner.
+      if (mine === generation.current) setGrading(false);
     }
   }, []);
 
@@ -58,6 +70,12 @@ export function useLabGrading() {
   // Clears the trio when the underlying work changes (a re-run / regenerate),
   // mirroring the per-component resets it replaces.
   const reset = useCallback(() => {
+    // Bump the generation so a grade still in flight for the OLD work can't land
+    // its verdict after the reset — Lab/VoiceEdit call reset() when a re-run
+    // invalidates the previous grade (D-13), and the stale card reappearing over
+    // the new output is exactly what that reset exists to prevent.
+    generation.current += 1;
+    setGrading(false);
     setGradeResult(null);
     setGradeError(null);
     lastRequest.current = null;

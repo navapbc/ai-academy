@@ -22,9 +22,17 @@ export async function submitReviewDecision(input: ReviewDecisionInput): Promise<
   if (!isSupabaseConfigured || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('Supabase is not configured.');
   }
+  // getSession() can reject (e.g. an unreadable/corrupt persisted session). Fall
+  // back to the anon key like llm.ts/grading.ts do rather than throwing a raw
+  // storage error at the champion — the function itself will 401 if there is no
+  // real user behind the token.
   let accessToken = SUPABASE_ANON_KEY;
-  const { data } = await getSupabaseClient().auth.getSession();
-  if (data.session?.access_token) accessToken = data.session.access_token;
+  try {
+    const { data } = await getSupabaseClient().auth.getSession();
+    if (data.session?.access_token) accessToken = data.session.access_token;
+  } catch {
+    // No readable session — anon fallback.
+  }
 
   let res: Response;
   try {

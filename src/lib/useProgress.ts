@@ -85,8 +85,12 @@ export function resolveCurrentModuleId(
  * deleted it — so there is no lock predicate to skip past anymore.)
  */
 export function resolveNextModuleId(moduleId: string, allModuleIds: string[]): string {
-  const next = allModuleIds[allModuleIds.indexOf(moduleId) + 1];
-  return next ?? moduleId;
+  const index = allModuleIds.indexOf(moduleId);
+  // An id that isn't in the visible curriculum has no "next" — stay put. Without
+  // the -1 check, `indexOf(...) + 1` is 0 and the learner is yanked to the FIRST
+  // module of the curriculum.
+  if (index === -1) return moduleId;
+  return allModuleIds[index + 1] ?? moduleId;
 }
 
 /** Progress + the session's reset notices, in ONE state so transitions are atomic. */
@@ -124,12 +128,31 @@ export function useProgress(
     completedIdsRef.current = new Set(progress.completedModuleIds);
   }, [progress.completedModuleIds]);
 
+  // True once the learner has explicitly picked a module this session. The
+  // reconcile below re-resolves the cursor, and `resolveCurrentModuleId`
+  // deliberately ignores a cursor pointing at a COMPLETED module (a cached
+  // cursor should resume at unfinished work). That is wrong for a deliberate
+  // click: a learner who opens an already-completed module inside the reconcile
+  // window would be silently bounced to some other module a moment later. An
+  // explicit selection therefore wins over the resolver.
+  const explicitCursorRef = useRef(false);
+
   // Persist to cache on every change so the next load paints instantly and the
   // app survives offline. The cache carries the per-completion epochs (U10) —
   // that's what lets the next session detect a reset that happened while away.
   useEffect(() => {
     writeProgressCache(userId, progress);
   }, [userId, progress]);
+
+  /**
+   * Retires the "saved locally but could not sync" banner once every parked
+   * write has landed. Without this the banner survives the successful retry
+   * that resolved it and only ever goes away on an explicit dismiss, telling
+   * the learner their progress is unsynced when it is on the server.
+   */
+  const clearErrorIfOutboxDrained = useCallback((forUserId: string) => {
+    if (readPendingCompletions(forUserId).length === 0) setError(null);
+  }, []);
 
   /**
    * Terminal reset handling (U10): a completion the server rejected as
@@ -172,6 +195,7 @@ export function useProgress(
       submitCompletion(userId, entry.id, entry.via, entry.epoch, entry.eventAt).then((outcome) => {
         if (outcome === 'ok') {
           removePendingCompletion(userId, entry.id);
+          clearErrorIfOutboxDrained(userId);
         } else if (outcome === 'reset') {
           // Terminal: the module was reset after this work — drop the entry,
           // purge the local completion, surface the notice.
@@ -220,11 +244,13 @@ export function useProgress(
             progress: {
               completedModuleIds: mergedCompleted,
               completionEpochs,
-              currentModuleId: resolveCurrentModuleId(
-                mergedSnapshot,
-                prev.progress.currentModuleId,
-                allModuleIds,
-              ),
+              currentModuleId: explicitCursorRef.current
+                ? prev.progress.currentModuleId
+                : resolveCurrentModuleId(
+                    mergedSnapshot,
+                    prev.progress.currentModuleId,
+                    allModuleIds,
+                  ),
             },
             resetIds:
               dropped.length === 0 ? prev.resetIds : new Set([...prev.resetIds, ...dropped]),
@@ -238,7 +264,7 @@ export function useProgress(
     return () => {
       cancelled = true;
     };
-  }, [userId, allModuleIds, getResetEpoch, markReset]);
+  }, [userId, allModuleIds, getResetEpoch, markReset, clearErrorIfOutboxDrained]);
 
   /**
    * Shared completion core (U9). `advance` distinguishes an explicit learner
@@ -293,6 +319,7 @@ export function useProgress(
       submitCompletion(userId, moduleId, via, epoch, eventAt).then((outcome) => {
         if (outcome === 'ok') {
           removePendingCompletion(userId, moduleId);
+          clearErrorIfOutboxDrained(userId);
         } else if (outcome === 'retry') {
           // Park the write (with its via + captured epoch/eventAt) so the next
           // reconcile retries it (DATA-02).
@@ -306,7 +333,7 @@ export function useProgress(
         }
       });
     },
-    [userId, allModuleIds, getResetEpoch, markReset],
+    [userId, allModuleIds, getResetEpoch, markReset, clearErrorIfOutboxDrained],
   );
 
   const completeModule = useCallback(
@@ -332,6 +359,7 @@ export function useProgress(
   const selectModule = useCallback(
     (moduleId: string) => {
       const alreadyCompleted = completedIdsRef.current.has(moduleId);
+      explicitCursorRef.current = true;
       setState((prev) => ({
         ...prev,
         progress: { ...prev.progress, currentModuleId: moduleId },

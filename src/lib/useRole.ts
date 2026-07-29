@@ -54,6 +54,13 @@ export function useRole(): RoleState {
     }
 
     let cancelled = false;
+    // Drop the previous user's role BEFORE resolving this one. The comment above
+    // relies on the `key={session.user.id}` remount to reset this state, but that
+    // is a caller convention, not a guarantee: if this hook is ever mounted
+    // outside that subtree, a user switch would otherwise keep serving the prior
+    // user's (possibly elevated) role for the whole fetch window. Re-fetching for
+    // the SAME user briefly shows least-privilege, which fails closed.
+    setRole(null);
     setLoading(true);
     getSupabaseClient()
       .from('profiles')

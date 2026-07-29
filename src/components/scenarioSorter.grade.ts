@@ -18,6 +18,8 @@ export function gradeScenarios(
   return {
     correctIds,
     total: scenarios.length,
-    allCorrect: correctIds.length === scenarios.length,
+    // An empty scenario list is a misconfigured exercise, not a perfect score —
+    // guard it the way outputAudit.grade.ts does.
+    allCorrect: scenarios.length > 0 && correctIds.length === scenarios.length,
   };
 }

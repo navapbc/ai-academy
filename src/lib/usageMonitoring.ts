@@ -110,6 +110,17 @@ export function buildUsageByUser(
 
 const USAGE_COLUMNS = 'user_id, source, model, input_tokens, output_tokens, created_at';
 
+// PostgREST caps EVERY response at `db.max_rows` (1000 — see supabase/config.toml),
+// so a single unbounded select over a busy window silently returns only the first
+// page. With `order(created_at asc)` that page is the OLDEST 1000 calls, which
+// understates every per-user total and stops the threshold flag from ever firing.
+// So page explicitly instead of trusting one round-trip. The order key is
+// (created_at, id) — created_at alone is not a total order, and ties straddling a
+// page boundary would duplicate/skip rows.
+const USAGE_PAGE_SIZE = 1000;
+/** Safety stop so a pathological table can't page forever (≈100 pages). */
+const USAGE_MAX_ROWS = 100_000;
+
 /**
  * Reads the RLS-scoped `claude_usage` rows since `sinceIso`, then looks up names
  * for exactly the user ids present (never enumerating all profiles). A non-admin
@@ -120,14 +131,23 @@ export async function fetchUsageByUser(
   { thresholdTokens }: { thresholdTokens: number } = { thresholdTokens: DEFAULT_THRESHOLD_TOKENS },
 ): Promise<UsageByUser[]> {
   const sb = getSupabaseClient();
-  const { data, error } = await sb
-    .from('claude_usage')
-    .select(USAGE_COLUMNS)
-    .gte('created_at', sinceIso)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
+  const rows: UsageRow[] = [];
+  for (let from = 0; from < USAGE_MAX_ROWS; from += USAGE_PAGE_SIZE) {
+    const { data, error } = await sb
+      .from('claude_usage')
+      .select(USAGE_COLUMNS)
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, from + USAGE_PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = (data ?? []) as UsageRow[];
+    rows.push(...page);
+    // A short page means we reached the end (a full page may still be the last
+    // one — the next iteration returns empty and stops).
+    if (page.length < USAGE_PAGE_SIZE) break;
+  }
 
-  const rows = (data ?? []) as UsageRow[];
   if (rows.length === 0) return [];
 
   const ids = Array.from(new Set(rows.map((r) => r.user_id)));

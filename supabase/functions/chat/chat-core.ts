@@ -108,12 +108,18 @@ export function validateChatRequest(body: unknown, defaultModel: string): Valida
     totalChars += content.length;
     messages.push({ role, content });
   }
-  if (totalChars > MAX_TOTAL_CONTENT_CHARS) {
-    return { ok: false, error: 'Request content is too large.' };
-  }
 
   if (b.system !== undefined && typeof b.system !== 'string') {
     return { ok: false, error: '`system` must be a string.' };
+  }
+
+  // `system` is billed as input tokens exactly like message content, so it must
+  // count against the same budget. Checking only `messages` left an unbounded
+  // hole: a caller could post one tiny message plus a multi-megabyte `system`
+  // and bypass the cap entirely (LLM-01/LLM-04).
+  if (typeof b.system === 'string') totalChars += b.system.length;
+  if (totalChars > MAX_TOTAL_CONTENT_CHARS) {
+    return { ok: false, error: 'Request content is too large.' };
   }
 
   if (b.model !== undefined && typeof b.model !== 'string') {

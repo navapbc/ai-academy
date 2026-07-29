@@ -274,6 +274,25 @@ export default function DecisionScenario({ config, labId }: Props) {
     );
   };
 
+  // Graceful fallback for a malformed authored row: with no checkpoints, "Start
+  // the scenario" would step to checkpoints[0] / answers[0] — both undefined —
+  // and throw. Show a clear message instead (all hooks run above this guard),
+  // mirroring Lab.tsx's "Lab not configured" card.
+  if (total === 0) {
+    return (
+      <div
+        className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm text-center space-y-2"
+        id="decision-scenario"
+      >
+        <h3 className="font-bold text-gray-800">Scenario not configured</h3>
+        <p className="text-sm text-gray-500">
+          This walk-through is missing its checkpoints. Please check back later or report an issue if
+          this seems wrong.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-6"

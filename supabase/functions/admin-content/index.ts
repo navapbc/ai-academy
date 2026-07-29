@@ -17,6 +17,8 @@ import {
   buildCorsHeaders,
   buildCustomInsert,
   buildPublishUpdate,
+  COURSE_ID_PREFIX,
+  CUSTOM_ID_PREFIX,
   DRAFT_COLUMN_KEYS,
   emailDomainAllowed,
   fixedWindowAllow,
@@ -56,17 +58,36 @@ async function applyAction(
   const stamp = { updated_by: callerId, updated_at: new Date().toISOString() };
 
   // create-custom is the only action without an incoming cellId — it generates a
-  // collision-free `custom-<slug>` id and inserts a fresh draft row (R2). It needs
-  // the existing ids (collision guard) + the current max sort_order, not a
-  // single-row fetch, so it is handled before the existence check below.
+  // collision-free `custom-<slug>` id and inserts a fresh draft row (R2). It has no
+  // row to look up, so it is handled before the existence check below; instead it
+  // needs the already-minted ids (collision guard) + the current max sort_order.
   if (action.action === 'create-custom') {
-    const { data: all, error: listErr } = await admin.from('modules').select('cell_id, sort_order');
+    // Both reads are BOUNDED on purpose. An unfiltered `select('cell_id, sort_order')`
+    // is capped at PostgREST's db.max_rows (1000), so once the table crosses that
+    // it silently returns a partial page — the collision guard would miss an
+    // existing id (insert fails on the PK) and maxSortOrder would be understated
+    // (the new lesson lands mid-list instead of last).
+    //  - Collision guard: only a SERVER-MINTED id can collide with a server-minted
+    //    id, so filter to the one prefix this action will mint.
+    //  - Sort order: ask the DB for the single largest value instead of reducing
+    //    the whole table client-side.
+    const prefix = action.origin === 'course' ? COURSE_ID_PREFIX : CUSTOM_ID_PREFIX;
+    const { data: existing, error: listErr } = await admin
+      .from('modules')
+      .select('cell_id')
+      .like('cell_id', `${prefix}%`);
     if (listErr) return { error: listErr.message };
-    const ids = (all ?? []).map((r) => r.cell_id as string);
-    const maxSortOrder = (all ?? []).reduce(
-      (m, r) => Math.max(m, (r.sort_order as number) ?? 0),
-      0,
-    );
+    const ids = (existing ?? []).map((r) => r.cell_id as string);
+
+    const { data: topSort, error: sortErr } = await admin
+      .from('modules')
+      .select('sort_order')
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (sortErr) return { error: sortErr.message };
+    const maxSortOrder = Math.max(0, (topSort?.sort_order as number | null) ?? 0);
+
     const insert = buildCustomInsert(action.title, action.type, ids, maxSortOrder, callerId, stamp.updated_at, action.origin);
     const { error } = await admin.from('modules').insert(insert);
     return error ? { error: error.message } : { error: null, detail: { cellId: insert.cell_id } };

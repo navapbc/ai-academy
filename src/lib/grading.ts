@@ -35,6 +35,32 @@ export interface GradeSubmission {
   sections: GradeSection[];
 }
 
+/**
+ * Narrows an untrusted `grade` response body to a verdict. A 200 that isn't the
+ * shape we expect (a proxy/CDN interposing a page, a partially-deployed
+ * function) must fail here: the verdict is persisted verbatim into
+ * `lab_submissions.rubric_scores` and rendered by `GradeResultCard`, which maps
+ * over `perAnchor` — so an unchecked body means bad data in the DB and a crashed
+ * result card instead of the retryable failure note.
+ */
+function isVerdict(v: unknown): v is { perAnchor: AnchorScore[]; overall: number; maxOverall: number } {
+  if (typeof v !== 'object' || v === null) return false;
+  const o = v as { perAnchor?: unknown; overall?: unknown; maxOverall?: unknown };
+  if (typeof o.overall !== 'number' || typeof o.maxOverall !== 'number') return false;
+  if (!Array.isArray(o.perAnchor)) return false;
+  return o.perAnchor.every((a) => {
+    const x = a as Record<string, unknown>;
+    return (
+      !!x &&
+      typeof x.id === 'string' &&
+      typeof x.label === 'string' &&
+      typeof x.score === 'number' &&
+      typeof x.max === 'number' &&
+      typeof x.rationale === 'string'
+    );
+  });
+}
+
 /** Calls the server-side `grade` function (LLM-as-judge) for an anchor-scored verdict. */
 export async function requestLlmGrade(input: {
   rubric: GradingRubric;
@@ -69,6 +95,14 @@ export async function requestLlmGrade(input: {
     }
     throw new Error(detail || `Grading failed (${res.status}).`);
   }
-  const json = (await res.json()) as { perAnchor: AnchorScore[]; overall: number; maxOverall: number };
-  return { ...json, grader: 'llm' };
+  let json: unknown;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error('The grader returned an unreadable response. Please try again.');
+  }
+  if (!isVerdict(json)) {
+    throw new Error('The grader returned an unexpected response. Please try again.');
+  }
+  return { perAnchor: json.perAnchor, overall: json.overall, maxOverall: json.maxOverall, grader: 'llm' };
 }

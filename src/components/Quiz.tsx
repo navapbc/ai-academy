@@ -57,6 +57,7 @@ export default function Quiz({
   useEffect(() => {
     if (!showResults || !user || recordedRef.current) return;
     recordedRef.current = true;
+    let cancelled = false;
     const score = computeScore(answers, questions);
     recordQuizAttempt(user.id, {
       moduleId,
@@ -64,11 +65,22 @@ export default function Quiz({
       maxScore: questions.length,
       passed: score === questions.length,
       answers,
-    }).catch(() => {
-      // Persistence is best-effort. The participation auto-complete (U9) only
-      // fires on a successful insert; if it fails, the footer "Mark as
-      // explored" button remains as the manual completion fallback.
-    });
+    })
+      // Re-read the summary so "Best so far" includes the run just recorded —
+      // otherwise a first attempt shows no best line at all, and a personal
+      // best still displays the previous (now beaten) score.
+      .then(() => fetchQuizSummary(user.id, moduleId))
+      .then((s) => {
+        if (!cancelled) setSummary(s);
+      })
+      .catch(() => {
+        // Persistence is best-effort. The participation auto-complete (U9) only
+        // fires on a successful insert; if it fails, the footer "Mark as
+        // explored" button remains as the manual completion fallback.
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [showResults, user, answers, questions, moduleId]);
 
   if (questions.length === 0) return null;
@@ -165,10 +177,10 @@ export default function Quiz({
           aria-label="Quiz progress"
           aria-valuemin={0}
           aria-valuemax={questions.length}
-          aria-valuenow={currentIndex}
+          aria-valuenow={currentIndex + 1}
         >
           <motion.div
-            animate={{ width: `${((currentIndex) / questions.length) * 100}%` }}
+            animate={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
             className="h-full bg-nava-green"
           />
         </div>

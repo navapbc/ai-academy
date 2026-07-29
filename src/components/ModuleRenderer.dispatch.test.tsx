@@ -72,19 +72,47 @@ function renderModule(
 }
 
 describe('renderInteractive — dispatch by module.type', () => {
-  const cases: [ModuleType, string | null][] = [
-    ['simulator', 'STUB:PrivacySimulator'],
-    ['quiz', 'STUB:Quiz'],
-    ['sorter', 'STUB:ScenarioSorter'],
+  // 'quiz' and 'sorter' route only when the row actually carries their content:
+  // both widgets render null when it's missing, so the renderer returns null for
+  // them instead — otherwise the truthy element would suppress the FE-06
+  // missing-activity notice and leave a silently blank module (asserted below).
+  const cases: { type: ModuleType; over: Partial<Module>; marker: string }[] = [
+    { type: 'simulator', over: {}, marker: 'STUB:PrivacySimulator' },
+    {
+      type: 'quiz',
+      over: { quiz: [{ question: 'q', options: ['a', 'b'], correctIndex: 0, explanation: 'e' }] },
+      marker: 'STUB:Quiz',
+    },
+    {
+      type: 'sorter',
+      over: {
+        sorterConfig: {
+          kind: 'scenario-sort',
+          scenarios: [{ id: 's1', text: 't', correct: 'assist', rationale: 'r' }],
+        },
+      },
+      marker: 'STUB:ScenarioSorter',
+    },
   ];
-  test.each(cases)('type %s renders %s', (type, marker) => {
-    renderModule({ type });
-    expect(screen.getByText(marker!)).toBeInTheDocument();
+  test.each(cases)('type $type renders $marker', ({ type, over, marker }) => {
+    renderModule({ type, ...over });
+    expect(screen.getByText(marker)).toBeInTheDocument();
   });
 
   test('type "glossary" renders the inline glossary heading', () => {
     renderModule({ type: 'glossary' });
     expect(screen.getByText(/AI Glossary/i)).toBeInTheDocument();
+  });
+
+  // FE-06 regression: a quiz row with no questions / a sorter row with no
+  // scenarios used to render the widget anyway (which renders null), producing a
+  // title + completion footer and nothing else — indistinguishable from broken.
+  test.each([
+    ['quiz' as ModuleType, {} as Partial<Module>],
+    ['sorter' as ModuleType, {} as Partial<Module>],
+  ])('type %s with no configured content shows the missing-activity notice', (type, over) => {
+    renderModule({ type, ...over });
+    expect(screen.getByText(/isn['’]t available yet/i)).toBeInTheDocument();
   });
 });
 

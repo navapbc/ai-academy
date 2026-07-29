@@ -88,4 +88,35 @@ describe('useRole', () => {
     await waitFor(() => expect(screen.getByTestId('role')).toHaveTextContent('none'));
     expect(single).not.toHaveBeenCalled();
   });
+
+  // The privilege-boundary case the hook's header calls out: on a user switch the
+  // previous role must be dropped BEFORE the new one resolves. The `key={user.id}`
+  // remount is a caller convention, not a guarantee, so the hook fails closed on
+  // its own. This probe (unlike Probe above) renders the role DURING loading.
+  test('drops the previous user’s role while the next one resolves', async () => {
+    function LoadingProbe() {
+      const { role, loading } = useRole();
+      return (
+        <div>
+          <div data-testid="role">{role ?? 'none'}</div>
+          <div data-testid="loading">{String(loading)}</div>
+        </div>
+      );
+    }
+
+    useAuthMock.mockReturnValue({ user: { id: 'u-admin' } });
+    single.mockResolvedValue({ data: { role: 'admin' }, error: null });
+
+    const { rerender } = render(<LoadingProbe />);
+    await waitFor(() => expect(screen.getByTestId('role')).toHaveTextContent('admin'));
+
+    // Switch users; the new profile read never settles during this assertion.
+    useAuthMock.mockReturnValue({ user: { id: 'u-learner' } });
+    single.mockReturnValue(new Promise(() => {}));
+    rerender(<LoadingProbe />);
+
+    // Pre-fix this still read 'admin' for the whole fetch window.
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('true'));
+    expect(screen.getByTestId('role')).toHaveTextContent('none');
+  });
 });

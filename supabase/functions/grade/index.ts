@@ -63,12 +63,22 @@ function fireAndForget(p: Promise<unknown>): void {
   else void p;
 }
 
+// Payload caps. `chat` bounds its input (MAX_MESSAGES / MAX_TOTAL_CONTENT_CHARS in
+// chat-core.ts) but `grade` had NO size limit at all: the rubric and submission are
+// interpolated straight into the judge prompt, so an unbounded body was an
+// unbounded per-call input-token bill that the rate limit alone can't contain
+// (LLM-01/LLM-04). Generous enough for any real lab, small enough to bound cost.
+const MAX_ANCHORS = 25;
+const MAX_SECTIONS = 10;
+const MAX_TOTAL_CONTENT_CHARS = 100_000;
+
 function isRubric(v: unknown): v is GradingRubric {
   const r = v as { anchors?: unknown };
   return (
     !!r &&
     Array.isArray(r.anchors) &&
     r.anchors.length > 0 &&
+    r.anchors.length <= MAX_ANCHORS &&
     r.anchors.every((a) => {
       const x = a as Record<string, unknown>;
       return typeof x.id === 'string' && typeof x.label === 'string' && typeof x.description === 'string';
@@ -83,11 +93,20 @@ function isSubmission(v: unknown): v is GradeSubmission {
     typeof s.brief === 'string' &&
     Array.isArray(s.sections) &&
     s.sections.length > 0 &&
+    s.sections.length <= MAX_SECTIONS &&
     s.sections.every((x) => {
       const o = x as Record<string, unknown>;
       return typeof o.label === 'string' && typeof o.text === 'string';
     })
   );
+}
+
+/** Total characters the judge prompt would carry (rubric + submission text). */
+function gradePayloadChars(rubric: GradingRubric, submission: GradeSubmission): number {
+  let total = submission.brief.length;
+  for (const s of submission.sections) total += s.label.length + s.text.length;
+  for (const a of rubric.anchors) total += a.id.length + a.label.length + a.description.length;
+  return total;
 }
 
 /**
@@ -170,6 +189,9 @@ Deno.serve(async (req: Request) => {
   const submission = (body as { submission?: unknown }).submission;
   if (!isRubric(rubric)) return jsonError('Invalid or missing rubric.', 400);
   if (!isSubmission(submission)) return jsonError('Invalid or missing submission.', 400);
+  if (gradePayloadChars(rubric, submission) > MAX_TOTAL_CONTENT_CHARS) {
+    return jsonError('Submission is too large to grade.', 400);
+  }
 
   const anthropicBody = {
     model: DEFAULT_MODEL,

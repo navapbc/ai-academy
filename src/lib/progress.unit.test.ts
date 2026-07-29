@@ -142,9 +142,45 @@ describe('setModuleStatus', () => {
     expect(payload.reset_epoch).toBeNull();
   });
 
+  // A cursor write must never erase evidence of work. The reset-epoch trigger
+  // deliberately waves in_progress writes through, so the no-downgrade
+  // invariant lives here: the insert is ON CONFLICT DO NOTHING (an existing row
+  // of any status is untouched) and the timestamp refresh is filtered to rows
+  // that are not completed. A plain upsert would flip a completed row back to
+  // in_progress and null completed_at — reachable from a sidebar click inside
+  // the pre-reconcile window (fresh device / CACHE_VERSION bump) or a second tab.
+  test('an in_progress write cannot downgrade a completed row', async () => {
+    await setModuleStatus(USER, '1.3', 'in_progress');
+    const [, opts] = supa.argsFor('upsert') as [
+      Record<string, unknown>,
+      Record<string, unknown>,
+    ];
+    expect(opts).toEqual({ onConflict: 'user_id,module_id', ignoreDuplicates: true });
+    // The refresh is scoped to this user's row AND excludes completed rows.
+    expect(supa.argsFor('update')).toBeDefined();
+    const neqCalls = supa.ops.filter((o) => o.method === 'neq').map((o) => o.args);
+    expect(neqCalls).toContainEqual(['status', 'completed']);
+    const eqCalls = supa.ops.filter((o) => o.method === 'eq').map((o) => o.args);
+    expect(eqCalls).toContainEqual(['user_id', USER]);
+    expect(eqCalls).toContainEqual(['module_id', '1.3']);
+  });
+
+  // The completion path stays a single unconditional upsert — the DB trigger,
+  // not a filter, adjudicates whether a completion may land.
+  test('a completion write is a single unfiltered upsert', async () => {
+    await setModuleStatus(USER, '1.3', 'completed', 'lab');
+    expect(supa.ops.filter((o) => o.method === 'update')).toHaveLength(0);
+    expect(supa.ops.filter((o) => o.method === 'neq')).toHaveLength(0);
+  });
+
   test('propagates a DB error', async () => {
     supa.setResult({ error: { message: 'boom' } });
     await expect(setModuleStatus(USER, 'm', 'completed')).rejects.toBeTruthy();
+  });
+
+  test('propagates a DB error on an in_progress write', async () => {
+    supa.setResult({ error: { message: 'boom' } });
+    await expect(setModuleStatus(USER, 'm', 'in_progress')).rejects.toBeTruthy();
   });
 });
 
