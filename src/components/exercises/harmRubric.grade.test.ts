@@ -27,3 +27,11 @@ describe('gradeHarmRubric', () => {
     expect(g.allCorrect).toBe(false);
   });
 });
+
+// An empty scenario list is a misconfigured exercise, not a perfect score.
+test('an empty scenario list is not allCorrect', () => {
+  const g = gradeHarmRubric({}, []);
+  expect(g.allCorrect).toBe(false);
+  expect(g.total).toBe(0);
+  expect(g.correctIds).toEqual([]);
+});

@@ -13,6 +13,7 @@ import {
   isModelAllowed,
   isStop,
   MAX_MESSAGES,
+  MAX_TOTAL_CONTENT_CHARS,
   MAX_TOKENS_CEILING,
   newUsageAccumulator,
   parseEvent,
@@ -94,6 +95,26 @@ describe('validateChatRequest (LLM-08)', () => {
   test('rejects wrong types for system / max_tokens', () => {
     expect(ok({ messages: [{ role: 'user', content: 'hi' }], system: 5 }).ok).toBe(false);
     expect(ok({ messages: [{ role: 'user', content: 'hi' }], max_tokens: 'lots' }).ok).toBe(false);
+  });
+
+  test('rejects oversized message content', () => {
+    const content = 'x'.repeat(MAX_TOTAL_CONTENT_CHARS + 1);
+    expect(ok({ messages: [{ role: 'user', content }] }).ok).toBe(false);
+  });
+
+  // `system` is billed as input tokens exactly like message content, so it counts
+  // against the SAME budget — otherwise one tiny message plus a huge system prompt
+  // sails past the cap.
+  test('counts `system` toward the total content budget', () => {
+    const system = 'x'.repeat(MAX_TOTAL_CONTENT_CHARS);
+    expect(ok({ messages: [{ role: 'user', content: 'hi' }], system }).ok).toBe(false);
+  });
+
+  test('a system prompt within the budget still passes', () => {
+    const system = 'x'.repeat(MAX_TOTAL_CONTENT_CHARS - 10);
+    const r = ok({ messages: [{ role: 'user', content: 'hi' }], system });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.system).toBe(system);
   });
 });
 

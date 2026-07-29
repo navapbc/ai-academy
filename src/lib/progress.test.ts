@@ -92,6 +92,25 @@ describe.skipIf(!hasLiveStack)('setModuleStatus + fetchModuleProgress', () => {
     // The most recently updated in_progress row wins.
     expect(snapshot.latestInProgressId).toBe(moduleId);
   });
+
+  // A cursor write must never erase evidence of work. The reset-epoch trigger
+  // deliberately waves in_progress writes through (position is a soft signal),
+  // so the invariant is enforced client-side: insert-if-absent + an update
+  // filtered on status <> 'completed'. Before that split, opening an
+  // already-completed module while the client didn't yet know it was completed
+  // (pre-reconcile window on a fresh device, a CACHE_VERSION bump, a second
+  // tab) silently reverted the row to in_progress and nulled completed_at.
+  test('an in_progress cursor write never downgrades a completed row', async () => {
+    const moduleId = 'test-mp-no-downgrade';
+
+    await setModuleStatus(DEMO_USER_ID, moduleId, 'completed', 'lab');
+    // The cursor write that used to clobber it.
+    await setModuleStatus(DEMO_USER_ID, moduleId, 'in_progress');
+
+    const snapshot = await fetchModuleProgress(DEMO_USER_ID);
+    expect(snapshot.completedModuleIds).toContain(moduleId);
+    expect(snapshot.inProgressModuleIds).not.toContain(moduleId);
+  });
 });
 
 describe.skipIf(!hasLiveStack)('recordQuizAttempt + fetchQuizSummary', () => {

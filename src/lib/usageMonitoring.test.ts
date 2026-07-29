@@ -1,5 +1,14 @@
-import { describe, test, expect } from 'vitest';
-import { buildUsageByUser, DEFAULT_THRESHOLD_TOKENS, type UsageRow } from './usageMonitoring';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
+import { getSupabaseClient } from './supabaseClient';
+import { createSupabaseMock } from '../test/supabaseMock';
+import {
+  buildUsageByUser,
+  DEFAULT_THRESHOLD_TOKENS,
+  fetchUsageByUser,
+  type UsageRow,
+} from './usageMonitoring';
+
+vi.mock('./supabaseClient');
 
 const NAMES = [
   { id: 'u-1', full_name: 'Ada Lovelace', email: 'ada@navapbc.com' },
@@ -90,5 +99,74 @@ describe('buildUsageByUser', () => {
     ];
     const [u1] = buildUsageByUser(rows, NAMES);
     expect(u1.overThreshold).toBe(true);
+  });
+});
+
+// PostgREST caps every response at db.max_rows (1000), so a single unbounded
+// select silently returns only the first page and understates every total. These
+// cover the explicit pagination that replaced it.
+describe('fetchUsageByUser pagination', () => {
+  const PAGE_SIZE = 1000;
+  const mock = createSupabaseMock();
+
+  beforeEach(() => {
+    mock.reset();
+    vi.mocked(getSupabaseClient).mockReturnValue(mock.client);
+  });
+
+  const rangeCalls = () => mock.ops.filter((o) => o.method === 'range').map((o) => o.args);
+
+  test('a short first page stops after one usage query', async () => {
+    mock.queueResults(
+      { data: [row({ user_id: 'u-1', input_tokens: 10, output_tokens: 5 })], error: null },
+      { data: NAMES, error: null },
+    );
+
+    const out = await fetchUsageByUser('2026-07-01T00:00:00Z');
+
+    expect(rangeCalls()).toEqual([[0, PAGE_SIZE - 1]]);
+    expect(out).toHaveLength(1);
+    expect(out[0].totalTokens).toBe(15);
+  });
+
+  test('a full first page keeps paging and totals every page', async () => {
+    const fullPage = Array.from({ length: PAGE_SIZE }, () =>
+      row({ user_id: 'u-1', input_tokens: 1, output_tokens: 0 }),
+    );
+    mock.queueResults(
+      { data: fullPage, error: null },
+      { data: [row({ user_id: 'u-1', input_tokens: 7, output_tokens: 0 })], error: null },
+      { data: NAMES, error: null },
+    );
+
+    const out = await fetchUsageByUser('2026-07-01T00:00:00Z');
+
+    expect(rangeCalls()).toEqual([
+      [0, PAGE_SIZE - 1],
+      [PAGE_SIZE, 2 * PAGE_SIZE - 1],
+    ]);
+    // Pre-fix this returned 1000 (the first page only).
+    expect(out[0].callCount).toBe(PAGE_SIZE + 1);
+    expect(out[0].totalTokens).toBe(PAGE_SIZE + 7);
+  });
+
+  test('orders by (created_at, id) so ties cannot straddle a page boundary', async () => {
+    mock.queueResults({ data: [], error: null });
+    await fetchUsageByUser('2026-07-01T00:00:00Z');
+    expect(mock.ops.filter((o) => o.method === 'order').map((o) => o.args[0])).toEqual([
+      'created_at',
+      'id',
+    ]);
+  });
+
+  test('no rows in the window → empty result, no profile lookup', async () => {
+    mock.queueResults({ data: [], error: null });
+    await expect(fetchUsageByUser('2026-07-01T00:00:00Z')).resolves.toEqual([]);
+    expect(mock.fromCalls).toEqual(['claude_usage']);
+  });
+
+  test('a failed page propagates the error', async () => {
+    mock.queueResults({ data: null, error: new Error('rls denied') });
+    await expect(fetchUsageByUser('2026-07-01T00:00:00Z')).rejects.toThrow('rls denied');
   });
 });

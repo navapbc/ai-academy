@@ -61,8 +61,17 @@ async function applyAction(
       return error ? { error: error.message } : { error: null };
     }
     case 'rename_cohort': {
-      const { error } = await admin.from('cohorts').update({ name: action.name }).eq('id', action.cohortId);
-      return error ? { error: error.message } : { error: null };
+      // `.select()` so a rename that matched NO row 404s instead of reporting
+      // success — an admin renaming an already-deleted cohort was told "saved"
+      // while nothing changed (mirrors update_week in admin-courses).
+      const { data, error } = await admin
+        .from('cohorts')
+        .update({ name: action.name })
+        .eq('id', action.cohortId)
+        .select('id');
+      if (error) return { error: error.message };
+      if (!data || data.length === 0) return { error: 'No cohort found for that id.', status: 404 };
+      return { error: null };
     }
     case 'archive_cohort': {
       // Archive = read-only end-of-cohort marker. Deliberately touches NEITHER
@@ -71,6 +80,17 @@ async function applyAction(
       // demotes — only explicit unassign does). Idempotent: the `is null`
       // filter makes a second archive a no-op that preserves the original
       // archived_at timestamp.
+      //
+      // Existence is checked separately BECAUSE of that idempotency: a zero-row
+      // update means "already archived" (success) or "no such cohort" (404), and
+      // the filtered UPDATE alone can't tell them apart.
+      const { data: cohort, error: lookupErr } = await admin
+        .from('cohorts')
+        .select('id')
+        .eq('id', action.cohortId)
+        .maybeSingle();
+      if (lookupErr) return { error: lookupErr.message };
+      if (!cohort) return { error: 'No cohort found for that id.', status: 404 };
       const { error } = await admin
         .from('cohorts')
         .update({ archived_at: new Date().toISOString() })

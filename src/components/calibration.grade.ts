@@ -50,6 +50,15 @@ export function gradeCalibration(
       return { id: item.id, pickedIndex: null, targetIndex, gap: null, result: 'unanswered' };
     }
     const pickedIndex = indexOf(pick);
+    // An id that isn't on the scale (a stale pick, or a misconfigured `target`)
+    // has no position, so no over/under DIRECTION can be inferred from it. Report
+    // it as unanswered rather than letting the -1 sentinel arithmetic invent a
+    // gap — otherwise a broken target makes every answered item read as
+    // under-reliance, and an off-scale pick reads as over-reliance, which is the
+    // exact signal this exercise is teaching.
+    if (pickedIndex === -1 || targetIndex === -1) {
+      return { id: item.id, pickedIndex: null, targetIndex, gap: null, result: 'unanswered' };
+    }
     const gap = pickedIndex - targetIndex;
     const result: CalibrationOutcome = gap === 0 ? 'calibrated' : gap < 0 ? 'over' : 'under';
     return { id: item.id, pickedIndex, targetIndex, gap, result };

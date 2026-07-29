@@ -95,15 +95,17 @@ export default function UseCasePortfolio({ config, labId }: Props) {
     }
     setSaving(true);
     try {
+      // Record only the complete entries so a Champion never sees a half-typed
+      // trailing row, and so entries.length === helpsCount + doesntCount (both
+      // counts are over complete entries) — matching P4.9's failure log.
+      const completeEntries = entries.filter(isEntryComplete);
       await recordLabSubmission(user.id, {
         labId,
         transcript: {
           kind: 'use-case-portfolio',
-          entries,
+          entries: completeEntries,
           statement,
-          // Both counts are over COMPLETE entries, so helpsCount + doesntCount
-          // equals completeEntries (a half-typed extra entry doesn't inflate it).
-          helpsCount: entries.filter((e) => isEntryComplete(e) && e.verdict === 'helps').length,
+          helpsCount: completeEntries.filter((e) => e.verdict === 'helps').length,
           doesntCount: readiness.doesntCount,
           wordCount: readiness.statementWords,
         },

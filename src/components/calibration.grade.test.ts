@@ -65,3 +65,29 @@ describe('gradeCalibration', () => {
     expect(g.score).toBe(2);
   });
 });
+
+// Misconfigured content must not fabricate an over/under DIRECTION out of the -1
+// "not on the scale" sentinel — that is the exact signal this exercise teaches.
+describe('gradeCalibration — unresolvable ids', () => {
+  test('a pick that is not on the scale is unanswered, not over-reliance', () => {
+    const g = gradeCalibration({ a: 'not-a-scale-id', b: 'verify-key', c: 'dont-rely' }, config);
+    const a = g.results.find((r) => r.id === 'a')!;
+    expect(a.result).toBe('unanswered');
+    expect(a.pickedIndex).toBeNull();
+    expect(a.gap).toBeNull();
+    expect(g.summary).toEqual({ calibrated: 2, over: 0, under: 0, unanswered: 1 });
+  });
+
+  test('a misconfigured item target is unanswered, not under-reliance', () => {
+    const broken: Pick<CalibrationConfig, 'scale' | 'items'> = {
+      scale: config.scale,
+      items: [{ id: 'x', task: 't', target: 'typo-id', why: 'w' }],
+    };
+    const g = gradeCalibration({ x: 'light-check' }, broken);
+    expect(g.results[0].result).toBe('unanswered');
+    expect(g.results[0].targetIndex).toBe(-1);
+    expect(g.results[0].gap).toBeNull();
+    expect(g.summary.under).toBe(0);
+    expect(g.allCalibrated).toBe(false);
+  });
+});

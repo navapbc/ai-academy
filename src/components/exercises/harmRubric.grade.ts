@@ -17,6 +17,10 @@ export function gradeHarmRubric(
   return {
     correctIds,
     total: scenarios.length,
-    allCorrect: correctIds.length === scenarios.length,
+    // An empty scenario list is a misconfigured exercise, not a perfect score —
+    // guard it the way outputAudit.grade.ts does. (HarmRubric's `allAnswered`
+    // is `every()` over the same array, so with no scenarios Submit is enabled
+    // and a 0/0 "all correct" would otherwise be reported.)
+    allCorrect: scenarios.length > 0 && correctIds.length === scenarios.length,
   };
 }

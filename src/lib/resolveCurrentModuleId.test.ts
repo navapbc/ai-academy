@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { resolveCurrentModuleId } from './useProgress';
+import { resolveCurrentModuleId, resolveNextModuleId } from './useProgress';
 import type { ModuleProgressSnapshot } from './progress';
 
 const ALL = ['m0', 'm1', 'm2', 'm3'];
@@ -54,5 +54,21 @@ describe('resolveCurrentModuleId', () => {
 
   test('falls back to the first module when everything is incomplete and nothing is set', () => {
     expect(resolveCurrentModuleId(snap({}), undefined, ALL)).toBe('m0');
+  });
+});
+
+describe('resolveNextModuleId', () => {
+  test('advances to the next module in the flattened order', () => {
+    expect(resolveNextModuleId('m1', ALL)).toBe('m2');
+  });
+
+  test('stays put on the last module (no overrun)', () => {
+    expect(resolveNextModuleId('m3', ALL)).toBe('m3');
+  });
+
+  // Regression: `indexOf(...) + 1` is 0 for an id that isn't in the curriculum,
+  // so an unknown id silently advanced the learner to the FIRST module.
+  test('stays put for an id that is not in the visible curriculum', () => {
+    expect(resolveNextModuleId('gone-id', ALL)).toBe('gone-id');
   });
 });

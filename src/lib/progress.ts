@@ -133,6 +133,17 @@ export async function fetchModuleProgress(userId: string): Promise<ModuleProgres
  * predates the module's current reset with a STALE_RESET_EPOCH error —
  * callers classify that via `submitCompletion` below. `in_progress` writes
  * clear it (the trigger ignores them anyway).
+ *
+ * A cursor (`in_progress`) write NEVER downgrades an already-completed row.
+ * Position is a soft signal, never evidence of work — and the DB trigger
+ * deliberately waves in_progress writes through, so the invariant has to hold
+ * here. A plain upsert would flip status back to 'in_progress' and null
+ * `completed_at`/`completed_via`/`reset_epoch`, destroying the completion. That
+ * is reachable whenever the client does not yet know the module is completed —
+ * e.g. a sidebar click inside the pre-reconcile window on a fresh device or
+ * right after a CACHE_VERSION bump drops the local cache, or a second tab that
+ * completed the module. So the write is split: insert-if-absent (ON CONFLICT DO
+ * NOTHING), then refresh `updated_at` only on rows that are not completed.
  */
 export async function setModuleStatus(
   userId: string,
@@ -152,15 +163,31 @@ export async function setModuleStatus(
   if (status === 'completed') {
     if (via) row.completed_via = via;
     row.reset_epoch = epoch ?? null;
-  } else {
-    row.completed_via = null;
-    row.reset_epoch = null;
+    const { error } = await getSupabaseClient()
+      .from('module_progress')
+      .upsert(row, { onConflict: 'user_id,module_id' });
+    if (error) throw error;
+    return;
   }
-  const { error } = await getSupabaseClient()
-    .from('module_progress')
-    .upsert(row, { onConflict: 'user_id,module_id' });
 
-  if (error) throw error;
+  row.completed_via = null;
+  row.reset_epoch = null;
+  const supabase = getSupabaseClient();
+  // 1. Create the row if the learner has never touched this module. DO NOTHING
+  //    on conflict, so an existing row (of any status) is left untouched.
+  const { error: insertError } = await supabase
+    .from('module_progress')
+    .upsert(row, { onConflict: 'user_id,module_id', ignoreDuplicates: true });
+  if (insertError) throw insertError;
+  // 2. Refresh the cursor timestamp (what `latestInProgressId` sorts on), but
+  //    only for rows that are not already completed — the no-downgrade guard.
+  const { error: updateError } = await supabase
+    .from('module_progress')
+    .update(row)
+    .eq('user_id', userId)
+    .eq('module_id', moduleId)
+    .neq('status', 'completed');
+  if (updateError) throw updateError;
 }
 
 // --- Progress-reset epoch protocol (U10) ------------------------------------

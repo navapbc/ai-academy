@@ -29,18 +29,27 @@ export function useUsageMonitoring(windowMs: number): UsageMonitoringState {
     };
   }, []);
 
+  // `windowMs` is a user-facing picker, so switching windows (or hitting Retry)
+  // can leave two reads in flight. Without a generation guard the SLOWER one wins
+  // whichever window it was for — e.g. pick "Last 30 days" then "Last 24 hours"
+  // and the 30-day totals land under the 24-hour label. Only the newest request
+  // may write state.
+  const requestId = useRef(0);
+
   const load = useCallback(async () => {
+    const id = ++requestId.current;
+    const isCurrent = () => mounted.current && requestId.current === id;
     setLoading(true);
     setError(null);
     try {
       const sinceIso = new Date(Date.now() - windowMs).toISOString();
       const result = await fetchUsageByUser(sinceIso);
-      if (!mounted.current) return;
+      if (!isCurrent()) return;
       setRows(result);
       setError(null);
       setLoading(false);
     } catch (err: unknown) {
-      if (!mounted.current) return;
+      if (!isCurrent()) return;
       console.error('[useUsageMonitoring] usage fetch failed', err);
       setError('Could not load usage monitoring.');
       setLoading(false);
