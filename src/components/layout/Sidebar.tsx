@@ -204,7 +204,7 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
 
           <nav aria-label="Course navigation" className="flex-1 overflow-y-auto py-4 px-3 space-y-4">
             {/* Playground */}
-            <div className="px-3 pb-2">
+            <div className="px-3">
               <button
                 onClick={() => onViewChange('playground')}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all
@@ -218,7 +218,7 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
               </button>
             </div>
 
-            <div className="px-3 pb-2">
+            <div className="px-3">
               <button
                 onClick={() => onViewChange('learning')}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all
@@ -234,7 +234,7 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
 
             {/* My progress (P5.3a): the learner self-view dashboard — own progress,
                 scores, and lab status. Available to everyone (no role gate). */}
-            <div className="px-3 pb-2">
+            <div className="px-3">
               <button
                 onClick={() => onViewChange('progress')}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all
@@ -252,7 +252,7 @@ export default function Sidebar({ isOpen, onClose, sections, progress, onModuleS
                 a learner has no path to the gated view. The RoleGuard on the
                 view is the backstop if the state is reached some other way. */}
             {isStaff && (
-              <div className="px-3 pb-2">
+              <div className="px-3">
                 <button
                   onClick={() => onViewChange('staff')}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all
