@@ -175,6 +175,42 @@ function firstError(...checks: (string | null)[]): string | null {
 /** The decision-scenario workflow phases (mirrors DecisionCheckpoint in types.ts). */
 const DECISION_PHASES = ['delegate', 'ground', 'scope', 'verify'] as const;
 
+/** chat-compare prompt entry modes (mirrors ChatCompareConfig in types.ts). */
+const CHAT_COMPARE_PROMPT_MODES = ['shared', 'per-pane'] as const;
+
+/**
+ * The chat-compare content fields, validated identically at config level and
+ * inside each `examples[]` entry (an example is an override bundle of exactly
+ * these). `path` is '' at config level and 'examples[N].' inside an example.
+ */
+function checkChatCompareContent(v: Obj, path: string): string | null {
+  for (const f of ['introMd', 'sourceIntroMd', 'groundingSourceMd', 'reflectionMd'] as const) {
+    if (f in v && v[f] !== undefined && typeof v[f] !== 'string') {
+      return `\`${path}${f}\` must be a string.`;
+    }
+  }
+  if (!('suggestedPrompts' in v) || v.suggestedPrompts === undefined) return null;
+  const prompts = v.suggestedPrompts;
+  if (!Array.isArray(prompts)) {
+    return `\`${path}suggestedPrompts\` must be an array of strings or { text, usesSource?, systemPromptMd? } objects.`;
+  }
+  for (let i = 0; i < prompts.length; i++) {
+    const p = prompts[i];
+    const at = `${path}suggestedPrompts[${i}]`;
+    if (typeof p === 'string') continue;
+    if (!isObj(p)) return `\`${at}\` must be a string or an object.`;
+    if (!isNonEmptyStr(p.text)) return `\`${at}.text\` must be a non-empty string.`;
+    if ('usesSource' in p && p.usesSource !== undefined && typeof p.usesSource !== 'boolean') {
+      return `\`${at}.usesSource\` must be a boolean.`;
+    }
+    if ('systemPromptMd' in p && p.systemPromptMd !== undefined && typeof p.systemPromptMd !== 'string') {
+      return `\`${at}.systemPromptMd\` must be a string.`;
+    }
+  }
+  return null;
+}
+
+
 const LAB_VALIDATORS: Record<string, (c: Obj) => string | null> = {
   'prompt-construction': (c) =>
     firstError(
@@ -434,8 +470,16 @@ const LAB_VALIDATORS: Record<string, (c: Obj) => string | null> = {
         : '`targetEntries` must be an integer ≥ 1.',
     ),
 
-  // chat-compare (restructure U6): 1–4 panes of all-optional string fields —
-  // a bare pane is plain Claude; systemPromptMd rigs it; sourceMd grounds it.
+  // chat-compare (restructure U6; extended by the L&D content pass W5.2):
+  // 1–4 panes of all-optional string fields — a bare pane is plain Claude;
+  // systemPromptMd rigs it; sourceMd grounds it unconditionally (legacy). The
+  // content-pass additions are all optional so every pre-existing config stays
+  // valid: promptMode ('shared' default | 'per-pane'), an attachable
+  // groundingSourceMd + its sourceIntroMd framing, suggestedPrompts widened
+  // from string[] to a string|object union ({ text, usesSource, systemPromptMd }),
+  // and examples[] — tabbed override bundles carrying their own intro/source/
+  // prompts/reflection. MIRRORED VERBATIM in the other validator; drift means a
+  // config that passes in-browser and 400s on CMS publish.
   'chat-compare': (c) => {
     if (!Array.isArray(c.panes) || c.panes.length < 1 || c.panes.length > 4) {
       return '`panes` must be an array of 1–4 panes.';
@@ -449,9 +493,30 @@ const LAB_VALIDATORS: Record<string, (c: Obj) => string | null> = {
         }
       }
     }
-    if ('suggestedPrompts' in c && c.suggestedPrompts !== undefined) {
-      if (!Array.isArray(c.suggestedPrompts) || !c.suggestedPrompts.every((s) => typeof s === 'string')) {
-        return '`suggestedPrompts` must be an array of strings.';
+    if ('promptMode' in c && c.promptMode !== undefined && !(CHAT_COMPARE_PROMPT_MODES as readonly string[]).includes(c.promptMode as string)) {
+      return `\`promptMode\` must be one of: ${CHAT_COMPARE_PROMPT_MODES.join(', ')}.`;
+    }
+    const own = firstError(
+      checkChatCompareContent(c, ''),
+      'examples' in c && c.examples !== undefined
+        ? Array.isArray(c.examples) && c.examples.length >= 1
+          ? null
+          : '`examples` must be a non-empty array.'
+        : null,
+    );
+    if (own) return own;
+    if (Array.isArray(c.examples)) {
+      const seen = new Set<string>();
+      for (let i = 0; i < c.examples.length; i++) {
+        const ex = c.examples[i];
+        const p = `examples[${i}]`;
+        if (!isObj(ex)) return `\`${p}\` must be an object.`;
+        if (!isNonEmptyStr(ex.id)) return `\`${p}.id\` must be a non-empty string.`;
+        if (seen.has(ex.id)) return `\`${p}.id\` duplicates an earlier example id.`;
+        seen.add(ex.id);
+        if (!isNonEmptyStr(ex.label)) return `\`${p}.label\` must be a non-empty string.`;
+        const e = checkChatCompareContent(ex, `${p}.`);
+        if (e) return e;
       }
     }
     return null;
