@@ -3,9 +3,11 @@ import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
+  BookOpen,
   Footprints,
   Check,
   CheckCircle,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Flag,
@@ -20,18 +22,64 @@ import { recordLabSubmission } from '../../lib/progress';
 // The decision-scenario exercise (cohort-restructure U7): "Walk the Workflow" —
 // a LINEAR checkpoint scenario (DELEGATE → GROUND → SCOPE → VERIFY; no
 // branching graph in v1). Flow: introMd → checkpoints strictly in order →
-// closingMd. Single-select checkpoints reveal the chosen option's authored
-// feedback immediately; multi-select checkpoints reveal feedback for EVERY
-// checked option via a "Check answer" button. Either way the choice is then
-// immutable — Previous re-reads completed checkpoints (locked choice + revealed
-// feedback) but never re-answers. Finishing records ONE lab_submissions row
+// closingMd. Finishing records ONE lab_submissions row
 // (`transcript.kind:'decision-scenario'`, choices as option indexes per
 // checkpoint) and then shows the full read-through: every checkpoint with its
-// locked choice and feedback, read-only. UNGRADED: the submission never gates
-// completion (participation completion lands in U9) — structurally enforced by
-// Props being { config, labId } only (no onComplete, no useLabGrading).
-// State is in-memory only: a refresh mid-scenario restarts the walk (documented
-// v1 behavior — the recorded submission on finish is the durable artifact).
+// choice and feedback, read-only. UNGRADED: the submission never gates
+// completion — structurally enforced by Props being { config, labId } only (no
+// onComplete, no useLabGrading). State is in-memory only: a refresh
+// mid-scenario restarts the walk (documented v1 behavior — the recorded
+// submission on finish is the durable artifact).
+//
+// L&D content pass (Sarah Grayvin `[19]`–`[28]`, plan items W3.1–W3.4). Four
+// behaviors changed here; all four are SCENARIO-AGNOSTIC — no authored content
+// is required and no config shape changed, so the Weeks 3-4 scenario swap can
+// land later without touching this file:
+//
+// - W3.1 `[19]` `[20]` `[27]` — a collapsible "Scenario recap" (config.introMd)
+//   rides along on EVERY checkpoint, so the premise is always one click away
+//   instead of vanishing when the walk starts. Component-level open state, so
+//   it stays open across checkpoints; collapsed by default so the decision
+//   prompt stays above the fold.
+// - W3.2 `[22]` `[24]` `[25]` `[26]` — a Submit gate on BOTH selection modes.
+//   Selecting is no longer submitting: single-select now stages the pick
+//   (changeable) and one shared "Submit" control reveals the feedback, the
+//   same gate multi-select already had (formerly labelled "Check answer").
+// - W3.3 `[23]` `[28]` — on multi-select, revealing shows the ENTIRE answer
+//   key: every option's authored feedback, not only the checked ones, with the
+//   learner's own picks marked. Scoped to multi-select on purpose (see below).
+// - W3.4 `[21]` `[23]`–`[26]` (human Decision 7) — retake, at BOTH grains:
+//   a per-checkpoint "Try again" that clears the reveal so the checkpoint can
+//   be re-answered, and a whole-scenario "Start over" from the finished screen.
+//   This REVERSES the previous immutable-once-revealed invariant (the old
+//   header comment said "Previous re-reads completed checkpoints but never
+//   re-answers"); the immutability is now scoped to "revealed answers cannot be
+//   mutated silently" — `choose`/`toggle` still refuse to edit a revealed
+//   answer, and only an explicit retake reopens it. The transcript records the
+//   FINAL answer per checkpoint, which is what the pod stands behind.
+//
+// Why W3.3 does not apply to single-select: `[23]`/`[28]` are both anchored on
+// the multi-select GROUND checkpoints, where "check all that apply" makes a
+// partial key genuinely confusing (you cannot tell whether an unchecked option
+// was a miss). On single-select the unchosen options' feedback is a separate
+// pedagogical call nobody asked for, and the content pass (W2.4) delivers the
+// same signal as prose inside each option's own feedback.
+//
+// Why retake is offered on the GROUND checkpoints too, where Sarah hedged
+// "less relevant for this one": after W3.3 the whole key is already on screen,
+// so a retake there is arguably answer-copying — but nothing in this exercise
+// is scored (there are no `correct` flags in the data model and the submission
+// never gates completion), so there is no score to inflate and nothing to
+// protect. Suppressing the button on exactly the checkpoints where the learner
+// most wants to revise would be an inconsistency with no payoff. Instead the
+// multi-select retake carries a one-line caption naming what it is for
+// (re-deciding as a pod), so the affordance is honest rather than absent.
+//
+// Completion timing is UNCHANGED by all of the above: `recordLabSubmission` is
+// still called from exactly one place (`recordRun`, from the Finish branch of
+// `handleContinue`). Submit does not record anything. A "Start over" + second
+// finish appends a second `lab_submissions` row and re-emits participation,
+// which `useProgress` short-circuits for an already-completed module.
 interface Props {
   config: DecisionScenarioConfig;
   labId: string;
@@ -40,9 +88,17 @@ interface Props {
 /** Per-checkpoint play state: what's checked, and whether feedback is revealed. */
 interface CheckpointState {
   selected: number[];
-  /** Once true the choice is immutable and Continue unlocks. */
+  /**
+   * True once Submit has revealed the feedback: Continue unlocks and the answer
+   * can no longer be edited in place. Reopening it takes an explicit retake
+   * (W3.4) — the guards below never let a revealed answer change silently.
+   */
   revealed: boolean;
 }
+
+/** A fresh, unanswered play state for every checkpoint. */
+const freshAnswers = (count: number): CheckpointState[] =>
+  Array.from({ length: count }, () => ({ selected: [], revealed: false }));
 
 /** The uppercase workflow-phase label (style cue from the program doc). */
 function phaseLabel(cp: DecisionCheckpoint): string {
@@ -62,23 +118,27 @@ export default function DecisionScenario({ config, labId }: Props) {
   // step and shows the closing + full read-through.
   const [step, setStep] = useState(-1);
   const [finished, setFinished] = useState(false);
-  const [answers, setAnswers] = useState<CheckpointState[]>(() =>
-    checkpoints.map(() => ({ selected: [], revealed: false })),
-  );
+  const [answers, setAnswers] = useState<CheckpointState[]>(() => freshAnswers(total));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // W3.1: one recap toggle for the whole walk (NOT per checkpoint) so a learner
+  // who opens it on DELEGATE still has it open on VERIFY — that is what [20]
+  // ("easy to revisit on each page/slide") asks for.
+  const [contextOpen, setContextOpen] = useState(false);
 
   const setAnswer = (index: number, next: CheckpointState) =>
     setAnswers((prev) => prev.map((a, i) => (i === index ? next : a)));
 
-  // Single-select: choosing reveals that option's feedback and locks the choice.
+  // Single-select: choosing STAGES the pick. W3.2 — selecting is no longer
+  // submitting, so a pod can change its mind while it discusses; Submit is what
+  // reveals the feedback.
   const choose = (index: number, optionIndex: number) => {
-    if (answers[index].revealed) return; // immutable once revealed
-    setAnswer(index, { selected: [optionIndex], revealed: true });
+    if (answers[index].revealed) return; // reopen with "Try again", not by clicking
+    setAnswer(index, { selected: [optionIndex], revealed: false });
   };
 
-  // Multi-select: toggle freely until "Check answer" reveals and locks.
+  // Multi-select: toggle freely until Submit reveals.
   const toggle = (index: number, optionIndex: number) => {
     if (answers[index].revealed) return;
     const current = answers[index].selected;
@@ -88,10 +148,33 @@ export default function DecisionScenario({ config, labId }: Props) {
     setAnswer(index, { selected: next, revealed: false });
   };
 
-  const checkAnswer = (index: number) => {
+  // The shared Submit gate for both selection modes (W3.2). Records nothing —
+  // the only lab_submissions write is `recordRun` on Finish.
+  const submitAnswer = (index: number) => {
     const a = answers[index];
     if (a.revealed || a.selected.length === 0) return;
     setAnswer(index, { ...a, revealed: true });
+  };
+
+  // W3.4 (Decision 7, grain 1): per-checkpoint retake. Clears the reveal AND
+  // the selection so the learner re-decides rather than nudging a locked answer;
+  // Continue re-locks until they Submit again.
+  const retake = (index: number) => {
+    if (!answers[index].revealed) return;
+    setAnswer(index, { selected: [], revealed: false });
+  };
+
+  // W3.4 (Decision 7, grain 2): whole-scenario restart from the finished screen.
+  // Withheld while `saving` so a reset cannot race the in-flight insert (the
+  // DelegationSort DATA-04 guard), and `saved` MUST be cleared or `recordRun`'s
+  // `if (saving || saved) return` would silently swallow the second run.
+  const restart = () => {
+    if (saving) return;
+    setAnswers(freshAnswers(total));
+    setStep(-1);
+    setFinished(false);
+    setSaved(false);
+    setSaveError(null);
   };
 
   // ONE submission on finish; Retry after a failure re-records the same choices
@@ -148,28 +231,92 @@ export default function DecisionScenario({ config, labId }: Props) {
   const renderCheckpoint = (cp: DecisionCheckpoint, index: number, interactive: boolean) => {
     const a = answers[index];
     const locked = a.revealed || !interactive;
+    // W3.3 [23] [28]: a multi-select reveal shows the ENTIRE answer key — every
+    // option's authored feedback in the same order as the checkboxes above, so
+    // an unchecked option's verdict is legible instead of ambiguous. Options are
+    // NOT reordered: keeping authored order makes the block read as a key
+    // against the list the learner just answered. Single-select still shows only
+    // the chosen option (see the header comment for why).
+    const feedbackIndexes = !a.revealed
+      ? []
+      : cp.multiSelect
+        ? cp.options.map((_, oi) => oi)
+        : a.selected.slice().sort((x, y) => x - y);
     const feedback = (
       <div className="space-y-3">
-        {a.revealed &&
-          a.selected
-            .slice()
-            .sort((x, y) => x - y)
-            .map((oi) => (
+        {a.revealed && cp.multiSelect && (
+          <p className="text-[11px] font-black uppercase tracking-widest text-gray-500">
+            The full answer key — every option, whether or not you picked it
+          </p>
+        )}
+        {feedbackIndexes.map((oi) => {
+          const picked = a.selected.includes(oi);
+          return (
+            <div
+              key={oi}
+              className={`rounded-2xl border-2 p-4 space-y-2 ${
+                picked
+                  ? 'border-nava-plum/20 bg-nava-plum/5'
+                  : 'border-gray-100 bg-gray-50/70'
+              }`}
+            >
               <div
-                key={oi}
-                className="rounded-2xl border-2 border-nava-plum/20 bg-nava-plum/5 p-4 space-y-2"
+                className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-widest ${
+                  picked ? 'text-nava-plum' : 'text-gray-500'
+                }`}
               >
-                <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-nava-plum">
-                  <MessageCircleQuestion className="w-3.5 h-3.5" aria-hidden="true" />
-                  Feedback — {cp.options[oi].text}
-                </div>
-                <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {cp.options[oi].feedbackMd}
-                  </ReactMarkdown>
-                </div>
+                <MessageCircleQuestion className="w-3.5 h-3.5" aria-hidden="true" />
+                Feedback — {cp.options[oi].text}
+                {cp.multiSelect && picked && (
+                  <span className="ml-auto shrink-0 rounded-full bg-nava-plum/10 px-2 py-0.5 text-nava-plum">
+                    You chose this
+                  </span>
+                )}
               </div>
-            ))}
+              <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {cp.options[oi].feedbackMd}
+                </ReactMarkdown>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+
+    // W3.2/W3.4: one Submit control for both selection modes, swapped for the
+    // retake once the feedback is on screen. Rendered outside the live region so
+    // a control is never announced as newly-revealed feedback.
+    const controls = interactive && (
+      <div className="space-y-1.5">
+        {a.revealed ? (
+          <>
+            <button
+              type="button"
+              onClick={() => retake(index)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-xl font-bold text-sm hover:border-nava-green hover:text-nava-green transition-colors active:scale-95"
+            >
+              <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+              Try again
+            </button>
+            {cp.multiSelect && (
+              <p className="text-xs text-gray-500">
+                The full key is already above and nothing here is scored — retake to re-decide as
+                a pod, not to correct the record.
+              </p>
+            )}
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => submitAnswer(index)}
+            disabled={a.selected.length === 0}
+            className="flex items-center gap-2 px-5 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg shadow-nava-green/20 hover:bg-nava-green/90 disabled:opacity-50 transition-all active:scale-95"
+          >
+            <Check className="w-4 h-4" aria-hidden="true" />
+            Submit
+          </button>
+        )}
       </div>
     );
 
@@ -220,17 +367,6 @@ export default function DecisionScenario({ config, labId }: Props) {
                 </label>
               );
             })}
-            {interactive && !a.revealed && (
-              <button
-                type="button"
-                onClick={() => checkAnswer(index)}
-                disabled={a.selected.length === 0}
-                className="flex items-center gap-2 px-5 py-2.5 bg-nava-green text-white rounded-xl font-bold text-sm shadow-lg shadow-nava-green/20 hover:bg-nava-green/90 disabled:opacity-50 transition-all active:scale-95"
-              >
-                <Check className="w-4 h-4" aria-hidden="true" />
-                Check answer
-              </button>
-            )}
           </div>
         ) : (
           <div className="space-y-2">
@@ -248,7 +384,10 @@ export default function DecisionScenario({ config, labId }: Props) {
                   } ${locked ? 'opacity-90' : 'hover:border-nava-green/50'}`}
                 >
                   <span className="text-gray-700">{opt.text}</span>
-                  {chosen && (
+                  {/* Symmetric with multi-select: the "Your choice" marker is the
+                      record of a SUBMITTED answer, so it appears on reveal. Before
+                      Submit the staged pick reads from the highlight + aria-pressed. */}
+                  {locked && chosen && (
                     <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold text-nava-green shrink-0">
                       <Check className="w-3.5 h-3.5" aria-hidden="true" />
                       Your choice
@@ -270,6 +409,11 @@ export default function DecisionScenario({ config, labId }: Props) {
         ) : (
           feedback
         )}
+
+        {/* Controls sit BELOW the feedback: pre-reveal the region is empty so
+            this reads options → Submit; post-reveal it reads feedback → Try
+            again, which is the order a learner decides in. */}
+        {controls}
       </div>
     );
   };
@@ -354,7 +498,28 @@ export default function DecisionScenario({ config, labId }: Props) {
             </div>
           )}
 
-          {/* The full read-through: every checkpoint with its locked choice and
+          {/* W3.4 (Decision 7, grain 2): a clean second pass through the whole
+              scenario. Withheld while the submission is in flight so the reset
+              cannot race the insert; the recorded run above stays on file
+              (lab_submissions is append-only), a second finish just appends
+              another row. */}
+          {!saving && (
+            <div>
+              <button
+                type="button"
+                onClick={restart}
+                className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-xl font-bold text-sm hover:border-nava-green hover:text-nava-green transition-colors active:scale-95"
+              >
+                <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                Start over
+              </button>
+              <p className="mt-1.5 text-xs text-gray-500">
+                Walks the scenario again from the beginning. Your recorded run stays on file.
+              </p>
+            </div>
+          )}
+
+          {/* The full read-through: every checkpoint with its choice and
               revealed feedback, read-only (the stepper is done). */}
           <div className="space-y-8 border-t border-gray-100 pt-6">
             <h4 className="text-xs font-black uppercase tracking-widest text-gray-500">
@@ -381,6 +546,37 @@ export default function DecisionScenario({ config, labId }: Props) {
         </div>
       ) : (
         <div className="space-y-6">
+          {/* W3.1 [19] [20] [27]: the premise travels with the learner. Same
+              chevron + aria-expanded/aria-controls shape as CollapsibleSection
+              in LearnerDashboard.tsx, so the two surfaces read as one system.
+              Collapsed by default — the decision prompt keeps the fold. */}
+          <div className="rounded-2xl border border-gray-200 bg-gray-50/70">
+            <button
+              type="button"
+              onClick={() => setContextOpen((open) => !open)}
+              aria-expanded={contextOpen}
+              aria-controls="decision-scenario-context"
+              className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left"
+            >
+              <span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-gray-600">
+                <BookOpen className="w-3.5 h-3.5" aria-hidden="true" />
+                Scenario recap
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 shrink-0 text-gray-500 transition-transform ${contextOpen ? '' : '-rotate-90'}`}
+                aria-hidden="true"
+              />
+            </button>
+            {contextOpen && (
+              <div
+                id="decision-scenario-context"
+                className="border-t border-gray-200 px-4 py-3 prose prose-sm max-w-none text-gray-700 leading-relaxed"
+              >
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{config.introMd}</ReactMarkdown>
+              </div>
+            )}
+          </div>
+
           {renderCheckpoint(checkpoints[step], step, true)}
 
           <div className="flex items-center justify-between border-t border-gray-100 pt-6">
