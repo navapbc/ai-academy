@@ -94,9 +94,11 @@ A **prompt** is simply what you send Claude: the request plus everything you inc
 - **Constraints** — length, format, tone, audience. "Five bullets, plain language, for a non-technical stakeholder" changes the answer completely.
 - **What good looks like** — an example, or a sentence about what you'd consider a great answer.
 
-You'll practice all of this during the course — no need to master it today.
+You won't need advanced prompting skills for this course, but feel free to explore more on this topic in the resources section.
 
 ## 6. Skills
+
+Note: you're not required to use Claude skills in this course; however, you may choose to explore them and may find opportunities to begin or expand your work with skills as part of your learning.
 
 A **skill** is a reusable set of instructions — sometimes bundled with templates or reference files — that teaches Claude how to do a specific task the way you (or your team) want it done. Instead of re-explaining "here's how we format a project update at Nava" every time, you set the skill up once and Claude follows it automatically whenever it's relevant.
 
@@ -128,7 +130,7 @@ You're set up! When questions come up (they will):
 
 - **AI Slack channels** — ask anything, no question too basic. Post what you tried, what you expected, and what you got.
 - **AI Office Hours** — drop in live with a question, a task you're stuck on, or a result you don't understand.
-- **Other internal resources** — Nava's AI Tool Policy has the basic guidance on what's safe to put into AI tools, and your cohort channel (once your course starts) is the best first stop for course questions.$md$,
+- **Other internal resources** — Nava's [AI Tool Policy](https://navasage.atlassian.net/wiki/spaces/NH/pages/763494410/AI+Tool+Use+Policy) has the basic guidance on what's safe to put into AI tools, and your cohort channel (once your course starts) is the best first stop for course questions.$md$,
    null)
 on conflict (cell_id) do nothing;
 
@@ -198,7 +200,7 @@ This time, your goal is to get Claude to give you an answer that is completely w
     "What percentage of state benefits portals offered live chat support in 2019?",
     "Quote the opening line of chapter 12 of The Great Gatsby."
   ],
-  "reflectionMd": "**Reflect on or discuss with your group:**\n\n1. How confidently wrong were you able to get Claude to be?\n2. Why do you think the prompt(s) did or did not work to generate a confidently wrong answer?\n3. Did this experiment spark any ideas as to how to avoid getting a confidently wrong answer?\n\n**Claude kept getting it right?** Compare what you expected against what you actually saw, then tweak the prompt and try again — the more niche and specific the ask, the better your odds.\n\n**If you have extra time**, feel free to try other prompt ideas in either experiment to see what happens. Use these experiments to help you reflect on your current understanding of how Claude works. Clear answers to how and why Claude behaves this way will be discussed later in the Week 1 full-cohort live training."
+  "reflectionMd": "**Reflect on or discuss with your group:**\n\n1. How confidently wrong were you able to get Claude to be? Hint: you may have to do some of your own research to determine this.\n2. Why do you think the prompt(s) did or did not work to generate a confidently wrong answer?\n3. Did this experiment spark any ideas as to how to avoid getting a confidently wrong answer?\n\n**Claude kept getting it right?** Compare what you expected against what you actually saw, then tweak the prompt and try again — the more niche and specific the ask, the better your odds.\n\n**If you have extra time**, feel free to try other prompt ideas in either experiment to see what happens. Use these experiments to help you reflect on your current understanding of how Claude works. Clear answers to how and why Claude behaves this way will be discussed later in the Week 1 full-cohort live training."
 }$json$::jsonb)
 on conflict (cell_id) do nothing;
 
@@ -523,16 +525,16 @@ This is the **non-delivery** scenario — an internal-operations example. If you
 }$json$::jsonb)
 on conflict (cell_id) do nothing;
 
--- c1-w34-scavenger-hunt — AI Practice Scavenger Hunt
+-- c1-w34-scavenger-hunt — Meeting 2: AI Practice Scavenger Hunt
 insert into public.modules
   (cell_id, stage, origin, visibility, status, title, type, dimension,
    evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
 values
-  ('c1-w34-scavenger-hunt', null, 'course', 'program', 'published', 'AI Practice Scavenger Hunt', 'content',
+  ('c1-w34-scavenger-hunt', null, 'course', 'program', 'published', 'Meeting 2: AI Practice Scavenger Hunt', 'content',
    ARRAY['Delegation', 'Description', 'Discernment', 'Diligence']::text[], 'performance-task', 'na', 907,
-   $md$Activity 4 of your Week 3–4 pod meetings (about 60 minutes — a good fit for your second pod meeting).
+   $md$We recommend completing this activity during your second pod meeting of Weeks 3-4. Plan to spend about 1 hour on these tasks.
 
-Choose **at least 3–4** of the tasks/exercises from the list below to try with your pod. You can work on each of them together, or choose to work on them in smaller groups or independently first before debriefing. You do not need to complete them in order. Feel free to try tasks that align with real work needs — or just try items for fun. The goal is to build familiarity with self-led experimentation.
+Choose **at least 3–4** of the tasks/exercises from the list below to try with your pod. You can work on each of them together, or choose to work on them in smaller groups or independently first before debriefing. You do not need to complete them in order. Feel free to try tasks that align with real work needs — or just try items for fun. Think back to any goals you set as a group at the end of your first meeting. The goal is to build familiarity with self-led experimentation.
 
 Choose the exercises that are most interesting to you, your pod, and your work — but **pick one from the Judgement / Workflow Reps category to start**. Note any challenges or questions and post them in your cohort Slack channel.
 
@@ -542,15 +544,15 @@ Choose the exercises that are most interesting to you, your pod, and your work �
 
 1. **Grounding-for-improvement A/B test.** Run one task or prompt cold, then again with the real source pasted in. Compare, then verify one claim in the grounded version. (This is the Week 2 activity, now open to whatever prompts you'd like to try.)
 2. **Break your own scope.** Take a broad task and create a multi-part request with multiple prompts for the LLM. For example, instead of prompting the AI to draft or code an entire deliverable at once, identify several steps or chunks to run with separate prompts.
-3. **Search for a hallucination.** Ask the LLM about something very niche and specific to your domain expertise, where you know the truth. See if you can catch the model being confidently wrong. If you succeed — what made the incorrect response seem credible?
+3. **Search for a hallucination.** Ask the LLM about something very niche and specific to your domain expertise, where you know the truth. See if you can catch the model being confidently wrong. If you succeed, what made the incorrect response seem credible?
 4. **Verify a real output.** Ask AI to draft something related to an actual work need (or pull up something you previously drafted with AI) and do a stakes-appropriate verification pass — or part of one, depending on the size of your draft. Did you catch any errors? What types of details did you need to verify?
-5. **Write a reusable prompt.** Turn a task you often do into a saved prompt template with clear instructions — e.g., a prompt template for summarizing documents, reviewing code, or helping you brainstorm.
+5. **Write a reusable prompt.** Turn a task you often do into a saved prompt template with clear instructions (e.g., a prompt template for summarizing documents, reviewing code, or helping you brainstorm).
 6. **Test different Claude profile instructions.** Try changing your Claude instructions in various ways and see how responses change. For example, try different tones or styles, or set different restrictions on length or format.
 
 ## Tool Exploration
 
 1. **Turn on and test multiple Claude connectors.** Notice the different permissions options each one asks for.
-2. **Try a skill from the skill library.** Browse the skill library in Claude, pick one that looks useful for your work, and run it on a real task. How did it work?
+2. **Try a skill from the [skill library](https://hub.navapbc.com).** Browse the skill library in Claude, pick one that looks useful for your work, and run it on a real task. How did it work?
 3. **Use Cowork to design a basic skill.** Start from a task you repeat often, and work with Cowork to turn it into a simple reusable skill.
 4. **Try using Notebook to create several different artifacts** from the same material.
 5. **Compare multiple different models.** For example, run the same prompt in Claude using Haiku, then Sonnet, then Opus. (You could also try using the same prompt in Claude and in Gemini.) What do you notice?
