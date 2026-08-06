@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import DecisionScenario from './DecisionScenario';
 import type { DecisionScenarioConfig } from '../../types';
 
@@ -8,15 +8,30 @@ import type { DecisionScenarioConfig } from '../../types';
 // linear checkpoint scenario (DELEGATE → GROUND → SCOPE → VERIFY) with
 // per-option authored feedback revealed before the story continues. UNGRADED —
 // finishing records ONE lab_submissions row with every choice; it never gates
-// completion. These tests mock the auth/progress layers and confirm: the
-// end-to-end walk records one submission with all choices; single-select
-// reveals-and-locks on selection; multi-select requires "Check answer" and
-// reveals feedback for every checked option; Continue stays disabled until
-// feedback is revealed; Previous re-reads a locked checkpoint but never
-// re-answers; the progress indicator + uppercase phase label advance; the
-// post-finish read-through is read-only; a failed submission keeps the finished
-// state and Retry re-records; and the reveal is announced via the polite live
-// region.
+// completion. These tests mock the auth/progress layers.
+//
+// L&D content pass (Sarah Grayvin [19]–[28], plan W3.1–W3.4) changed four
+// behaviors, and these tests moved with them ON PURPOSE:
+//
+// - W3.2: selecting is no longer submitting. BOTH selection modes now sit
+//   behind one "Submit" control (multi-select's was labelled "Check answer"),
+//   so a single-select pick is changeable until Submit. Every assertion that
+//   read "choosing reveals feedback" now reads "Submit reveals feedback", and
+//   the walk helper clicks Submit at each checkpoint.
+// - W3.3: a multi-select reveal shows the ENTIRE answer key. The old negative
+//   assertions ("no feedback for the option I did not check") are now positive
+//   — that was exactly the confusion [23]/[28] reported.
+// - W3.4: the "immutable once revealed" invariant is DELIBERATELY REVERSED per
+//   human Decision 7. It is not gone, it is narrowed: a revealed answer still
+//   cannot be edited silently (options stay disabled, clicking them is a
+//   no-op), but an explicit "Try again" reopens the checkpoint and "Start over"
+//   replays the whole scenario. The three tests that asserted permanent
+//   immutability now assert the narrowed version plus the retake paths.
+// - W3.1: a collapsible "Scenario recap" carries the premise onto every
+//   checkpoint; new tests cover it.
+//
+// Completion timing is unchanged and is asserted below: Submit records nothing,
+// and only Finish calls recordLabSubmission.
 
 const { recordLabSubmission } = vi.hoisted(() => ({
   recordLabSubmission: vi.fn(async () => 'sub-1'),
@@ -88,18 +103,29 @@ function clickContinue() {
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 }
 
-/** Answers all four checkpoints and clicks Finish (delegate=1, ground=0, scope={0,1}, verify=1). */
-function walkToFinish() {
+function clickSubmit() {
+  fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+}
+
+/**
+ * Answers all four checkpoints and clicks Finish. Every checkpoint now goes
+ * select → Submit (W3.2); `delegate` is parameterized so a second pass through
+ * the scenario can answer differently.
+ */
+function walkToFinish(delegate: RegExp = /The first-draft summary/) {
   start();
-  fireEvent.click(screen.getByRole('button', { name: /The first-draft summary/ }));
+  fireEvent.click(screen.getByRole('button', { name: delegate }));
+  clickSubmit();
   clickContinue();
   fireEvent.click(screen.getByRole('button', { name: /Paste the intake notes/ }));
+  clickSubmit();
   clickContinue();
   fireEvent.click(screen.getByRole('checkbox', { name: /A one-page limit/ }));
   fireEvent.click(screen.getByRole('checkbox', { name: /A plain-language audience/ }));
-  fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+  clickSubmit();
   clickContinue();
   fireEvent.click(screen.getByRole('button', { name: /Check each claim against the notes/ }));
+  clickSubmit();
   fireEvent.click(screen.getByRole('button', { name: 'Finish' }));
 }
 
@@ -136,33 +162,113 @@ describe('DecisionScenario', () => {
     await waitFor(() => expect(screen.getByText(/Choices recorded/)).toBeInTheDocument());
   });
 
-  test('single-select: choosing reveals that option\'s feedback and locks the choice', () => {
+  // --- W3.1 [19] [20] [27] — persistent, re-openable scenario recap ----------
+
+  test('W3.1: the scenario recap is reachable on every checkpoint, collapsed by default', () => {
+    render(<DecisionScenario config={marina} labId="c1-w3" />);
+    // Not on the intro screen — the premise IS the intro screen there.
+    expect(screen.queryByRole('button', { name: /Scenario recap/i })).not.toBeInTheDocument();
+
+    start();
+    const recap = screen.getByRole('button', { name: /Scenario recap/i });
+    expect(recap).toHaveAttribute('aria-expanded', 'false');
+    expect(recap).toHaveAttribute('aria-controls', 'decision-scenario-context');
+    // Collapsed: the decision prompt keeps the fold.
+    expect(screen.queryByText(/stack of intake notes/)).not.toBeInTheDocument();
+
+    fireEvent.click(recap);
+    expect(recap).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText(/stack of intake notes/)).toBeInTheDocument();
+  });
+
+  test('W3.1: the recap stays open across checkpoints (component-level, not per-checkpoint)', () => {
+    render(<DecisionScenario config={marina} labId="c1-w3" />);
+    start();
+    fireEvent.click(screen.getByRole('button', { name: /Scenario recap/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /The first-draft summary/ }));
+    clickSubmit();
+    clickContinue();
+
+    expect(screen.getByText('Checkpoint 2 of 4')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Scenario recap/i })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByText(/stack of intake notes/)).toBeInTheDocument();
+  });
+
+  test('W3.1: no recap control in the post-finish read-through', async () => {
+    render(<DecisionScenario config={marina} labId="c1-w3" />);
+    walkToFinish();
+    await waitFor(() => expect(screen.getByText(/Choices recorded/)).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: /Scenario recap/i })).not.toBeInTheDocument();
+  });
+
+  // --- W3.2 [22] [24] [25] [26] — Submit gates feedback ---------------------
+
+  test('W3.2 single-select: Submit gates the feedback and the pick is changeable until then', () => {
     render(<DecisionScenario config={marina} labId="c1-w3" />);
     start();
 
+    // Nothing selected: Submit is present but disabled.
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: /The whole decision/ }));
+    // Selecting reveals NOTHING now — that is the whole point of [22].
+    expect(screen.queryByText(/gives away her judgment/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeEnabled();
+
+    // The pod can change its mind while it discusses.
     fireEvent.click(screen.getByRole('button', { name: /The first-draft summary/ }));
+    expect(screen.getByRole('button', { name: /The first-draft summary/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: /The whole decision/ })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+
+    clickSubmit();
     expect(screen.getByText(/Right-sized: drafting is delegable/)).toBeInTheDocument();
     expect(screen.getByText('Your choice')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
 
-    // Immutable once revealed: every option is disabled and clicking the other
-    // option changes nothing.
+    // Revealed answers cannot be edited silently: options are disabled and
+    // clicking one changes nothing. Reopening takes an explicit "Try again".
     const other = screen.getByRole('button', { name: /The whole decision/ });
     expect(other).toBeDisabled();
     fireEvent.click(other);
     expect(screen.queryByText(/gives away her judgment/)).not.toBeInTheDocument();
     expect(screen.getAllByText('Your choice')).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Submit' })).not.toBeInTheDocument();
   });
 
-  test('multi-select: feedback waits for "Check answer", reveals for EACH selected option, then locks', () => {
+  test('W3.2: Submit records nothing — only Finish writes a lab submission', () => {
     render(<DecisionScenario config={marina} labId="c1-w3" />);
     start();
     fireEvent.click(screen.getByRole('button', { name: /The first-draft summary/ }));
+    clickSubmit();
     clickContinue();
     fireEvent.click(screen.getByRole('button', { name: /Paste the intake notes/ }));
+    clickSubmit();
+    expect(recordLabSubmission).not.toHaveBeenCalled();
+  });
+
+  test('W3.2 multi-select: the same Submit gate, now labelled "Submit"', () => {
+    render(<DecisionScenario config={marina} labId="c1-w3" />);
+    start();
+    fireEvent.click(screen.getByRole('button', { name: /The first-draft summary/ }));
+    clickSubmit();
+    clickContinue();
+    fireEvent.click(screen.getByRole('button', { name: /Paste the intake notes/ }));
+    clickSubmit();
     clickContinue();
 
-    // Nothing to check yet — the button is disabled with zero selections.
-    expect(screen.getByRole('button', { name: 'Check answer' })).toBeDisabled();
+    // Nothing to submit yet — disabled with zero selections.
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('checkbox', { name: /A one-page limit/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: /Permission to invent missing details/ }));
@@ -170,18 +276,180 @@ describe('DecisionScenario', () => {
     expect(screen.queryByText(/length bound keeps the summary/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
-    // Feedback for BOTH selected options; none for the unselected one.
+    clickSubmit();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    // Locked: checkboxes disabled and Submit replaced by the retake.
+    screen.getAllByRole('checkbox').forEach((cb) => expect(cb).toBeDisabled());
+    expect(screen.queryByRole('button', { name: 'Submit' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: /A plain-language audience/ }));
+    expect(screen.getAllByText('You chose this')).toHaveLength(2);
+  });
+
+  // --- W3.3 [23] [28] — the entire answer key on multi-select ---------------
+
+  test('W3.3 multi-select: submitting shows EVERY option\'s feedback, picks marked', () => {
+    render(<DecisionScenario config={marina} labId="c1-w3" />);
+    start();
+    fireEvent.click(screen.getByRole('button', { name: /The first-draft summary/ }));
+    clickSubmit();
+    clickContinue();
+    fireEvent.click(screen.getByRole('button', { name: /Paste the intake notes/ }));
+    clickSubmit();
+    clickContinue();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /A one-page limit/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Permission to invent missing details/ }));
+    clickSubmit();
+
+    // Feedback for the two checked options…
     expect(screen.getByText(/length bound keeps the summary/)).toBeInTheDocument();
     expect(screen.getByText(/Never scope IN fabrication/)).toBeInTheDocument();
-    expect(screen.queryByText(/Audience framing shapes the tone/)).not.toBeInTheDocument();
+    // …AND for the one the learner did not check. This assertion used to be
+    // negative; [23]/[28] reported the partial key as the actual confusion.
+    expect(screen.getByText(/Audience framing shapes the tone/)).toBeInTheDocument();
+    expect(screen.getByText(/The full answer key/)).toBeInTheDocument();
 
-    // Locked: checkboxes disabled, Check answer gone, selections immutable.
-    screen.getAllByRole('checkbox').forEach((cb) => expect(cb).toBeDisabled());
-    expect(screen.queryByRole('button', { name: 'Check answer' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('checkbox', { name: /A plain-language audience/ }));
-    expect(screen.queryByText(/Audience framing shapes the tone/)).not.toBeInTheDocument();
+    // The learner's own picks stay distinguishable inside the key.
+    expect(screen.getAllByText('You chose this')).toHaveLength(2);
   });
+
+  test('W3.3 is scoped to multi-select: single-select still shows only the chosen option', () => {
+    render(<DecisionScenario config={marina} labId="c1-w3" />);
+    start();
+    fireEvent.click(screen.getByRole('button', { name: /The first-draft summary/ }));
+    clickSubmit();
+    expect(screen.getByText(/Right-sized: drafting is delegable/)).toBeInTheDocument();
+    expect(screen.queryByText(/gives away her judgment/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/The full answer key/)).not.toBeInTheDocument();
+  });
+
+  // --- W3.4 [21] [23]–[26] — retake, at both grains -------------------------
+
+  test('W3.4 per-checkpoint: "Try again" reopens the checkpoint for a different answer', () => {
+    render(<DecisionScenario config={marina} labId="c1-w3" />);
+    start();
+    fireEvent.click(screen.getByRole('button', { name: /The whole decision/ }));
+    clickSubmit();
+    expect(screen.getByText(/gives away her judgment/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Try again/ }));
+    // The reveal and the selection are both cleared, so the learner re-decides
+    // rather than nudging a locked answer; Continue re-locks until they submit.
+    expect(screen.queryByText(/gives away her judgment/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Your choice')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /The whole decision/ })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: /The first-draft summary/ }));
+    clickSubmit();
+    expect(screen.getByText(/Right-sized: drafting is delegable/)).toBeInTheDocument();
+  });
+
+  test('W3.4 per-checkpoint: the transcript records the FINAL answer after a retake', async () => {
+    render(<DecisionScenario config={marina} labId="c1-w3" />);
+    start();
+    fireEvent.click(screen.getByRole('button', { name: /The whole decision/ }));
+    clickSubmit();
+    fireEvent.click(screen.getByRole('button', { name: /Try again/ }));
+    fireEvent.click(screen.getByRole('button', { name: /The first-draft summary/ }));
+    clickSubmit();
+    clickContinue();
+    fireEvent.click(screen.getByRole('button', { name: /Paste the intake notes/ }));
+    clickSubmit();
+    clickContinue();
+    fireEvent.click(screen.getByRole('checkbox', { name: /A one-page limit/ }));
+    clickSubmit();
+    clickContinue();
+    fireEvent.click(screen.getByRole('button', { name: /Ship it as-is/ }));
+    clickSubmit();
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }));
+
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledTimes(1));
+    expect(recordLabSubmission).toHaveBeenLastCalledWith('u1', {
+      labId: 'c1-w3',
+      status: 'submitted',
+      transcript: {
+        kind: 'decision-scenario',
+        choices: [
+          { checkpointId: 'cp-delegate', selected: [1] }, // the retaken answer, not [0]
+          { checkpointId: 'cp-ground', selected: [0] },
+          { checkpointId: 'cp-scope', selected: [0] },
+          { checkpointId: 'cp-verify', selected: [0] },
+        ],
+      },
+    });
+  });
+
+  test('W3.4 multi-select retake is offered, and says what it is for', () => {
+    render(<DecisionScenario config={marina} labId="c1-w3" />);
+    start();
+    fireEvent.click(screen.getByRole('button', { name: /The first-draft summary/ }));
+    clickSubmit();
+    clickContinue();
+    fireEvent.click(screen.getByRole('button', { name: /Paste the intake notes/ }));
+    clickSubmit();
+    clickContinue();
+    fireEvent.click(screen.getByRole('checkbox', { name: /A one-page limit/ }));
+    clickSubmit();
+
+    // Sarah hedged that retake is "less relevant" where the full key is already
+    // on screen. It is still offered (nothing here is scored, so there is no
+    // score to protect) but the caption names it as a re-decision, not a fix.
+    expect(screen.getByRole('button', { name: /Try again/ })).toBeInTheDocument();
+    expect(screen.getByText(/retake to re-decide as a pod/)).toBeInTheDocument();
+  });
+
+  test('W3.4 whole-scenario: "Start over" replays the walk and a second finish records again', async () => {
+    render(<DecisionScenario config={marina} labId="c1-w3" />);
+    walkToFinish();
+    await waitFor(() => expect(screen.getByText(/Choices recorded/)).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Start over/ }));
+    // Back at the intro with nothing answered and the confirmation cleared.
+    expect(screen.getByText(/stack of intake notes/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Start the scenario/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Choices recorded/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Your choice')).not.toBeInTheDocument();
+    expect(recordLabSubmission).toHaveBeenCalledTimes(1);
+
+    // The second pass answers DELEGATE differently and records a SECOND row —
+    // `saved` must be cleared or recordRun would silently no-op.
+    walkToFinish(/The whole decision/);
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledTimes(2));
+    expect(recordLabSubmission).toHaveBeenLastCalledWith('u1', {
+      labId: 'c1-w3',
+      status: 'submitted',
+      transcript: {
+        kind: 'decision-scenario',
+        choices: [
+          { checkpointId: 'cp-delegate', selected: [0] },
+          { checkpointId: 'cp-ground', selected: [0] },
+          { checkpointId: 'cp-scope', selected: [0, 1] },
+          { checkpointId: 'cp-verify', selected: [1] },
+        ],
+      },
+    });
+  });
+
+  test('W3.4 whole-scenario: "Start over" is withheld while the submission is in flight', async () => {
+    let release: (id: string) => void = () => {};
+    recordLabSubmission.mockImplementationOnce(
+      () => new Promise<string>((resolve) => { release = resolve; }),
+    );
+    render(<DecisionScenario config={marina} labId="c1-w3" />);
+    walkToFinish();
+
+    // Mid-save: no reset control, so it cannot race the insert (DATA-04).
+    expect(screen.getByText(/Recording your choices/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Start over/ })).not.toBeInTheDocument();
+
+    await act(async () => { release('sub-1'); });
+    await waitFor(() => expect(screen.getByText(/Choices recorded/)).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /Start over/ })).toBeInTheDocument();
+  });
+
+  // --- navigation, read-through, save handling ------------------------------
 
   test('Continue is disabled until the checkpoint\'s feedback is revealed', () => {
     render(<DecisionScenario config={marina} labId="c1-w3" />);
@@ -191,25 +459,30 @@ describe('DecisionScenario', () => {
     fireEvent.click(cont);
     expect(screen.getByText(/Checkpoint 1 of 4/)).toBeInTheDocument(); // didn't advance
 
+    // Selecting is not enough any more (W3.2) — Submit is.
     fireEvent.click(screen.getByRole('button', { name: /The whole decision/ }));
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    clickSubmit();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 
-  test('Previous re-reads a completed checkpoint — locked choice + revealed feedback, never re-answerable', () => {
+  test('Previous re-reads a completed checkpoint — choice + feedback intact, re-answerable only via Try again', () => {
     render(<DecisionScenario config={marina} labId="c1-w3" />);
     start();
     fireEvent.click(screen.getByRole('button', { name: /The first-draft summary/ }));
+    clickSubmit();
     clickContinue();
     expect(screen.getByText(/Checkpoint 2 of 4/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
-    // Back on checkpoint 1: the locked choice and its feedback are shown…
+    // Back on checkpoint 1: the submitted choice and its feedback are shown…
     expect(screen.getByText(/Checkpoint 1 of 4/)).toBeInTheDocument();
     expect(screen.getByText(/Right-sized: drafting is delegable/)).toBeInTheDocument();
     expect(screen.getByText('Your choice')).toBeInTheDocument();
-    // …and it cannot be re-answered.
-    const other = screen.getByRole('button', { name: /The whole decision/ });
-    expect(other).toBeDisabled();
+    // …and it cannot be edited by clicking an option…
+    expect(screen.getByRole('button', { name: /The whole decision/ })).toBeDisabled();
+    // …but W3.4's explicit retake IS available on a revisited checkpoint.
+    expect(screen.getByRole('button', { name: /Try again/ })).toBeInTheDocument();
     // Continue is available again (feedback already revealed) and moves forward.
     const cont = screen.getByRole('button', { name: 'Continue' });
     expect(cont).toBeEnabled();
@@ -224,32 +497,41 @@ describe('DecisionScenario', () => {
     expect(screen.getByText('DELEGATE')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /The first-draft summary/ }));
+    clickSubmit();
     clickContinue();
     expect(screen.getByText('Checkpoint 2 of 4')).toBeInTheDocument();
     expect(screen.getByText('GROUND')).toBeInTheDocument();
     expect(screen.queryByText('DELEGATE')).not.toBeInTheDocument();
   });
 
-  test('post-finish: the full read-through is read-only (all checkpoints, choices, feedback)', async () => {
+  test('post-finish: the read-through is read-only apart from "Start over"', async () => {
     render(<DecisionScenario config={marina} labId="c1-w3" />);
     walkToFinish();
     await waitFor(() => expect(screen.getByText(/Choices recorded/)).toBeInTheDocument());
 
-    // Every checkpoint renders with its revealed feedback and locked choice.
+    // Every checkpoint renders with its revealed feedback and submitted choice.
     expect(screen.getByText('Checkpoint 1 of 4')).toBeInTheDocument();
     expect(screen.getByText('Checkpoint 4 of 4')).toBeInTheDocument();
     expect(screen.getByText(/Right-sized: drafting is delegable/)).toBeInTheDocument();
     expect(screen.getByText(/length bound keeps the summary/)).toBeInTheDocument();
     expect(screen.getByText(/Verification against the source/)).toBeInTheDocument();
+    // The multi-select answer key is complete here too (W3.3).
+    expect(screen.getByText(/Never scope IN fabrication/)).toBeInTheDocument();
     // One marker per chosen option: 1 + 1 + 2 (multi-select) + 1.
     expect(screen.getAllByText('Your choice')).toHaveLength(5);
 
-    // Read-only: no stepper controls remain and every option control is disabled.
+    // No stepper controls, no per-checkpoint Submit/Try again, every option
+    // control disabled. "Start over" (W3.4) is the one deliberate exception.
     expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Finish' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Check answer' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Submit' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
-    screen.getAllByRole('button').forEach((b) => expect(b).toBeDisabled());
+    expect(screen.queryByRole('button', { name: /Try again/ })).not.toBeInTheDocument();
+    const enabled = screen
+      .getAllByRole('button')
+      .filter((b) => !(b as HTMLButtonElement).disabled);
+    expect(enabled).toHaveLength(1);
+    expect(enabled[0]).toHaveAccessibleName(/Start over/);
     screen.getAllByRole('checkbox').forEach((cb) => expect(cb).toBeDisabled());
 
     // ONE submission, exactly.
@@ -283,6 +565,8 @@ describe('DecisionScenario', () => {
     expect(region.textContent).toBe(''); // nothing announced before the reveal
 
     fireEvent.click(screen.getByRole('button', { name: /The first-draft summary/ }));
+    expect(region.textContent).toBe(''); // selecting alone announces nothing (W3.2)
+    clickSubmit();
     expect(region).toHaveTextContent(/Right-sized: drafting is delegable/);
   });
 
