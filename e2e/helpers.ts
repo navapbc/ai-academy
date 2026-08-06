@@ -29,6 +29,15 @@ export async function signInAsDemo(page: Page, email = DEMO_EMAIL, password = DE
   await page.locator('#email').fill(email);
   await page.locator('#password').fill(password);
   await page.getByRole('button', { name: 'Sign In', exact: true }).click();
+  // Since the cohort restructure (#112) a signed-in session opens on the
+  // LandingPage until `hasEntered` flips (App.tsx:271-273) — that state is
+  // per-session, so EVERY fresh browser context hits it. Without this click no
+  // spec ever reaches the sidebar. (Pre-existing repo-wide e2e break, found
+  // while verifying the Week 2 rewrite; e2e is not wired into CI, so it had
+  // gone unnoticed.)
+  const enter = page.getByRole('button', { name: 'Enter AI Academy' });
+  await enter.waitFor({ state: 'visible', timeout: 15_000 });
+  await enter.click();
   // The sidebar only renders once auth + curriculum have loaded.
   await expect(page.locator('#sidebar')).toBeVisible({ timeout: 15_000 });
 }

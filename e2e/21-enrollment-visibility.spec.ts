@@ -85,12 +85,19 @@ test('the enrolled demo user sees every seeded week and its modules', async ({ p
     await expect(page.locator(`[id="module-${cell}"]`)).toBeVisible();
   }
 
-  // The Week 2 chat-compare module renders its two seeded panes live.
+  // The Week 2 chat-compare module renders its two seeded panes live. Since the
+  // L&D content pass (W5.3/W5.5) this row is `promptMode: 'per-pane'` with two
+  // tabbed examples, so the assertions are the per-pane affordances rather than
+  // the retired 'Without source material' / 'With source material' pane labels.
   await openModule(page, 'c1-w2-ground-and-scope');
   const lab = page.locator('#chat-compare');
   await expect(lab).toBeVisible();
-  await expect(lab.getByText('Without source material')).toBeVisible();
-  await expect(lab.getByText('With source material')).toBeVisible();
+  await expect(lab.getByRole('tab', { name: /Example 1: Meridian/ })).toBeVisible();
+  await expect(lab.getByRole('tab', { name: /Example 2: Slack Post/ })).toBeVisible();
+  // Two SEPARATELY editable prompt boxes, each with its own grounding checkbox.
+  await expect(lab.getByLabel('Prompt for Pane 1')).toBeVisible();
+  await expect(lab.getByLabel('Prompt for Pane 2')).toBeVisible();
+  await expect(lab.getByLabel('Attach the source material to Pane 1')).not.toBeChecked();
 
   // The Marina decision scenario renders from its seeded config: intro first,
   // then "Start the scenario" gates the first checkpoint.

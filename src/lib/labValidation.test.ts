@@ -77,6 +77,38 @@ describe('validateLabConfig — per kind', () => {
     expect(validateLabConfig({ ...good, suggestedPrompts: 'nope' }).ok).toBe(false);
   });
 
+  // Content pass W5.2. This block MIRRORS admin-content-core.test.ts's
+  // equivalent — the two validators must accept and reject identically or a
+  // config passes in-browser and 400s on CMS publish.
+  test('chat-compare accepts promptMode, a grounding source, prompt objects and examples', () => {
+    const base = { kind: 'chat-compare', panes: [{ label: 'Pane 1' }, { label: 'Pane 2' }] };
+    expect(validateLabConfig(base).ok).toBe(true);
+    expect(validateLabConfig({ ...base, promptMode: 'per-pane' }).ok).toBe(true);
+    expect(validateLabConfig({ ...base, promptMode: 'per pane' }).ok).toBe(false);
+    expect(validateLabConfig({ ...base, groundingSourceMd: '# Bulletin', sourceIntroMd: 'Fictional.' }).ok).toBe(true);
+    expect(validateLabConfig({ ...base, groundingSourceMd: 12 }).ok).toBe(false);
+    expect(
+      validateLabConfig({
+        ...base,
+        suggestedPrompts: ['legacy string', { text: 'grounded', usesSource: true, systemPromptMd: 'RIG' }],
+      }).ok,
+    ).toBe(true);
+    expect(validateLabConfig({ ...base, suggestedPrompts: [{ text: '' }] }).ok).toBe(false);
+    expect(validateLabConfig({ ...base, suggestedPrompts: [{ text: 'ok', usesSource: 'yes' }] }).ok).toBe(false);
+    expect(
+      validateLabConfig({
+        ...base,
+        examples: [
+          { id: 'meridian', label: 'Example 1', suggestedPrompts: [{ text: 'p1', usesSource: true }] },
+          { id: 'slack-announcement', label: 'Example 2' },
+        ],
+      }).ok,
+    ).toBe(true);
+    expect(validateLabConfig({ ...base, examples: [] }).ok).toBe(false);
+    expect(validateLabConfig({ ...base, examples: [{ id: 'x' }] }).ok).toBe(false);
+    expect(validateLabConfig({ ...base, examples: [{ id: 'x', label: 'A' }, { id: 'x', label: 'B' }] }).ok).toBe(false);
+  });
+
   test('decision-scenario requires introMd + well-formed checkpoints with per-option feedback', () => {
     const good = {
       kind: 'decision-scenario',

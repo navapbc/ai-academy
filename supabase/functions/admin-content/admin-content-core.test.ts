@@ -240,6 +240,59 @@ describe('validateLabConfigJson — per kind', () => {
     if (!r.ok) expect(r.error).toContain('panes');
   });
 
+  test('chat-compare: promptMode, grounding source, prompt objects and examples (content pass W5.2)', () => {
+    const base = { kind: 'chat-compare', panes: [{ label: 'Pane 1' }, { label: 'Pane 2' }] };
+    // Every content-pass field is OPTIONAL — the pre-pass shape still validates.
+    expect(validateLabConfigJson(base).ok).toBe(true);
+    expect(validateLabConfigJson({ ...base, promptMode: 'shared' }).ok).toBe(true);
+    expect(validateLabConfigJson({ ...base, promptMode: 'per-pane' }).ok).toBe(true);
+    expect(validateLabConfigJson({ ...base, promptMode: 'per pane' }).ok).toBe(false);
+    expect(
+      validateLabConfigJson({ ...base, groundingSourceMd: '# Bulletin', sourceIntroMd: 'Fictional.' }).ok,
+    ).toBe(true);
+    expect(validateLabConfigJson({ ...base, groundingSourceMd: 12 }).ok).toBe(false);
+
+    // suggestedPrompts is a string | { text, usesSource?, systemPromptMd? } union.
+    expect(
+      validateLabConfigJson({
+        ...base,
+        suggestedPrompts: [
+          'a bare legacy string',
+          { text: 'grounded + rigged', usesSource: true, systemPromptMd: 'RIG' },
+          { text: 'text only' },
+        ],
+      }).ok,
+    ).toBe(true);
+    expect(validateLabConfigJson({ ...base, suggestedPrompts: [{ text: '' }] }).ok).toBe(false);
+    expect(validateLabConfigJson({ ...base, suggestedPrompts: [{ usesSource: true }] }).ok).toBe(false);
+    expect(
+      validateLabConfigJson({ ...base, suggestedPrompts: [{ text: 'ok', usesSource: 'yes' }] }).ok,
+    ).toBe(false);
+    expect(
+      validateLabConfigJson({ ...base, suggestedPrompts: [{ text: 'ok', systemPromptMd: 3 }] }).ok,
+    ).toBe(false);
+    expect(validateLabConfigJson({ ...base, suggestedPrompts: [1] }).ok).toBe(false);
+
+    // examples[]: id + label required, unique ids, same content fields inside.
+    const examples = [
+      { id: 'meridian', label: 'Example 1', groundingSourceMd: '# Bulletin', suggestedPrompts: [{ text: 'p1' }] },
+      { id: 'slack-announcement', label: 'Example 2', suggestedPrompts: ['p2'] },
+    ];
+    expect(validateLabConfigJson({ ...base, examples }).ok).toBe(true);
+    expect(validateLabConfigJson({ ...base, examples: [] }).ok).toBe(false);
+    expect(validateLabConfigJson({ ...base, examples: [{ label: 'no id' }] }).ok).toBe(false);
+    expect(validateLabConfigJson({ ...base, examples: [{ id: 'x' }] }).ok).toBe(false);
+    expect(
+      validateLabConfigJson({ ...base, examples: [{ id: 'x', label: 'A' }, { id: 'x', label: 'B' }] }).ok,
+    ).toBe(false);
+    const bad = validateLabConfigJson({
+      ...base,
+      examples: [{ id: 'x', label: 'A', suggestedPrompts: [{ text: 'ok', usesSource: 1 }] }],
+    });
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(bad.error).toContain('examples[0].suggestedPrompts[0].usesSource');
+  });
+
   test('decision-scenario: introMd + checkpoints of phase/setup/prompt/options[≥2] with feedback (restructure U7)', () => {
     const good = {
       kind: 'decision-scenario',

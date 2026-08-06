@@ -680,16 +680,91 @@ export interface ChatComparePane {
 }
 
 /**
- * chat-compare (cohort-restructure U6): 1–4 side-by-side live Claude panes
- * answering ONE shared learner prompt, each with its own hidden system prompt
- * and/or grounding source. One parameterized kind powers Course 1 Week 1
- * (3-pane rigged; 1-pane confidently-wrong) and Week 2 (bare-vs-grounded).
- * UNGRADED: every submit records a lab_submissions row
+ * One suggested prompt. The legacy form is a bare string (Week 1's chips); the
+ * object form (L&D content pass W5.2, Sarah `[8]` `[9]` `[10]`–`[13]`) adds the
+ * two things the Week 2 "numbered variants of ONE task" activity needs:
+ *
+ * - `usesSource` — whether picking this prompt pre-checks the pane's "attach the
+ *   source material" box. This is the deterministic, client-side stand-in for
+ *   `[9]`'s literal ask ("can Claude know to pull that text in only if it is
+ *   given that direct instruction?"). It cannot be literal: `src/lib/llm.ts`
+ *   POSTs only `{ messages, system, model, max_tokens }` — there is no tool or
+ *   retrieval channel, so text is either in the request or the model never sees
+ *   it. Deliberately NOT marker-phrase sniffing on typed prompts (human
+ *   Decision 6b): the learner's own prompts are grounded only by the explicit
+ *   checkbox, so the grounded-vs-ungrounded contrast is reproducible live.
+ * - `systemPromptMd` — a per-prompt hidden rig, overriding the pane's own, so a
+ *   numbered prompt reliably demonstrates ITS authored weakness (`[10]`: every
+ *   prompt must show one evident scope/grounding weakness; the intended-best
+ *   prompt carries no rig at all).
+ */
+export type ChatCompareSuggestedPrompt =
+  | string
+  | {
+      text: string;
+      /** Pre-checks the pane's "attach the source material" box when picked. */
+      usesSource?: boolean;
+      /** Per-prompt hidden system prompt; overrides `ChatComparePane.systemPromptMd`. */
+      systemPromptMd?: string;
+    };
+
+/**
+ * One tabbed example inside a single chat-compare exercise (L&D content pass
+ * W5.1/W5.6, human Decision 5 — a tab strip, NOT a second module row, since a
+ * module row carries exactly one `lab_config_json`). An example is an OVERRIDE
+ * BUNDLE: when `examples` is present the active tab's fields replace the
+ * config-level `introMd` / `sourceIntroMd` / `groundingSourceMd` /
+ * `suggestedPrompts` / `reflectionMd`. Switching tabs aborts any in-flight
+ * streams and clears the panes — outputs belong to the example that produced
+ * them.
+ */
+export interface ChatCompareExample {
+  /** Stable id (used as the React key and in the recorded transcript). */
+  id: string;
+  /** Tab strip label, e.g. "Example 1: Meridian State Department of Labor". */
+  label: string;
+  /** Markdown task setup rendered above the prompt list. */
+  introMd?: string;
+  /** Framing sentence rendered above the grounding source panel. */
+  sourceIntroMd?: string;
+  /**
+   * The ONE authored copy of the grounding source: rendered in the collapsible
+   * source panel AND sent to Claude when a pane attaches it. (Before this pass
+   * the Week 2 bulletin existed twice — once in `body_md`, once in
+   * `panes[1].sourceMd`.)
+   */
+  groundingSourceMd?: string;
+  /** Numbered prompt variants of the same task. */
+  suggestedPrompts?: ChatCompareSuggestedPrompt[];
+  /** Discussion prompts rendered below the panes (static, not captured). */
+  reflectionMd?: string;
+}
+
+/**
+ * chat-compare (cohort-restructure U6; extended IN PLACE by the L&D content
+ * pass W5.2/W5.3): 1–4 side-by-side live Claude panes, each with its own hidden
+ * system prompt and/or grounding source. One parameterized kind powers Course 1
+ * Week 1 (3-pane rigged; 1-pane confidently-wrong) and Week 2 (numbered prompt
+ * variants of one task). UNGRADED: every submit records a lab_submissions row
  * (`transcript.kind:'chat-compare'`, including partial pane failures) but it
  * never gates completion (participation completion lands in U9), so the
- * component takes no onComplete prop. `suggestedPrompts` render as chips that
- * FILL the input (never auto-submit); `reflectionMd` renders as static
+ * component takes no onComplete prop. `reflectionMd` renders as static
  * discussion copy below the panes (not captured).
+ *
+ * Two prompt modes (`promptMode`, default `'shared'` so every pre-existing
+ * config and its tests are byte-identical):
+ * - `'shared'` — ONE textarea fanned to every pane; suggested prompts render as
+ *   chips that FILL that input (never auto-submit). Week 1.
+ * - `'per-pane'` — one SEPARATELY EDITABLE textarea per pane (Sarah `[6]`: "the
+ *   two prompt entry boxes should be separate in case learners want to alter
+ *   one of the prompts"), a numbered prompt list with per-pane "Use in Pane N"
+ *   buttons (`[8]`), pane headings that name the selected prompt number
+ *   (`[7]`), and a per-pane "attach the source material" checkbox (`[9]`,
+ *   Decision 6b). Week 2.
+ *
+ * Grounding resolution per pane, in order: the example/config
+ * `groundingSourceMd` when that pane's attach box is checked, else the pane's
+ * own legacy `sourceMd` (which stays unconditional — Week 1 back-compat).
  */
 export interface ChatCompareConfig {
   kind: 'chat-compare';
@@ -697,19 +772,31 @@ export interface ChatCompareConfig {
   subtitle?: string;
   /** Optional markdown intro rendered above the prompt input. */
   introMd?: string;
-  /** 1–4 panes, each answering the same shared prompt. */
+  /** 1–4 panes. */
   panes: ChatComparePane[];
-  /** Clickable chips that fill the prompt input (never auto-submit). */
-  suggestedPrompts?: string[];
+  /** Prompt entry mode. Default `'shared'` — one input for every pane. */
+  promptMode?: 'shared' | 'per-pane';
+  /** Framing sentence above the grounding source panel (single-example configs). */
+  sourceIntroMd?: string;
+  /** Attachable grounding source shared by every pane (single-example configs). */
+  groundingSourceMd?: string;
+  /** Suggested prompts: chips in `'shared'` mode, a numbered list in `'per-pane'`. */
+  suggestedPrompts?: ChatCompareSuggestedPrompt[];
+  /** 2+ tabbed examples; each overrides the config-level content fields above. */
+  examples?: ChatCompareExample[];
   /** Discussion prompts rendered below the panes (static, not captured). */
   reflectionMd?: string;
 }
 
 /**
  * One choice of a decision-scenario checkpoint (cohort-restructure U7). Every
- * option carries its own authored feedback, revealed the moment the option is
- * chosen (single-select) or checked via "Check answer" (multi-select) — there
- * are no "correct" flags; the feedback IS the teaching.
+ * option carries its own authored feedback. Since the L&D content pass (W3.2,
+ * Sarah `[22]` `[24]` `[25]` `[26]`) BOTH selection modes are Submit-gated:
+ * selecting stages a (still changeable) pick and an explicit Submit reveals the
+ * feedback — single-select no longer reveals on click. There are no "correct"
+ * flags; the feedback IS the teaching. On multi-select, revealing shows the
+ * ENTIRE answer key — every option's feedback, with the learner's picks marked
+ * (W3.3, `[23]` `[28]`).
  */
 export interface DecisionOption {
   text: string;
@@ -721,7 +808,9 @@ export interface DecisionOption {
  * One checkpoint (decision point) of the linear decision-scenario walk. The
  * `phase` names which workflow step the checkpoint exercises and renders as an
  * uppercase label (DELEGATE / GROUND / SCOPE / VERIFY) beside the
- * "Checkpoint X of Y" progress indicator.
+ * "Checkpoint X of Y" progress indicator. The scenario's `introMd` also rides
+ * along on every checkpoint as a collapsible "Scenario recap" (W3.1, `[19]`
+ * `[20]` `[27]`), so the premise is always one click away.
  */
 export interface DecisionCheckpoint {
   id: string;
@@ -729,7 +818,7 @@ export interface DecisionCheckpoint {
   /** Story beat markdown rendered above the decision prompt. */
   setupMd: string;
   prompt: string;
-  /** When true: checkboxes + a "Check answer" button. Default: single-select. */
+  /** When true: checkboxes (pick several) instead of radio-style single-select. */
   multiSelect?: boolean;
   /** ≥2 options, each with its own authored feedback. */
   options: DecisionOption[];
@@ -738,10 +827,13 @@ export interface DecisionCheckpoint {
 /**
  * decision-scenario (cohort-restructure U7): "Walk the Workflow" — a LINEAR
  * checkpoint scenario (DELEGATE → GROUND → SCOPE → VERIFY; no branching graph
- * in v1). Flow: introMd → checkpoints in order → closingMd. Each option's
- * authored feedback is revealed before the story continues and the choice is
- * then immutable; Previous re-reads completed checkpoints but never re-answers.
- * UNGRADED: finishing records ONE lab_submissions row
+ * in v1). Flow: introMd → checkpoints in order → closingMd → a read-only
+ * read-through of every checkpoint with its choice and feedback. Each
+ * checkpoint is Submit-gated: selecting stages a pick, Submit reveals the
+ * authored feedback, and only an explicit retake reopens it — per-checkpoint
+ * "Try again" or whole-scenario "Start over" from the finished screen (W3.4,
+ * `[21]` `[23]`–`[26]`). The transcript records the FINAL answer per
+ * checkpoint. UNGRADED: finishing records ONE lab_submissions row
  * (`transcript.kind:'decision-scenario'`, choices as option indexes per
  * checkpoint) but never gates completion (participation completion lands in
  * U9), so the component takes no onComplete prop.

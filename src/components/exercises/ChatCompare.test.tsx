@@ -5,15 +5,23 @@ import ChatCompare from './ChatCompare';
 import type { ChatCompareConfig } from '../../types';
 
 // The chat-compare exercise (restructure U6): 1–4 side-by-side live Claude
-// panes answering ONE shared prompt, each with its own hidden system prompt
-// and/or grounding source. UNGRADED — every submit (including partial failure)
-// records a lab_submissions row, never gates completion. These tests mock the
+// panes, each with its own hidden system prompt and/or grounding source.
+// UNGRADED — every submit (including partial failure) records a
+// lab_submissions row, never gates completion. These tests mock the
 // auth/progress/streaming layers with CONTROLLABLE per-call streams (each
 // streamChat call is captured; the test emits chunks / resolves / rejects it
 // explicitly), and confirm: concurrent N-pane streaming, config-driven pane
 // counts, chip-fills-input, pane-local error + retry, unmount abort,
 // double-submit + empty-prompt guards, in-place resubmission, grounded/rigged
 // prompt assembly, and the single polite live region's lifecycle announcements.
+//
+// The second describe block covers the L&D content pass (W5.3, Sarah `[6]`–
+// `[9]` `[15]`): `promptMode: 'per-pane'` separately editable prompt boxes,
+// numbered prompt application, prompt-number pane headings, the explicit
+// grounding checkbox (human Decision 6b — never marker-phrase sniffing), the
+// per-prompt system-prompt rig, and the examples[] tab strip. The FIRST block
+// doubles as the back-compat guard: `promptMode` defaults to `'shared'`, so
+// every Week 1 behavior below must stay exactly as it was.
 
 interface CapturedCall {
   messages: { role: string; content: string }[];
@@ -89,6 +97,14 @@ async function finish(call: CapturedCall) {
   await act(async () => call.resolve());
 }
 
+/**
+ * One expected transcript pane entry for a 'shared'-mode run: every pane was
+ * asked the same prompt, none picked a numbered prompt, none was grounded.
+ */
+function shared(label: string, outcome: { text: string } | { error: string }, prompt = 'Shared question?') {
+  return { label, ...outcome, promptText: prompt, promptIdx: null, groundingUsed: false };
+}
+
 /** Rejects an open call and lets its continuations run. */
 async function fail(call: CapturedCall, message: string) {
   await act(async () => {
@@ -124,11 +140,12 @@ describe('ChatCompare', () => {
         status: 'submitted',
         transcript: {
           kind: 'chat-compare',
+          promptMode: 'shared',
           prompt: 'Shared question?',
           panes: [
-            { label: 'Pane A', text: 'Alpha answer' },
-            { label: 'Pane B', text: 'Bravo answer' },
-            { label: 'Pane C', text: 'Charlie answer' },
+            shared('Pane A', { text: 'Alpha answer' }),
+            shared('Pane B', { text: 'Bravo answer' }),
+            shared('Pane C', { text: 'Charlie answer' }),
           ],
         },
       }),
@@ -202,9 +219,9 @@ describe('ChatCompare', () => {
       expect.objectContaining({
         transcript: expect.objectContaining({
           panes: [
-            { label: 'Pane A', text: 'Alpha answer' },
-            { label: 'Pane B', error: 'chat function unavailable' },
-            { label: 'Pane C', text: 'Charlie answer' },
+            shared('Pane A', { text: 'Alpha answer' }),
+            shared('Pane B', { error: 'chat function unavailable' }),
+            shared('Pane C', { text: 'Charlie answer' }),
           ],
         }),
       }),
@@ -456,9 +473,9 @@ describe('ChatCompare', () => {
       expect.objectContaining({
         transcript: expect.objectContaining({
           panes: [
-            { label: 'Pane A', text: 'Alpha answer' },
-            { label: 'Pane B', text: 'RETRIED Bravo answer' },
-            { label: 'Pane C', text: 'Charlie answer' },
+            shared('Pane A', { text: 'Alpha answer' }),
+            shared('Pane B', { text: 'RETRIED Bravo answer' }),
+            shared('Pane C', { text: 'Charlie answer' }),
           ],
         }),
       }),
@@ -511,5 +528,285 @@ describe('ChatCompare', () => {
     // @ts-expect-error onComplete is intentionally not part of ChatCompare's props
     render(<ChatCompare config={threePane} labId="c1-w1" onComplete={onComplete} />);
     expect(onComplete).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// L&D content pass (W5.3): promptMode 'per-pane', numbered prompts, prompt-level
+// grounding, per-prompt rigs, and the examples[] tab strip.
+// ---------------------------------------------------------------------------
+
+const SOURCE = 'Bulletin 26-04. The disregard is 30% of the weekly benefit amount.';
+
+const perPaneConfig: ChatCompareConfig = {
+  kind: 'chat-compare',
+  promptMode: 'per-pane',
+  panes: [{ label: 'Pane 1' }, { label: 'Pane 2' }],
+  sourceIntroMd: 'The fictional policy summary below is a primary source.',
+  groundingSourceMd: SOURCE,
+  suggestedPrompts: [
+    { text: 'What changed for Meridian State?', usesSource: false, systemPromptMd: 'RIG ONE' },
+    { text: 'Summarize the change. Reference only the attached policy bulletin.', usesSource: true },
+  ],
+  reflectionMd: 'Which prompt is best for **your** task?',
+};
+
+/** Fills pane `i`'s own textarea. */
+function typeInPane(i: number, value: string) {
+  fireEvent.change(screen.getByLabelText(`Prompt for Pane ${i + 1}`), { target: { value } });
+}
+
+/** Submits every pane and waits until all streams are open. */
+async function sendAll(paneCount: number, from = 0) {
+  fireEvent.click(screen.getByRole('button', { name: /Send prompts|Ask again/i }));
+  await waitFor(() => expect(calls.length).toBe(from + paneCount), { timeout: 3000 });
+}
+
+describe('ChatCompare — per-pane prompts (content pass W5.3)', () => {
+  test('each pane has its OWN editable prompt box and sends its own prompt', async () => {
+    render(<ChatCompare config={perPaneConfig} labId="c1-w2" />);
+    // There is no shared input in this mode.
+    expect(screen.queryByLabelText(/Your prompt for every pane/i)).not.toBeInTheDocument();
+
+    typeInPane(0, 'Prompt for the left pane');
+    // Editing one box leaves the other alone (`[6]`: a pod alters one prompt).
+    expect(screen.getByLabelText('Prompt for Pane 2')).toHaveValue('');
+    typeInPane(1, 'Prompt for the right pane');
+
+    await sendAll(2);
+    expect(calls[0].messages[0].content).toBe('Prompt for the left pane');
+    expect(calls[1].messages[0].content).toBe('Prompt for the right pane');
+  });
+
+  test('submit stays blocked until EVERY pane has a prompt', () => {
+    render(<ChatCompare config={perPaneConfig} labId="c1-w2" />);
+    expect(screen.getByRole('button', { name: /Send prompts/i })).toBeDisabled();
+    typeInPane(0, 'Only one pane filled');
+    expect(screen.getByRole('button', { name: /Send prompts/i })).toBeDisabled();
+    typeInPane(1, 'Now both');
+    expect(screen.getByRole('button', { name: /Send prompts/i })).toBeEnabled();
+    expect(streamChat).not.toHaveBeenCalled();
+  });
+
+  test('a numbered prompt applies to ONE named pane and the heading names its number', async () => {
+    render(<ChatCompare config={perPaneConfig} labId="c1-w2" />);
+    // `[8]`: the ordinal is a rendered badge — never baked into the prompt text.
+    fireEvent.click(screen.getByRole('button', { name: 'Use prompt 2 in Pane 1' }));
+    expect(screen.getByLabelText('Prompt for Pane 1')).toHaveValue(
+      'Summarize the change. Reference only the attached policy bulletin.',
+    );
+    expect(screen.getByLabelText('Prompt for Pane 2')).toHaveValue('');
+    // `[7]`: the pane heading picks up the selected prompt's NUMBER.
+    expect(screen.getByText('Pane 1: Prompt #2')).toBeInTheDocument();
+    expect(screen.getByText('Pane 2')).toBeInTheDocument();
+    // FILL, never auto-submit.
+    expect(streamChat).not.toHaveBeenCalled();
+    expect(recordLabSubmission).not.toHaveBeenCalled();
+
+    // Typing over it clears the number so the heading can never lie.
+    typeInPane(0, 'my own version');
+    expect(screen.queryByText('Pane 1: Prompt #2')).not.toBeInTheDocument();
+    expect(screen.getByText('Pane 1: Your prompt')).toBeInTheDocument();
+  });
+
+  test('grounding is the explicit checkbox: a numbered prompt SETS it, and the learner can override', async () => {
+    render(<ChatCompare config={perPaneConfig} labId="c1-w2" />);
+    const attach1 = screen.getByLabelText('Attach the source material to Pane 1');
+    const attach2 = screen.getByLabelText('Attach the source material to Pane 2');
+    expect(attach1).not.toBeChecked();
+
+    // Prompt #1 is usesSource:false, prompt #2 is usesSource:true.
+    fireEvent.click(screen.getByRole('button', { name: 'Use prompt 1 in Pane 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use prompt 2 in Pane 2' }));
+    expect(attach1).not.toBeChecked();
+    expect(attach2).toBeChecked();
+
+    await sendAll(2);
+    // `[9]`: only the attached pane gets the source in its user message.
+    expect(calls[0].messages[0].content).not.toContain(SOURCE);
+    expect(calls[1].messages[0].content).toContain(SOURCE);
+    expect(calls[1].messages[0].content.indexOf(SOURCE)).toBeLessThan(
+      calls[1].messages[0].content.indexOf('Summarize the change'),
+    );
+  });
+
+  test('a learner-written prompt is grounded ONLY by the checkbox — never by its wording', async () => {
+    render(<ChatCompare config={perPaneConfig} labId="c1-w2" />);
+    // Decision 6b: the marker phrase alone must NOT attach anything.
+    typeInPane(0, 'Summarize it. Reference only the attached policy bulletin.');
+    typeInPane(1, 'Summarize it with no mention of any attachment.');
+    fireEvent.click(screen.getByLabelText('Attach the source material to Pane 2'));
+
+    await sendAll(2);
+    expect(calls[0].messages[0].content).not.toContain(SOURCE);
+    expect(calls[1].messages[0].content).toContain(SOURCE);
+  });
+
+  test("a numbered prompt's rig overrides the pane's own system prompt", async () => {
+    const rigged: ChatCompareConfig = {
+      ...perPaneConfig,
+      panes: [{ label: 'Pane 1', systemPromptMd: 'PANE RIG' }, { label: 'Pane 2' }],
+    };
+    render(<ChatCompare config={rigged} labId="c1-w2" />);
+    // Prompt #1 carries systemPromptMd 'RIG ONE'; prompt #2 carries none.
+    fireEvent.click(screen.getByRole('button', { name: 'Use prompt 1 in Pane 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use prompt 2 in Pane 2' }));
+
+    await sendAll(2);
+    expect(calls[0].options.system).toBe('RIG ONE');
+    expect(calls[1].options.system).toBeUndefined();
+  });
+
+  test('the transcript records what EACH pane was asked, its prompt number, and whether it was grounded', async () => {
+    render(<ChatCompare config={perPaneConfig} labId="c1-w2" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Use prompt 1 in Pane 1' }));
+    typeInPane(1, 'my own prompt');
+    fireEvent.click(screen.getByLabelText('Attach the source material to Pane 2'));
+
+    await sendAll(2);
+    emit(calls[0], 'left answer');
+    emit(calls[1], 'right answer');
+    await finish(calls[0]);
+    await finish(calls[1]);
+
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledTimes(1));
+    expect(recordLabSubmission).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({
+        transcript: {
+          kind: 'chat-compare',
+          promptMode: 'per-pane',
+          panes: [
+            {
+              label: 'Pane 1: Prompt #1',
+              text: 'left answer',
+              promptText: 'What changed for Meridian State?',
+              promptIdx: 1,
+              groundingUsed: false,
+            },
+            {
+              label: 'Pane 2: Your prompt',
+              text: 'right answer',
+              promptText: 'my own prompt',
+              promptIdx: null,
+              groundingUsed: true,
+            },
+          ],
+        },
+      }),
+    );
+  });
+
+  test('a heading frozen at submit cannot change mid-stream when another prompt is picked', async () => {
+    render(<ChatCompare config={perPaneConfig} labId="c1-w2" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Use prompt 1 in Pane 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use prompt 1 in Pane 2' }));
+    await sendAll(2);
+    expect(screen.getByText('Pane 1: Prompt #1')).toBeInTheDocument();
+
+    // Pick a different prompt for pane 1 WHILE its response is still streaming.
+    fireEvent.click(screen.getByRole('button', { name: 'Use prompt 2 in Pane 1' }));
+    expect(screen.getByText('Pane 1: Prompt #1')).toBeInTheDocument();
+    expect(screen.queryByText('Pane 1: Prompt #2')).not.toBeInTheDocument();
+    await finish(calls[0]);
+    await finish(calls[1]);
+  });
+
+  test('the source panel renders its framing and expands on demand', () => {
+    render(<ChatCompare config={perPaneConfig} labId="c1-w2" />);
+    expect(screen.getByText(/a primary source/i)).toBeInTheDocument();
+    const toggle = screen.getByRole('button', { name: /Source material/i });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText(new RegExp('30% of the weekly benefit'))).not.toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText(new RegExp('30% of the weekly benefit'))).toBeInTheDocument();
+  });
+});
+
+describe('ChatCompare — tabbed examples (content pass W5.6)', () => {
+  const tabbed: ChatCompareConfig = {
+    kind: 'chat-compare',
+    promptMode: 'per-pane',
+    panes: [{ label: 'Pane 1' }, { label: 'Pane 2' }],
+    examples: [
+      {
+        id: 'meridian',
+        label: 'Example 1: Meridian',
+        introMd: 'Your task: write an email to claimants.',
+        groundingSourceMd: 'BULLETIN TEXT',
+        suggestedPrompts: [{ text: 'Meridian prompt one', usesSource: true }],
+        reflectionMd: 'Meridian reflection.',
+      },
+      {
+        id: 'slack-announcement',
+        label: 'Example 2: Slack Post',
+        introMd: 'Your task: announce a talk in Slack.',
+        groundingSourceMd: 'EVENT BRIEF TEXT',
+        suggestedPrompts: [{ text: 'Slack prompt one', usesSource: true }],
+        reflectionMd: 'Slack reflection.',
+      },
+    ],
+  };
+
+  test('the tab strip swaps the intro, prompts, source and reflection', () => {
+    render(<ChatCompare config={tabbed} labId="c1-w2" />);
+    expect(screen.getByText(/write an email to claimants/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Use prompt 1 in Pane 1' })).toBeInTheDocument();
+    expect(screen.getByText('Meridian prompt one')).toBeInTheDocument();
+    expect(screen.getByText('Meridian reflection.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Example 2: Slack Post' }));
+    expect(screen.getByText(/announce a talk in Slack/)).toBeInTheDocument();
+    expect(screen.getByText('Slack prompt one')).toBeInTheDocument();
+    expect(screen.getByText('Slack reflection.')).toBeInTheDocument();
+    expect(screen.queryByText('Meridian prompt one')).not.toBeInTheDocument();
+
+    // The selected tab is the one exposed to assistive tech.
+    expect(screen.getByRole('tab', { name: 'Example 2: Slack Post' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  test('switching examples aborts in-flight streams and clears the panes', async () => {
+    render(<ChatCompare config={tabbed} labId="c1-w2" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Use prompt 1 in Pane 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use prompt 1 in Pane 2' }));
+    await sendAll(2);
+    emit(calls[0], 'meridian answer');
+    expect(screen.getByText('meridian answer')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: 'Example 2: Slack Post' }));
+      await Promise.resolve();
+    });
+    expect(calls.map((c) => c.options.signal?.aborted)).toEqual([true, true]);
+    expect(screen.queryByText('meridian answer')).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Send a prompt to see this response/i)).toHaveLength(2);
+    expect(screen.getByLabelText('Prompt for Pane 1')).toHaveValue('');
+    // The superseded run never records.
+    expect(recordLabSubmission).not.toHaveBeenCalled();
+  });
+
+  test("the recorded transcript names the example the run belongs to", async () => {
+    render(<ChatCompare config={tabbed} labId="c1-w2" />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Example 2: Slack Post' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use prompt 1 in Pane 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use prompt 1 in Pane 2' }));
+    await sendAll(2);
+    // Example 2's source — not Example 1's — is the one attached.
+    expect(calls[0].messages[0].content).toContain('EVENT BRIEF TEXT');
+    expect(calls[0].messages[0].content).not.toContain('BULLETIN TEXT');
+
+    await finish(calls[0]);
+    await finish(calls[1]);
+    await waitFor(() => expect(recordLabSubmission).toHaveBeenCalledTimes(1));
+    expect(recordLabSubmission).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({
+        transcript: expect.objectContaining({ exampleId: 'slack-announcement' }),
+      }),
+    );
   });
 });
