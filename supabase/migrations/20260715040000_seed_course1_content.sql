@@ -711,6 +711,133 @@ A Project doesn't change how the context window works. Each chat inside it still
    null)
 on conflict (cell_id) do nothing;
 
+-- c1-w1-lookup-vs-predict — Lookup or Predict?
+insert into public.modules
+  (cell_id, stage, origin, visibility, status, title, type, dimension,
+   evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
+values
+  ('c1-w1-lookup-vs-predict', null, 'course', 'program', 'published', 'Lookup or Predict?', 'lab',
+   ARRAY['Discernment']::text[], 'performance-task', 'na', 903,
+   $md$Part of the Week 1 live session, after the two experiments. Sort each task below by what it *feels* like Claude is doing — then submit to see the twist. There is no wrong answer while you sort; the point is to compare your gut feeling against what's actually happening.$md$,
+   $json${
+  "kind": "prediction-sort",
+  "introMd": "For each task, place it in the bucket that matches your gut: does it feel like Claude is **looking something up**, or **making something up**? Sort all six, then submit.",
+  "bucketLabels": {
+    "lookup": "Feels like looking it up",
+    "predict": "Feels like making it up"
+  },
+  "items": [
+    {
+      "id": "capital",
+      "prompt": "What's the capital of France?",
+      "reveal": "Feels like a fact Claude retrieved — but Claude predicted \"Paris\" because those words follow that question countless times in its training. Same machinery as everything else here."
+    },
+    {
+      "id": "offsite",
+      "prompt": "Give me three ideas for a team offsite.",
+      "reveal": "Obviously generated on the spot — there's no \"right\" answer to retrieve. But the capital of France worked the exact same way."
+    },
+    {
+      "id": "pto",
+      "prompt": "What's our company's PTO policy?",
+      "reveal": "Feels like Claude is checking an HR page — but it has no access to Nava's policies unless you give them to it. It predicts a plausible-sounding policy that can be wrong in exactly the ways that matter. High-stakes at Nava."
+    },
+    {
+      "id": "summary",
+      "prompt": "Summarize this paragraph I just pasted.",
+      "reveal": "It's grounded in the text you gave it, yet Claude still predicts the summary word by word — it isn't copying sentences straight out."
+    },
+    {
+      "id": "medicaid",
+      "prompt": "What were the Q3 2025 Medicaid enrollment numbers for New Jersey?",
+      "reveal": "Nothing to look up here — Claude predicts plausible-looking numbers that can be entirely fabricated. This is the confident-wrong pattern from Experiment 2, aimed straight at the kind of data we work with."
+    },
+    {
+      "id": "worldcup",
+      "prompt": "Who won the 2043 World Cup?",
+      "reveal": "There's nothing to look up — the match hasn't happened. Claude predicts a plausible-sounding answer anyway. That's how the confident wrong answers in Experiment 2 happen."
+    }
+  ],
+  "takeaway": {
+    "title": "The twist: it was all prediction",
+    "body": "You probably split these into \"looking it up\" and \"making it up.\" Here's the catch — Claude did the exact same thing for every one: it predicted the next word from patterns in its training. It never looked anything up. Some predictions land on the truth (they're common patterns); some drift into confident fiction (Experiment 2). Your Champion will unpack why in the live debrief."
+  }
+}$json$::jsonb)
+on conflict (cell_id) do nothing;
+
+-- c1-w2-delegation-sort — Full-AI, Assisted, or Human-Only?
+insert into public.modules
+  (cell_id, stage, origin, visibility, status, title, type, dimension,
+   evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
+values
+  ('c1-w2-delegation-sort', null, 'course', 'program', 'published', 'Full-AI, Assisted, or Human-Only?', 'lab',
+   ARRAY['Delegation']::text[], 'performance-task', 'na', 921,
+   $md$Part of the Week 2 live session — run this in breakout rooms with your group, before the Ground & Scope activity. Before reaching for AI, the first move is deciding *who should do the task*. Sort each scenario below, then submit to see a defensible call and talk it through.$md$,
+   $json${
+  "kind": "delegation-sort",
+  "introMd": "For each task, decide how AI should be involved: **Full-AI** (AI does it end to end), **AI-assisted** (AI helps, a person checks and owns it), or **Human-only** (a person must make and own the call). Sort all six, then submit — the point isn't a single right answer, it's the reasoning.",
+  "categories": [
+    {
+      "id": "full-ai",
+      "label": "Full-AI",
+      "desc": "AI does it end-to-end — pattern-matching or synthesis, low-stakes, easy to verify."
+    },
+    {
+      "id": "assisted",
+      "label": "AI-assisted",
+      "desc": "AI helps; a person directs, checks, and owns the result."
+    },
+    {
+      "id": "human-only",
+      "label": "Human-only",
+      "desc": "A person must make and own the call (AI may help prep, never decide)."
+    }
+  ],
+  "items": [
+    {
+      "id": "denial-letter",
+      "scenario": "Draft a benefits-eligibility denial letter for a caseworker to review before it goes out.",
+      "suggested": "assisted",
+      "rationale": "AI can draft the language, but a person must verify the determination and own what's sent to the claimant."
+    },
+    {
+      "id": "508-table",
+      "scenario": "Reformat the findings from a 508 accessibility audit into a summary table.",
+      "suggested": "full-ai",
+      "rationale": "Mechanical restructuring of existing content — low-stakes and easy to check at a glance."
+    },
+    {
+      "id": "pip",
+      "scenario": "Write a performance improvement plan (PIP) for a teammate who's struggling.",
+      "suggested": "human-only",
+      "rationale": "Accountability and values — a manager must make and own this call, not a model."
+    },
+    {
+      "id": "condolence",
+      "scenario": "Write a condolence note to a colleague who just lost a family member.",
+      "suggested": "human-only",
+      "rationale": "A human relationship; sincerity is the whole point and can't be delegated."
+    },
+    {
+      "id": "policy-comments",
+      "scenario": "Summarize 40 pages of public comments on a proposed policy into the main themes.",
+      "suggested": "full-ai",
+      "rationale": "Pattern-matching and synthesis over public text — exactly where AI speeds you up (spot-check the themes)."
+    },
+    {
+      "id": "vendor-award",
+      "scenario": "Decide which of three vendors should be awarded a contract.",
+      "suggested": "human-only",
+      "rationale": "A high-stakes, accountable decision; AI may help you compare, but a person makes the call."
+    }
+  ],
+  "takeaway": {
+    "title": "The question to ask first: who owns the call?",
+    "body": "Before reaching for AI, ask what kind of task this is. Pattern-matching and synthesis — summarizing, reformatting, drafting — are where AI multiplies your speed. Anything carrying values, ethics, or accountability stays human-owned: AI can help you prepare, but a person makes and owns the decision. The gray-area cases (the 508 table, the policy comments) are worth arguing about — that's the point of today's discussion."
+  }
+}$json$::jsonb)
+on conflict (cell_id) do nothing;
+
 -- c1-w5-classify-route — Classify & Route: What Goes Where?
 insert into public.modules
   (cell_id, stage, origin, visibility, status, title, type, dimension,
@@ -909,11 +1036,13 @@ values
   ('c0000000-0000-4000-8000-000000000100', 'c1-w0-claude-setup', 0),
   ('c0000000-0000-4000-8000-000000000101', 'c1-w1-same-prompt-3x', 0),
   ('c0000000-0000-4000-8000-000000000101', 'c1-w1-confidently-wrong', 1),
-  ('c0000000-0000-4000-8000-000000000102', 'c1-w2-ground-and-scope', 0),
+  ('c0000000-0000-4000-8000-000000000102', 'c1-w2-ground-and-scope', 1),
   ('c0000000-0000-4000-8000-000000000103', 'c1-w34-pod-kickoff', 0),
   ('c0000000-0000-4000-8000-000000000103', 'c1-w34-walk-the-workflow-delivery', 1),
   ('c0000000-0000-4000-8000-000000000103', 'c1-w34-walk-the-workflow-general', 2),
   ('c0000000-0000-4000-8000-000000000103', 'c1-w34-scavenger-hunt', 3),
+  ('c0000000-0000-4000-8000-000000000101', 'c1-w1-lookup-vs-predict', 2),
+  ('c0000000-0000-4000-8000-000000000102', 'c1-w2-delegation-sort', 0),
   ('c0000000-0000-4000-8000-000000000104', 'c1-w5-classify-route', 0),
   ('c0000000-0000-4000-8000-000000000104', 'c1-w5-pattern-spotting', 1)
 on conflict do nothing;
