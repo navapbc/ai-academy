@@ -267,11 +267,14 @@ describe.skipIf(!RUN)('enrollment-based modules visibility (U4)', () => {
     expect((await svc.from('profiles').update({ role: 'champion' }).eq('id', champ.uid)).error).toBeNull();
     expect((await svc.from('profiles').update({ role: 'admin' }).eq('id', admin.uid)).error).toBeNull();
 
-    // The actual published count, read via service_role (RLS-free).
+    // The actual published count, read via service_role (RLS-free). Archived
+    // rows are excluded: archive is the soft-delete axis, so a retired lesson
+    // must not sit in every learner's completion denominator forever (W1.3).
     const { count: actual, error: cntErr } = await svc
       .from('modules')
       .select('cell_id', { count: 'exact', head: true })
-      .eq('status', 'published');
+      .eq('status', 'published')
+      .is('archived_at', null);
     expect(cntErr).toBeNull();
 
     const champTotal = await champ.client.rpc('published_modules_total');

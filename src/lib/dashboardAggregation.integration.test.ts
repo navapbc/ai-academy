@@ -222,10 +222,12 @@ describe.skipIf(!RUN)('P5.2a aggregation views inherit the P5.1c boundary', () =
     expect((await svc.from('profiles').update({ role: 'admin' }).eq('id', admin.uid)).error).toBeNull();
 
     // Published-module total (admin reads all rows; same scalar every row).
+    // Excludes archived rows, matching published_modules_total() (W1.3).
     const { count: publishedTotal, error: cntErr } = await svc
       .from('modules')
       .select('cell_id', { count: 'exact', head: true })
-      .eq('status', 'published');
+      .eq('status', 'published')
+      .is('archived_at', null);
     expect(cntErr).toBeNull();
 
     const lps = await admin.client
