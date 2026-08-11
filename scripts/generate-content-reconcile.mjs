@@ -1,5 +1,5 @@
-// Generates the one-shot reconcile migration for the L&D content review
-// (plan item W0.3).
+// Generates the dated reconcile migrations that carry course1-content.json
+// edits to databases that already ran the seed.
 //
 // WHY THIS EXISTS. generate-course1-seed.mjs emits `insert … on conflict
 // (cell_id) do nothing`, which is correct for a seed — it must never clobber
@@ -7,13 +7,17 @@
 // changes what a FRESH `supabase db reset` produces. Against a database that
 // already ran the seed once (staging, prod), the edits are a silent no-op.
 //
-// So the content pass needs one dated migration carrying explicit
-// `update … where cell_id = …` for every cell whose content actually changed.
-// Human decision 3(a) on this review chose that channel deliberately, on the
-// stated basis that the pilot has not started and no cell has been published
-// through the admin CMS — the UPDATE is unconditional and would overwrite a
-// CMS edit if one existed. Re-verify that assumption before deploying to an
-// environment where learners or authors have been active.
+// So every content pass needs one dated migration carrying explicit
+// `update … where cell_id = …` for each cell whose content actually changed.
+// Those UPDATEs are unconditional and would overwrite a CMS edit if one
+// existed (DATA-04) — re-verify that before deploying to an environment where
+// authors have been publishing.
+//
+// Each entry in RECONCILES below is one such migration. A pass is marked
+// `frozen` once its migration has shipped: it renders from the CURRENT seed
+// JSON, so regenerating it after a later content edit would silently rewrite an
+// already-applied migration. Frozen entries stay here as the record of what
+// each pass carried, and are skipped on write.
 //
 // Run: node scripts/generate-content-reconcile.mjs
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -23,24 +27,65 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SEED_JSON = join(ROOT, 'supabase/seed-data/course1-content.json');
-const OUT = join(ROOT, 'supabase/migrations/20260806020000_content_review_sarah_grayvin.sql');
+const MIGRATIONS = join(ROOT, 'supabase/migrations');
 
-// The cells this review changed, and which columns changed for each. Derived by
-// diffing course1-content.json against 7cd805e (the pre-pass baseline, i.e. the
-// content that was dumped to the review doc on 2026-07-29) and kept explicit so
-// the migration's blast radius is reviewable rather than inferred at runtime.
-const TARGETS = [
-  { cell_id: 'c1-w0-claude-setup', columns: ['body_md'], why: 'W2.1 — Sarah\'s Week 0 copy edits (paras 74, 76, 105)' },
-  { cell_id: 'c1-w1-confidently-wrong', columns: ['lab_config_json'], why: 'W2.2 — reflection prompt hint (para 210)' },
-  { cell_id: 'c1-w2-ground-and-scope', columns: ['body_md', 'lab_config_json'], why: 'WS-5 — the Week 2 rewrite, comments [6]-[15]' },
-  { cell_id: 'c1-w34-walk-the-workflow-general', columns: ['lab_config_json'], why: 'W2.4 — Sarah\'s tracked changes, paras 492-571' },
-  { cell_id: 'c1-w34-scavenger-hunt', columns: ['title', 'body_md'], why: 'W2.5 — retitle + copy edits (paras 582-601)' },
+// One entry per content pass. `targets` lists the cells that pass changed and
+// only the columns that changed for each — kept explicit so a migration's blast
+// radius is reviewable in the diff rather than inferred at runtime. `notice` is
+// the prefix on the migration's raise-notice output.
+const RECONCILES = [
+  {
+    file: '20260806020000_content_review_sarah_grayvin.sql',
+    frozen: true, // shipped in #146
+    notice: 'content_review',
+    title: 'content_review_sarah_grayvin (L&D content pass, plan item W0.3).',
+    // Derived by diffing course1-content.json against 7cd805e (the pre-pass
+    // baseline, i.e. the content dumped to the review doc on 2026-07-29).
+    scope: [
+      'SCOPE: the 5 cells the review actually changed, and only the columns that',
+      'changed. Derived by diffing the seed JSON against the 2026-07-29 baseline that',
+      'was dumped for review; see docs/content/content-review-plan.md.',
+    ],
+    caveat: [
+      'DATA-04: these UPDATEs are UNCONDITIONAL. Human decision 3(a) chose this',
+      'channel on the basis that the pilot has not started and no cell has been',
+      'published through the admin CMS, so there is no author edit to lose. If that',
+      'ever stops being true, reconcile the live copy into the JSON first.',
+    ],
+    targets: [
+      { cell_id: 'c1-w0-claude-setup', columns: ['body_md'], why: 'W2.1 — Sarah\'s Week 0 copy edits (paras 74, 76, 105)' },
+      { cell_id: 'c1-w1-confidently-wrong', columns: ['lab_config_json'], why: 'W2.2 — reflection prompt hint (para 210)' },
+      { cell_id: 'c1-w2-ground-and-scope', columns: ['body_md', 'lab_config_json'], why: 'WS-5 — the Week 2 rewrite, comments [6]-[15]' },
+      { cell_id: 'c1-w34-walk-the-workflow-general', columns: ['lab_config_json'], why: 'W2.4 — Sarah\'s tracked changes, paras 492-571' },
+      { cell_id: 'c1-w34-scavenger-hunt', columns: ['title', 'body_md'], why: 'W2.5 — retitle + copy edits (paras 582-601)' },
+    ],
+  },
+  {
+    file: '20260811000000_week0_login_sso.sql',
+    notice: 'week0_login_sso',
+    title: 'week0_login_sso — corrected Week 0 sign-in instructions.',
+    scope: [
+      'SCOPE: c1-w0-claude-setup body_md only. Section "1. Logging in" now walks',
+      'learners through the email + "Continue with SSO" path; the "Continue with',
+      'Google" button does not land you on the Nava Claude account, so it is now',
+      'called out as the thing NOT to click.',
+    ],
+    caveat: [
+      'DATA-04: this UPDATE is UNCONDITIONAL and would overwrite a CMS edit to this',
+      "cell's body. Confirm Week 0 has not been edited through the admin CMS before",
+      'deploying; if it has, fold the live copy into the seed JSON first.',
+    ],
+    targets: [
+      { cell_id: 'c1-w0-claude-setup', columns: ['body_md'], why: 'Nava Claude accounts are reached via email → Continue with SSO, not Continue with Google' },
+    ],
+  },
 ];
 
 const data = JSON.parse(readFileSync(SEED_JSON, 'utf8'));
 const modules = new Map(data.modules.map((m) => [m.cell_id, m]));
 
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
+const comment = (lines) => lines.map((l) => `-- ${l}`).join('\n');
 
 // Dollar-quoting is only safe while the payload cannot contain the delimiter.
 // The seed generator carries the same assumption implicitly; here it is checked,
@@ -66,18 +111,21 @@ function assignment(m, column) {
   }
 }
 
-const statements = TARGETS.map(({ cell_id, columns, why }) => {
-  const m = modules.get(cell_id);
-  if (!m) throw new Error(`${cell_id} is not in course1-content.json`);
-  return `-- ${cell_id} — ${m.title}
+function render({ notice, title, scope, caveat, targets }) {
+  const statements = targets.map(({ cell_id, columns, why }) => {
+    const m = modules.get(cell_id);
+    if (!m) throw new Error(`${cell_id} is not in course1-content.json`);
+    return `-- ${cell_id} — ${m.title}
 -- ${why}
 update public.modules set
 ${columns.map((c) => assignment(m, c)).join(',\n')}
 where cell_id = ${q(cell_id)};
 `;
-}).join('\n');
+  }).join('\n');
 
-const sql = `-- content_review_sarah_grayvin (L&D content pass, plan item W0.3).
+  const cellList = targets.map((t) => q(t.cell_id)).join(', ');
+
+  return `-- ${title}
 --
 -- GENERATED by scripts/generate-content-reconcile.mjs from
 -- supabase/seed-data/course1-content.json — DO NOT HAND-EDIT. Change the JSON,
@@ -89,14 +137,9 @@ const sql = `-- content_review_sarah_grayvin (L&D content pass, plan item W0.3).
 -- migration carries the same content as explicit UPDATEs so every environment
 -- converges on the reviewed copy.
 --
--- SCOPE: the ${TARGETS.length} cells the review actually changed, and only the columns that
--- changed. Derived by diffing the seed JSON against the 2026-07-29 baseline that
--- was dumped for review; see docs/content/content-review-plan.md.
+${comment(scope)}
 --
--- DATA-04: these UPDATEs are UNCONDITIONAL. Human decision 3(a) chose this
--- channel on the basis that the pilot has not started and no cell has been
--- published through the admin CMS, so there is no author edit to lose. If that
--- ever stops being true, reconcile the live copy into the JSON first.
+${comment(caveat)}
 --
 -- Learner progress is deliberately NOT reset. progress_reset_at is minted
 -- inside the admin-content Edge Function, so a migration cannot fire the epoch
@@ -109,11 +152,11 @@ declare
   missing text[];
 begin
   select array_agg(c) into missing
-  from unnest(array[${TARGETS.map((t) => q(t.cell_id)).join(', ')}]) as c
+  from unnest(array[${cellList}]) as c
   where not exists (select 1 from public.modules m where m.cell_id = c);
 
   if missing is not null then
-    raise notice 'content_review: % target cell(s) absent, their updates will affect 0 rows: %',
+    raise notice '${notice}: % target cell(s) absent, their updates will affect 0 rows: %',
       array_length(missing, 1), array_to_string(missing, ', ');
   end if;
 end $$;
@@ -125,12 +168,19 @@ declare
 begin
   select count(*) into updated
   from public.modules
-  where cell_id = any (array[${TARGETS.map((t) => q(t.cell_id)).join(', ')}]);
-  raise notice 'content_review: reconciled % of ${TARGETS.length} reviewed cell(s).', updated;
+  where cell_id = any (array[${cellList}]);
+  raise notice '${notice}: reconciled % of ${targets.length} reviewed cell(s).', updated;
 end $$;
 `;
+}
 
-writeFileSync(OUT, sql);
-stdout.write(
-  `Wrote ${OUT}: ${TARGETS.length} cells, ${TARGETS.reduce((n, t) => n + t.columns.length, 0)} column updates.\n`,
-);
+for (const spec of RECONCILES) {
+  const out = join(MIGRATIONS, spec.file);
+  if (spec.frozen) {
+    stdout.write(`Skipped ${spec.file}: already applied — frozen.\n`);
+    continue;
+  }
+  writeFileSync(out, render(spec));
+  const columns = spec.targets.reduce((n, t) => n + t.columns.length, 0);
+  stdout.write(`Wrote ${out}: ${spec.targets.length} cells, ${columns} column updates.\n`);
+}

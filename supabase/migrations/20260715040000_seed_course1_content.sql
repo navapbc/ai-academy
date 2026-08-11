@@ -42,9 +42,11 @@ values
 
 ## 1. Logging in
 
-- Go to [claude.ai](https://claude.ai) and choose **Continue with Google**.
-- Sign in with your Nava Google account (your `@navapbc.com` address). Claude access at Nava runs through your work account, so there is no separate password to manage.
-- If sign-in fails or you don't seem to have access, ask in the AI Slack channels (see the end of this guide). Don't create a personal account with your work email.
+- Go to [claude.ai](https://claude.ai) and **DO NOT** choose **Continue with Google**.
+- Enter your Nava email into the "Enter your email" free text field.
+- After you enter your email a "Continue with SSO" button will appear, click that.
+- This will route you through Google SSO to your Nava Claude account.
+- If sign-in fails or you don't seem to have access, ask in the AI Slack channels (see the end of this guide).
 
 ## 2. Downloading Claude to your desktop
 
