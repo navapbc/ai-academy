@@ -13,7 +13,8 @@ left join public.profiles      p on lower(p.email) = r.email
 left join public.enrollments   e on e.user_id = p.id and e.cohort_id = c.id
 group by c.name
 order by c.name;
--- Expect roster_size 26 / 25 / 27 for cohorts A / B / C (78 total).
+-- Expect roster_size 26 / 25 / 28 for cohorts A / B / C (79 total).
+-- (Was 26 / 25 / 27 = 78 before 20260817000000 added melissafernandes@ to C.)
 -- have_signed_in grows as people log in; enrolled_now should always equal it.
 
 -- 2. THE ALARM: anyone with an account who is on the roster but NOT enrolled.
