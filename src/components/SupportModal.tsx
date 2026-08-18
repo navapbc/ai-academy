@@ -19,6 +19,12 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
 
   const githubUrl = `https://github.com/navapbc/ai-academy/issues/new?body=${encodeURIComponent(description)}`;
 
+  const handleSubmitted = () => {
+    setDescription('');
+    setTouched(false);
+    onClose();
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -96,6 +102,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                     href={githubUrl}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={handleSubmitted}
                     className="flex-1 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg bg-gray-900 text-white hover:bg-black shadow-black/10"
                   >
                     <Send className="w-4 h-4" aria-hidden="true" />

@@ -40,4 +40,13 @@ describe('SupportModal accessibility', () => {
     await userEvent.type(screen.getByLabelText('Description'), 'This is a real bug report.');
     expect(screen.getByRole('link', { name: /GitHub Issue/i })).toBeInTheDocument();
   });
+
+  test('closes and clears the description after submitting to GitHub', async () => {
+    const onClose = vi.fn();
+    render(<SupportModal isOpen onClose={onClose} />);
+    await userEvent.type(screen.getByLabelText('Description'), 'This is a real bug report.');
+    await userEvent.click(screen.getByRole('link', { name: /GitHub Issue/i }));
+    expect(onClose).toHaveBeenCalled();
+    expect(screen.getByLabelText('Description')).toHaveValue('');
+  });
 });
