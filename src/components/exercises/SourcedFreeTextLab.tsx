@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { markdownComponents } from '../../lib/markdownComponents';
 import { Save, Sparkles } from 'lucide-react';
 import type { GradingRubric } from '../../types';
 import { useAuth } from '../../lib/auth';
@@ -129,7 +130,7 @@ export default function SourcedFreeTextLab({
           {source.label}
         </div>
         <div className="prose prose-sm prose-slate max-w-none rounded-xl bg-gray-50 border border-gray-100 p-5 prose-p:text-gray-700 prose-li:text-gray-700 prose-headings:text-gray-800 prose-strong:text-gray-800 prose-code:text-nava-plum prose-code:bg-gray-100 prose-code:rounded prose-code:px-1 prose-code:font-normal prose-blockquote:border-l-nava-plum prose-blockquote:text-gray-500">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{source.bodyMd}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{source.bodyMd}</ReactMarkdown>
         </div>
       </div>
 

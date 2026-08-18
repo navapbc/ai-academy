@@ -62,6 +62,7 @@ const RECONCILES = [
   },
   {
     file: '20260811000000_week0_login_sso.sql',
+    frozen: true, // shipped in #147
     notice: 'week0_login_sso',
     title: 'week0_login_sso — corrected Week 0 sign-in instructions.',
     scope: [
@@ -77,6 +78,28 @@ const RECONCILES = [
     ],
     targets: [
       { cell_id: 'c1-w0-claude-setup', columns: ['body_md'], why: 'Nava Claude accounts are reached via email → Continue with SSO, not Continue with Google' },
+    ],
+  },
+  {
+    file: '20260818000000_week0_skills_org_managed.sql',
+    notice: 'week0_skills_org_managed',
+    title: 'week0_skills_org_managed — corrected Skills-enablement instructions for Nava\'s Team/Enterprise workspace.',
+    scope: [
+      'SCOPE: c1-w0-claude-setup body_md only. Section "6. Skills" told every learner',
+      'to open Settings → Capabilities and enable "Code execution and file creation"',
+      'themselves — that path only exists on individual Free/Pro/Max accounts.',
+      'Nava\'s workspace is Team/Enterprise, where that toggle is workspace-level and',
+      'set by an admin, so learners could not find it in their own Settings. The copy',
+      'now says so and points learners straight to Customize → Skills, with a',
+      'fallback to the AI Slack channels if skills are not yet enabled workspace-wide.',
+    ],
+    caveat: [
+      'DATA-04: this UPDATE is UNCONDITIONAL and would overwrite a CMS edit to this',
+      "cell's body. Confirm Week 0 has not been edited through the admin CMS before",
+      'deploying; if it has, fold the live copy into the seed JSON first.',
+    ],
+    targets: [
+      { cell_id: 'c1-w0-claude-setup', columns: ['body_md'], why: '"Code execution and file creation" is an admin-managed workspace setting on Nava\'s Team/Enterprise plan, not a personal Settings toggle' },
     ],
   },
 ];

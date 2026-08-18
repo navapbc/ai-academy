@@ -108,8 +108,8 @@ Nava has a shared library of skills at [hub.navapbc.com](https://hub.navapbc.com
 
 **Turn skills on (one-time)**
 
-- Open **Settings → Capabilities** and make sure **Code execution and file creation** is on — skills rely on it.
-- Then open **Customize → Skills**. Claude ships with a few built-in skills (like creating Word, Excel, and PowerPoint files); toggle on any that look useful.
+- Nava's Claude workspace is a Team/Enterprise plan, so **Code execution and file creation** is a workspace-level setting turned on by an admin — you won't find it under your own Settings, and you don't need to enable it yourself.
+- Open **Customize → Skills**. Claude ships with a few built-in skills (like creating Word, Excel, and PowerPoint files); toggle on any that look useful. If nothing shows up there, skills likely haven't been turned on for the Nava workspace yet — ask in the AI Slack channels.
 
 **Install a skill from the Nava hub**
 

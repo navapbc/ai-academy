@@ -5,6 +5,7 @@ import type { FailureSpotterConfig, FailureSpotterQuestion } from '../../types';
 import ReactMarkdown from 'react-markdown';
 import { recordLabSubmission } from '../../lib/progress';
 import remarkGfm from 'remark-gfm';
+import { markdownComponents } from '../../lib/markdownComponents';
 import { useAuth } from '../../lib/auth';
 import { useState } from 'react';
 
@@ -192,7 +193,7 @@ export default function FailureSpotter({ config, labId }: Props) {
               }`}
             >
               <div className="prose prose-sm prose-slate max-w-none rounded-xl bg-gray-50 border border-gray-100 p-4 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-800 prose-code:text-nava-plum prose-code:bg-gray-100 prose-code:rounded prose-code:px-1 prose-code:font-normal prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-blockquote:border-l-nava-plum prose-blockquote:text-gray-500">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.artifactMd}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{item.artifactMd}</ReactMarkdown>
               </div>
 
               {renderQuestion(i, 'issue', item.issue, res.issueOk)}
