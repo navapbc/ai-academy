@@ -53,20 +53,19 @@ values
 The browser version works fine, but the desktop app is worth installing:
 
 - It keeps Claude one keyboard shortcut away instead of buried in your tabs.
-- Some features (like working with local files in Cowork) work best from the desktop app.
+- Some features (like giving Claude direct access to local files in Cowork mode) work best from the desktop app.
 - Download it from [claude.ai/download](https://claude.ai/download), install, and sign in with the same Google account.
 
 ## 3. Key areas in the tool
 
 Claude is more than the chat box. A quick map of the spaces you'll see:
 
-- **Chat** — the default space. Ask questions, draft and revise text, paste in material to work over. This is where you'll spend most of your time at first, and it's where the course activities happen.
+- **Home** — the default space, and where you'll spend most of your time. The message box at the bottom has a toggle between **Chat** (ask questions, draft and revise text, paste in material to work over — this is where the course activities happen) and **Cowork** (Claude takes on a task and works on it autonomously — operating on your actual files and carrying out multi-step work in the background — instead of a back-and-forth conversation).
 - **Projects** — a saved workspace that keeps instructions and reference files attached, so every chat you start inside it already has your context. Useful once you have a recurring task.
-- **Cowork** — a side-by-side working mode where Claude can operate on your actual files and carry out multi-step tasks, rather than just talking about them.
 - **Code** — Claude Code, a tool for engineers that works inside a codebase from the terminal. If you don't write code, you can ignore this one.
 - **Design** — a space for generating and iterating on visual artifacts and mockups. Worth a look if your work involves interfaces or presentations.
 
-You don't need to learn these now — just know they exist. The course starts in **Chat**.
+You don't need to learn these now — just know they exist. The course starts in **Home**, in Chat mode.
 
 ## 4. Recommended starter settings
 
