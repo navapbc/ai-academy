@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { markdownComponents } from '../../lib/markdownComponents';
 import {
   Columns3,
   Send,
@@ -516,7 +517,7 @@ export default function ChatCompare({ config, labId }: Props) {
       >
         {content.introMd && (
           <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.introMd}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{content.introMd}</ReactMarkdown>
           </div>
         )}
 
@@ -527,7 +528,7 @@ export default function ChatCompare({ config, labId }: Props) {
           <div className="border-2 border-nava-plum/15 rounded-2xl overflow-hidden">
             {content.sourceIntroMd && (
               <div className="px-5 pt-4 text-xs text-gray-600 leading-relaxed">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.sourceIntroMd}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{content.sourceIntroMd}</ReactMarkdown>
               </div>
             )}
             <button
@@ -547,7 +548,7 @@ export default function ChatCompare({ config, labId }: Props) {
             </button>
             {sourceOpen && (
               <div className="px-5 pb-5 prose prose-sm max-w-none text-gray-700 leading-relaxed border-t border-nava-plum/10 pt-4">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{groundingSourceMd}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{groundingSourceMd}</ReactMarkdown>
               </div>
             )}
           </div>
@@ -758,7 +759,7 @@ export default function ChatCompare({ config, labId }: Props) {
                 {run.status === 'streaming' && (
                   <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed" aria-busy="true">
                     {run.text ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{run.text}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{run.text}</ReactMarkdown>
                     ) : (
                       <span className="text-gray-500 italic">Waiting for Claude…</span>
                     )}
@@ -766,7 +767,7 @@ export default function ChatCompare({ config, labId }: Props) {
                 )}
                 {run.status === 'done' && (
                   <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{run.text}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{run.text}</ReactMarkdown>
                   </div>
                 )}
                 {run.status === 'error' && (
@@ -798,7 +799,7 @@ export default function ChatCompare({ config, labId }: Props) {
               Talk it through
             </div>
             <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.reflectionMd}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{content.reflectionMd}</ReactMarkdown>
             </div>
           </div>
         )}

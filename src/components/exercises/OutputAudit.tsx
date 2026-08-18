@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import { gradeOutputAudit } from '../outputAudit.grade';
 import { recordLabSubmission } from '../../lib/progress';
 import remarkGfm from 'remark-gfm';
+import { markdownComponents } from '../../lib/markdownComponents';
 import { useAuth } from '../../lib/auth';
 import { useState } from 'react';
 
@@ -107,7 +108,7 @@ export default function OutputAudit({ config, labId }: Props) {
           {artifact.label}
         </div>
         <div className="prose prose-sm prose-slate max-w-none rounded-2xl bg-gray-50 border border-gray-100 p-5 prose-headings:text-gray-800 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-800 prose-code:text-nava-plum prose-code:bg-gray-100 prose-code:rounded prose-code:px-1 prose-code:font-normal prose-blockquote:border-l-nava-plum prose-blockquote:text-gray-500">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{artifact.bodyMd}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{artifact.bodyMd}</ReactMarkdown>
         </div>
       </div>
 

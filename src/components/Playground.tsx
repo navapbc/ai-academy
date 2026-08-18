@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { markdownComponents } from '../lib/markdownComponents';
 import {
   Send, Terminal, Trash2, ChevronDown, ChevronUp, Bot, User,
   Copy, Check, Download, Sparkles, Square,
@@ -308,7 +309,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
                 }>
                   {msg.role === 'assistant' ? (
                     msg.content ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</ReactMarkdown>
                     ) : (
                       <motion.span
                         className="inline-block w-2 h-4 bg-gray-400 rounded-sm align-middle"

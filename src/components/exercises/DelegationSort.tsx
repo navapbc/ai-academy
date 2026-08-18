@@ -5,6 +5,7 @@ import type { DelegationSortConfig } from '../../types';
 import ReactMarkdown from 'react-markdown';
 import { recordLabSubmission } from '../../lib/progress';
 import remarkGfm from 'remark-gfm';
+import { markdownComponents } from '../../lib/markdownComponents';
 import { useAuth } from '../../lib/auth';
 import { useState } from 'react';
 
@@ -82,7 +83,7 @@ export default function DelegationSort({ config, labId }: Props) {
 
       {config.introMd && (
         <div className="prose prose-sm max-w-none text-gray-700">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{config.introMd}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{config.introMd}</ReactMarkdown>
         </div>
       )}
 

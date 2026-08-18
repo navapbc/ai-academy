@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { markdownComponents } from '../../lib/markdownComponents';
 import {
   BookOpen,
   Footprints,
@@ -274,7 +275,7 @@ export default function DecisionScenario({ config, labId }: Props) {
                 )}
               </div>
               <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                   {cp.options[oi].feedbackMd}
                 </ReactMarkdown>
               </div>
@@ -334,7 +335,7 @@ export default function DecisionScenario({ config, labId }: Props) {
         </div>
 
         <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{cp.setupMd}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{cp.setupMd}</ReactMarkdown>
         </div>
 
         <p className="text-sm font-bold text-gray-800">{cp.prompt}</p>
@@ -461,7 +462,7 @@ export default function DecisionScenario({ config, labId }: Props) {
                 The story ends
               </div>
               <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{config.closingMd}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{config.closingMd}</ReactMarkdown>
               </div>
             </div>
           )}
@@ -531,7 +532,7 @@ export default function DecisionScenario({ config, labId }: Props) {
       ) : step < 0 ? (
         <div className="space-y-6">
           <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{config.introMd}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{config.introMd}</ReactMarkdown>
           </div>
           <div className="flex justify-end border-t border-gray-100 pt-6">
             <button
@@ -572,7 +573,7 @@ export default function DecisionScenario({ config, labId }: Props) {
                 id="decision-scenario-context"
                 className="border-t border-gray-200 px-4 py-3 prose prose-sm max-w-none text-gray-700 leading-relaxed"
               >
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{config.introMd}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{config.introMd}</ReactMarkdown>
               </div>
             )}
           </div>

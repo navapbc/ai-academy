@@ -7,6 +7,7 @@ import { DEFAULT_MODEL_ID } from '../../lib/models';
 import ReactMarkdown from 'react-markdown';
 import { recordLabSubmission } from '../../lib/progress';
 import remarkGfm from 'remark-gfm';
+import { markdownComponents } from '../../lib/markdownComponents';
 import { streamChat } from '../../lib/llm';
 import { useAuth } from '../../lib/auth';
 
@@ -159,7 +160,7 @@ export default function PredictionSort({ config, labId }: Props) {
 
       {config.introMd && (
         <div className="prose prose-sm max-w-none text-gray-700">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{config.introMd}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{config.introMd}</ReactMarkdown>
         </div>
       )}
 
@@ -214,7 +215,7 @@ export default function PredictionSort({ config, labId }: Props) {
                   >
                     {run.text ? (
                       <div className="prose prose-sm max-w-none prose-p:my-1 prose-pre:my-1">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{run.text}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{run.text}</ReactMarkdown>
                       </div>
                     ) : (
                       <span className="text-gray-500 italic">Waiting for Claude…</span>
