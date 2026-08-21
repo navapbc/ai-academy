@@ -104,7 +104,30 @@ const RECONCILES = [
     ],
   },
   {
+    file: '20260818010000_week0_cowork_merged_into_chat.sql',
+    notice: 'week0_cowork_merged_into_chat',
+    title: 'week0_cowork_merged_into_chat — corrected Cowork description after Anthropic merged Chat and Cowork into one surface.',
+    scope: [
+      'SCOPE: c1-w0-claude-setup body_md only. Anthropic merged Chat and Cowork into',
+      'one "Home" tab (a mode toggle in the message box) rather than keeping Cowork as',
+      'its own sidebar space, so the desktop-app bullet in Section 2 and the "key',
+      'areas" tour in Section 3 no longer match the product. Section 2 now describes',
+      'the local-file access as a Cowork-mode capability rather than a separate app',
+      'area; Section 3 renames the default space to Home, with Chat and Cowork as its',
+      'two message-box modes, and the closing line now points to Home/Chat mode.',
+    ],
+    caveat: [
+      'DATA-04: this UPDATE is UNCONDITIONAL and would overwrite a CMS edit to this',
+      "cell's body. Confirm Week 0 has not been edited through the admin CMS before",
+      'deploying; if it has, fold the live copy into the seed JSON first.',
+    ],
+    targets: [
+      { cell_id: 'c1-w0-claude-setup', columns: ['body_md'], why: 'Cowork is no longer a separate sidebar space — it is a mode toggle inside Chat, on web, desktop, and mobile' },
+    ],
+  },
+  {
     file: '20260821000000_weeks34_pod_activity_copy.sql',
+    frozen: true, // shipped in #162
     notice: 'weeks34_pod_activity_copy',
     title: 'weeks34_pod_activity_copy — Weeks 3–4 pod-activity copy pass.',
     scope: [
