@@ -294,12 +294,12 @@ Use the tabs in the exercise below to switch between the two examples. Each one 
 }$json$::jsonb)
 on conflict (cell_id) do nothing;
 
--- c1-w34-pod-kickoff — Pod Kickoff: Intros & AI Delegation Brainstorm
+-- c1-w34-pod-kickoff — Meeting 1: Intros → Walk the Workflow → Delegation List
 insert into public.modules
   (cell_id, stage, origin, visibility, status, title, type, dimension,
    evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
 values
-  ('c1-w34-pod-kickoff', null, 'course', 'program', 'published', 'Pod Kickoff: Intros & AI Delegation Brainstorm', 'content',
+  ('c1-w34-pod-kickoff', null, 'course', 'program', 'published', 'Meeting 1: Intros → Walk the Workflow → Delegation List', 'content',
    ARRAY['Delegation']::text[], 'reflection', 'na', 904,
    $md$Welcome to your Week 3–4 pod activities! Complete the pod activities across roughly 2 hours. We recommend two 1-hour meetings; here's a starting suggestion for dividing the activities:
 
@@ -326,7 +326,7 @@ Then have each person take 1 minute to describe their current level of experienc
 
 ## Activity 2: Walk the Workflow (20 min)
 
-Open the **Walk the Workflow** activity for this week. Choose whether you'd like to complete a **delivery-** or **non-delivery-based** scenario, then follow your selected scenario and complete each decision point as a group.
+Choose one **Walk the Workflow** activity to complete as a group. Choose whether you'd like to complete a **delivery-** or **non-delivery-based** scenario and go to the relevant tab in the left navigation bar. Then follow your selected scenario and complete each decision point as a group. Come back to this section afterward to pick up with the next activity.
 
 - Delivery scenario: *Walk the Workflow: Delivery Scenario*
 - Non-delivery scenario: *Walk the Workflow: General Operations Scenario*
@@ -335,12 +335,17 @@ Open the **Walk the Workflow** activity for this week. Choose whether you'd like
 
 One way to set yourself up for success when using AI is to proactively reflect on the types of tasks within your workflows that make sense to delegate to an LLM — and which do not.
 
-1. Take about 7–10 minutes to **independently** brainstorm **3 items you would delegate to AI and 3 items you would not**.
-   - Reflect on *why* certain tasks should or should not be delegated, and be ready to discuss your reasoning.
-2. Then take another 10 minutes to discuss what you brainstormed **as a group**:
-   - What tasks did everyone choose to delegate vs. not delegate?
+1. **5–7 minutes.** **Independently** brainstorm **3 tasks**, and sort each into one of the three categories: **Full pass to AI**, **AI-assisted**, or **Human Only**.
+   - Reflect on *why* certain tasks fit into each tier, and be ready to discuss your reasoning.
+   - You can choose tasks that you have already delegated before, or tasks that you think you could delegate or want to delegate.
+2. **7–10 minutes.** Then discuss what you brainstormed **as a group**:
+   - What tasks did everyone choose for each tier?
    - What reasonings did everyone use to inform their choices?
-3. If any delegation decisions were unclear, make a note and ask about them in your cohort Slack channel.$md$,
+   - If your group lands on a task that everyone agrees to fully delegate to AI, do a quick gut check: would you be comfortable if a client or manager saw the AI's unreviewed output? If the answer is no, that task probably needs a human check.
+   - If any delegation decisions were unclear, make a note and ask about them in your cohort Slack channel.
+3. **3–5 minutes.** If it makes sense for your pod's interests, choose a shared goal (or goals) for the type of AI task(s) you want to try together. Are any of the tasks you identified to delegate reasonable to practice or work on together? At your next session you'll have semi-structured AI exploration time.
+   - Did anyone list a task they'd like to delegate but haven't yet, or a task they want to improve how they delegate?
+   - Feel free to use actual work examples and tackle something you're working on now. Bring any resources you'd need to your next meeting.$md$,
    null)
 on conflict (cell_id) do nothing;
 
@@ -468,7 +473,7 @@ This is the **non-delivery** scenario — an internal-operations example. If you
   "kind": "decision-scenario",
   "title": "Walk the Workflow: General operations scenario",
   "subtitle": "Delegate → Ground → Scope → Verify, one decision at a time.",
-  "introMd": "Devon works on Nava's People Operations team. Nava just switched to a new benefits-enrollment platform, and the internal \"Benefits 101\" guide — the doc every employee gets pointed to during onboarding and open enrollment — still describes the old system. Devon owns the rewrite: the steps need to match the new platform exactly, the tone should stay friendly and plain, and it's due before open enrollment starts in two weeks. Devon uses Claude for small things but has never used it for a full document like this.\n\nWalk through Devon's task one decision at a time. At each checkpoint, discuss as a pod before choosing an answer.",
+  "introMd": "Devon works on Nava's people-operations team. Nava just switched to a new benefits-enrollment platform, and the internal \"Benefits 101\" guide — the doc every employee gets pointed to during onboarding and open enrollment — still describes the old system. Devon owns the rewrite: the steps need to match the new platform exactly, the tone should stay friendly and plain, and it's due before open enrollment starts in two weeks. Devon uses Claude for small things but has never used it for a full document like this.\n\nWalk through Devon's task one decision at a time. At each checkpoint, discuss as a pod before choosing an answer.",
   "checkpoints": [
     {
       "id": "delegate",
@@ -494,7 +499,7 @@ This is the **non-delivery** scenario — an internal-operations example. If you
       "id": "ground",
       "phase": "ground",
       "multiSelect": true,
-      "setupMd": "Devon decides to use Claude to restructure and redraft the guide. Now: what sources should go into the model? Devon has the following available:\n\n- The **new platform's official administrator guide** from the vendor — public product documentation that describes every enrollment step.\n- **Last year's \"Benefits 101\" guide** — the internal doc being replaced. The structure and tone are right; the steps are outdated. It contains no personal information about any employee.\n- A **spreadsheet of employees' current enrollment selections** that the benefits team uses for reporting. It would show which plans people actually pick.\n- A **Slack thread where a teammate collected complaints** and confusion from employees about the old guide — useful pain points that the team hasn't addressed yet.\n\n**Discuss:** What should Devon put into the AI model to ground its work?\n\n- What details about the options help you decide?\n- Is there any additional information about any of the source options that would clarify whether they are safe or compliant to use with AI? *Hint: does Nava have a policy on this?*",
+      "setupMd": "Devon decides to use Claude to restructure and redraft the guide. Now: what sources should go into the model? Devon has the following available:\n\n- The **new platform's official administrator guide** from the vendor — public product documentation that describes every enrollment step accurately.\n- **Last year's \"Benefits 101\" guide** — the internal doc being replaced. The structure and tone are right; the steps are outdated. It contains no personal information about any employee.\n- A **spreadsheet of employees' current enrollment selections** that the benefits team uses for reporting. It would show which plans people actually pick.\n- A **Slack thread where a teammate collected complaints** and confusion from employees about the old guide — useful pain points that the team hasn't addressed yet, mixed in with individual employees' names and personal situations.\n\n**Discuss:** What should Devon put into the AI model to ground its work?\n\n- What details about the options help you decide?\n- Is there any additional information about any of the source options that would clarify whether they are safe or compliant to use with AI? *Hint: does Nava have a policy on this?*",
       "prompt": "Devon should use the following sources to ground the model — check all that apply. Only select sources that you are confident are appropriate; do not select any options that may be risky without more information.",
       "options": [
         {
@@ -511,7 +516,7 @@ This is the **non-delivery** scenario — an internal-operations example. If you
         },
         {
           "text": "The Slack thread of collected complaints",
-          "feedbackMd": "Risky as-is. The pain points are genuinely useful context, but giving Claude access to the thread mixes the content with the individual employees' names and any personal situations they may have posted about. If Devon wants this context, the safer move is to first distill the *themes* — with every personal detail removed — and ground the model with that summary instead."
+          "feedbackMd": "Risky as-is. The pain points are genuinely useful context, but giving Claude access to the thread mixes the content with individual employees' names and any personal situations they may have posted about. If Devon wants this context, the safer move is to first distill the *themes* — with every personal detail removed — and ground the model with that summary instead."
         }
       ]
     },
@@ -555,7 +560,7 @@ This is the **non-delivery** scenario — an internal-operations example. If you
         },
         {
           "text": "Verify every step — and if any step turns out wrong, discard the AI draft and rewrite the guide from scratch by hand, to be safe.",
-          "feedbackMd": "Verify every step, yes — but one wrong step doesn't poison the document. Fix what's wrong, re-check the fix, and keep going. Scrapping working material after any single error trades away all the efficiency without adding safety. Walking through the new guide step by step is the right approach, and fixing any errors as you go, is the right approach."
+          "feedbackMd": "Verify every step, yes — but one wrong step doesn't poison the document. Fix what's wrong, re-check the fix, and keep going. Scrapping working material after any single error trades away all the efficiency without adding safety. Walking through the new guide step by step, and fixing any errors as you go, is the right approach."
         }
       ]
     }
@@ -571,7 +576,7 @@ insert into public.modules
 values
   ('c1-w34-scavenger-hunt', null, 'course', 'program', 'published', 'Meeting 2: AI Practice Scavenger Hunt', 'content',
    ARRAY['Delegation', 'Description', 'Discernment', 'Diligence']::text[], 'performance-task', 'na', 907,
-   $md$We recommend completing this activity during your second pod meeting of Weeks 3-4. Plan to spend about 1 hour on these tasks.
+   $md$Activity 4 of your Week 3–4 pod meetings (about 60 minutes — a good fit for your second pod meeting).
 
 Choose **at least 3–4** of the tasks/exercises from the list below to try with your pod. You can work on each of them together, or choose to work on them in smaller groups or independently first before debriefing. You do not need to complete them in order. Feel free to try tasks that align with real work needs — or just try items for fun. Think back to any goals you set as a group at the end of your first meeting. The goal is to build familiarity with self-led experimentation.
 
@@ -583,19 +588,21 @@ Choose the exercises that are most interesting to you, your pod, and your work �
 
 1. **Grounding-for-improvement A/B test.** Run one task or prompt cold, then again with the real source pasted in. Compare, then verify one claim in the grounded version. (This is the Week 2 activity, now open to whatever prompts you'd like to try.)
 2. **Break your own scope.** Take a broad task and create a multi-part request with multiple prompts for the LLM. For example, instead of prompting the AI to draft or code an entire deliverable at once, identify several steps or chunks to run with separate prompts.
-3. **Search for a hallucination.** Ask the LLM about something very niche and specific to your domain expertise, where you know the truth. See if you can catch the model being confidently wrong. If you succeed, what made the incorrect response seem credible?
+3. **Search for a hallucination.** Ask the LLM about something very niche and specific to your domain expertise, where you know the truth. See if you can catch the model being confidently wrong. If you succeed — what made the incorrect response seem credible?
 4. **Verify a real output.** Ask AI to draft something related to an actual work need (or pull up something you previously drafted with AI) and do a stakes-appropriate verification pass — or part of one, depending on the size of your draft. Did you catch any errors? What types of details did you need to verify?
-5. **Write a reusable prompt.** Turn a task you often do into a saved prompt template with clear instructions (e.g., a prompt template for summarizing documents, reviewing code, or helping you brainstorm).
+5. **Write a reusable prompt.** Turn a task you often do into a saved prompt template with clear instructions — e.g., a prompt template for summarizing documents, reviewing code, or helping you brainstorm.
 6. **Test different Claude profile instructions.** Try changing your Claude instructions in various ways and see how responses change. For example, try different tones or styles, or set different restrictions on length or format.
 
 ## Tool Exploration
 
 1. **Turn on and test multiple Claude connectors.** Notice the different permissions options each one asks for.
 2. **Try a skill from the [skill library](https://hub.navapbc.com).** Browse the skill library in Claude, pick one that looks useful for your work, and run it on a real task. How did it work?
-3. **Use Cowork to design a basic skill.** Start from a task you repeat often, and work with Cowork to turn it into a simple reusable skill.
+3. **Use Cowork to design a basic skill.** Start from a task you repeat often, and work with Cowork to turn it into a simple reusable skill. (Hint: start by prompting Claude with, "Guide me in creating a new skill.")
 4. **Try using Notebook to create several different artifacts** from the same material.
 5. **Compare multiple different models.** For example, run the same prompt in Claude using Haiku, then Sonnet, then Opus. (You could also try using the same prompt in Claude and in Gemini.) What do you notice?
-6. **For engineers — or anyone with coding experience and access: try Claude Code.** How did it work?$md$,
+6. **For engineers — or anyone with coding experience and access: try Claude Code.** How did it work?
+
+Before you wrap up, take a moment to think about how you can apply one of today's exercises to your own work. Is there a task on your plate right now where one of these tools or approaches would help? Try putting it into practice where relevant!$md$,
    null)
 on conflict (cell_id) do nothing;
 

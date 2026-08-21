@@ -82,6 +82,7 @@ const RECONCILES = [
   },
   {
     file: '20260818000000_week0_skills_org_managed.sql',
+    frozen: true, // shipped in #160
     notice: 'week0_skills_org_managed',
     title: 'week0_skills_org_managed — corrected Skills-enablement instructions for Nava\'s Team/Enterprise workspace.',
     scope: [
@@ -100,6 +101,41 @@ const RECONCILES = [
     ],
     targets: [
       { cell_id: 'c1-w0-claude-setup', columns: ['body_md'], why: '"Code execution and file creation" is an admin-managed workspace setting on Nava\'s Team/Enterprise plan, not a personal Settings toggle' },
+    ],
+  },
+  {
+    file: '20260821000000_weeks34_pod_activity_copy.sql',
+    notice: 'weeks34_pod_activity_copy',
+    title: 'weeks34_pod_activity_copy — Weeks 3–4 pod-activity copy pass.',
+    scope: [
+      'SCOPE: the three Weeks 3-4 cells the copy pass changed, and only the columns',
+      'that changed. c1-w34-pod-kickoff: Activity 2 now tells pods to pick one Walk',
+      'the Workflow tab in the left nav and come back afterward; Activity 3 is',
+      're-cut into three timeboxed steps and now sorts tasks into the Week 2 tiers',
+      '(Full pass to AI / AI-assisted / Human Only), adds the client-or-manager gut',
+      'check, and adds a shared-goal step that sets up the Meeting 2 exploration.',
+      'The cell is also retitled "Meeting 1: Intros -> Walk the Workflow ->',
+      'Delegation List" so the nav names the meeting and its agenda, matching the',
+      '"Meeting 2: AI Practice Scavenger Hunt" cell.',
+      'c1-w34-walk-the-workflow-general: Devon is on the people-operations team, the',
+      'vendor guide is described as accurate, the Slack thread now says it carries',
+      "employees' names and personal situations (so the risky-source call has the",
+      'facts behind it), plus two grammar fixes in feedback copy.',
+      'c1-w34-scavenger-hunt: opener renumbered as Activity 4, punctuation fixes, a',
+      'Cowork prompt hint, and a closing apply-it-to-your-work paragraph.',
+      'c1-w34-walk-the-workflow-delivery is deliberately NOT in scope — the review',
+      'left it unchanged.',
+    ],
+    caveat: [
+      'DATA-04: these UPDATEs are UNCONDITIONAL and would overwrite a CMS edit to',
+      'these cells. Unlike the earlier passes, Weeks 3-4 is live to a running cohort,',
+      'so confirm none of these three cells has been published through the admin CMS',
+      'before deploying; if one has, fold the live copy into the seed JSON first.',
+    ],
+    targets: [
+      { cell_id: 'c1-w34-pod-kickoff', columns: ['title', 'body_md'], why: 'retitled to name the meeting and its agenda; Activity 2 navigation instructions + Activity 3 rewrite into timeboxed, tiered steps' },
+      { cell_id: 'c1-w34-walk-the-workflow-general', columns: ['lab_config_json'], why: 'Devon scenario: team name, source descriptions, and two feedback grammar fixes' },
+      { cell_id: 'c1-w34-scavenger-hunt', columns: ['body_md'], why: 'Activity 4 framing, Cowork hint, closing apply-it paragraph' },
     ],
   },
 ];
@@ -166,7 +202,8 @@ ${comment(caveat)}
 --
 -- Learner progress is deliberately NOT reset. progress_reset_at is minted
 -- inside the admin-content Edge Function, so a migration cannot fire the epoch
--- protocol anyway, and with no completions recorded there is nothing to reset.
+-- protocol anyway; a copy pass that does need a reset has to go through the
+-- admin CMS publish dialog instead.
 --
 -- Idempotent: re-running writes identical values.
 
