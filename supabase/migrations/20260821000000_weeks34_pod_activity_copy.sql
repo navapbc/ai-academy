@@ -19,10 +19,10 @@
 -- The cell is also retitled "Meeting 1: Intros -> Walk the Workflow ->
 -- Delegation List" so the nav names the meeting and its agenda, matching the
 -- "Meeting 2: AI Practice Scavenger Hunt" cell.
--- c1-w34-walk-the-workflow-general: Devon is on the people-operations team, the
--- vendor guide is described as accurate, the Slack thread now says it carries
--- employees' names and personal situations (so the risky-source call has the
--- facts behind it), plus two grammar fixes in feedback copy.
+-- c1-w34-walk-the-workflow-general: the vendor guide is described as accurate,
+-- the Slack thread now says it carries employees' names and personal situations
+-- (so the risky-source call has the facts behind it), plus two grammar fixes in
+-- feedback copy.
 -- c1-w34-scavenger-hunt: punctuation fixes, a Cowork prompt hint, support-doc
 -- links on the connectors and model-comparison exercises, and a closing
 -- apply-it-to-your-work paragraph. The opening sentences are unchanged.
@@ -107,13 +107,13 @@ One way to set yourself up for success when using AI is to proactively reflect o
 where cell_id = 'c1-w34-pod-kickoff';
 
 -- c1-w34-walk-the-workflow-general — Walk the Workflow: General Operations Scenario
--- Devon scenario: team name, source descriptions, and two feedback grammar fixes
+-- Devon scenario: source descriptions and two feedback grammar fixes
 update public.modules set
   lab_config_json = $json${
   "kind": "decision-scenario",
   "title": "Walk the Workflow: General operations scenario",
   "subtitle": "Delegate → Ground → Scope → Verify, one decision at a time.",
-  "introMd": "Devon works on Nava's people-operations team. Nava just switched to a new benefits-enrollment platform, and the internal \"Benefits 101\" guide — the doc every employee gets pointed to during onboarding and open enrollment — still describes the old system. Devon owns the rewrite: the steps need to match the new platform exactly, the tone should stay friendly and plain, and it's due before open enrollment starts in two weeks. Devon uses Claude for small things but has never used it for a full document like this.\n\nWalk through Devon's task one decision at a time. At each checkpoint, discuss as a pod before choosing an answer.",
+  "introMd": "Devon works on Nava's People Operations team. Nava just switched to a new benefits-enrollment platform, and the internal \"Benefits 101\" guide — the doc every employee gets pointed to during onboarding and open enrollment — still describes the old system. Devon owns the rewrite: the steps need to match the new platform exactly, the tone should stay friendly and plain, and it's due before open enrollment starts in two weeks. Devon uses Claude for small things but has never used it for a full document like this.\n\nWalk through Devon's task one decision at a time. At each checkpoint, discuss as a pod before choosing an answer.",
   "checkpoints": [
     {
       "id": "delegate",

@@ -342,7 +342,7 @@
         "kind": "decision-scenario",
         "title": "Walk the Workflow: General operations scenario",
         "subtitle": "Delegate → Ground → Scope → Verify, one decision at a time.",
-        "introMd": "Devon works on Nava's people-operations team. Nava just switched to a new benefits-enrollment platform, and the internal \"Benefits 101\" guide — the doc every employee gets pointed to during onboarding and open enrollment — still describes the old system. Devon owns the rewrite: the steps need to match the new platform exactly, the tone should stay friendly and plain, and it's due before open enrollment starts in two weeks. Devon uses Claude for small things but has never used it for a full document like this.\n\nWalk through Devon's task one decision at a time. At each checkpoint, discuss as a pod before choosing an answer.",
+        "introMd": "Devon works on Nava's People Operations team. Nava just switched to a new benefits-enrollment platform, and the internal \"Benefits 101\" guide — the doc every employee gets pointed to during onboarding and open enrollment — still describes the old system. Devon owns the rewrite: the steps need to match the new platform exactly, the tone should stay friendly and plain, and it's due before open enrollment starts in two weeks. Devon uses Claude for small things but has never used it for a full document like this.\n\nWalk through Devon's task one decision at a time. At each checkpoint, discuss as a pod before choosing an answer.",
         "checkpoints": [
           {
             "id": "delegate",
