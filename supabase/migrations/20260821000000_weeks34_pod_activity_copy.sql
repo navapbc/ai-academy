@@ -23,7 +23,8 @@
 -- vendor guide is described as accurate, the Slack thread now says it carries
 -- employees' names and personal situations (so the risky-source call has the
 -- facts behind it), plus two grammar fixes in feedback copy.
--- c1-w34-scavenger-hunt: punctuation fixes, a Cowork prompt hint, and a closing
+-- c1-w34-scavenger-hunt: punctuation fixes, a Cowork prompt hint, support-doc
+-- links on the connectors and model-comparison exercises, and a closing
 -- apply-it-to-your-work paragraph. The opening sentences are unchanged.
 -- c1-w34-walk-the-workflow-delivery is deliberately NOT in scope — the review
 -- left it unchanged.
@@ -209,7 +210,7 @@ update public.modules set
 where cell_id = 'c1-w34-walk-the-workflow-general';
 
 -- c1-w34-scavenger-hunt — Meeting 2: AI Practice Scavenger Hunt
--- Cowork hint, closing apply-it paragraph, punctuation fixes
+-- Cowork hint, connector/model support-doc links, closing apply-it paragraph, punctuation fixes
 update public.modules set
   body_md = $md$We recommend completing this activity during your second pod meeting of Weeks 3-4. Plan to spend about 1 hour on these tasks.
 
@@ -230,11 +231,11 @@ Choose the exercises that are most interesting to you, your pod, and your work �
 
 ## Tool Exploration
 
-1. **Turn on and test multiple Claude connectors.** Notice the different permissions options each one asks for.
+1. **Turn on and test multiple Claude [connectors](https://support.claude.com/en/articles/11176164-use-connectors-to-extend-claude-s-capabilities).** Notice the different permissions options each one asks for.
 2. **Try a skill from the [skill library](https://hub.navapbc.com).** Browse the skill library in Claude, pick one that looks useful for your work, and run it on a real task. How did it work?
 3. **Use Cowork to design a basic skill.** Start from a task you repeat often, and work with Cowork to turn it into a simple reusable skill. (Hint: start by prompting Claude with, "Guide me in creating a new skill.")
 4. **Try using Notebook to create several different artifacts** from the same material.
-5. **Compare multiple different models.** For example, run the same prompt in Claude using Haiku, then Sonnet, then Opus. (You could also try using the same prompt in Claude and in Gemini.) What do you notice?
+5. **Compare multiple [different models](https://support.claude.com/en/articles/8664678-change-the-model-effort-and-thinking-settings).** For example, run the same prompt in Claude using Haiku, then Sonnet, then Opus. (You could also try using the same prompt in Claude and in Gemini.) What do you notice?
 6. **For engineers — or anyone with coding experience and access: try Claude Code.** How did it work?
 
 Before you wrap up, take a moment to think about how you can apply one of today's exercises to your own work. Is there a task on your plate right now where one of these tools or approaches would help? Try putting it into practice where relevant!$md$

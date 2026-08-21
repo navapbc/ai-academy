@@ -121,7 +121,8 @@ const RECONCILES = [
       'vendor guide is described as accurate, the Slack thread now says it carries',
       "employees' names and personal situations (so the risky-source call has the",
       'facts behind it), plus two grammar fixes in feedback copy.',
-      'c1-w34-scavenger-hunt: punctuation fixes, a Cowork prompt hint, and a closing',
+      'c1-w34-scavenger-hunt: punctuation fixes, a Cowork prompt hint, support-doc',
+      'links on the connectors and model-comparison exercises, and a closing',
       'apply-it-to-your-work paragraph. The opening sentences are unchanged.',
       'c1-w34-walk-the-workflow-delivery is deliberately NOT in scope — the review',
       'left it unchanged.',
@@ -135,7 +136,7 @@ const RECONCILES = [
     targets: [
       { cell_id: 'c1-w34-pod-kickoff', columns: ['title', 'body_md'], why: 'retitled to name the meeting and its agenda; Activity 2 navigation instructions + Activity 3 rewrite into timeboxed, tiered steps' },
       { cell_id: 'c1-w34-walk-the-workflow-general', columns: ['lab_config_json'], why: 'Devon scenario: team name, source descriptions, and two feedback grammar fixes' },
-      { cell_id: 'c1-w34-scavenger-hunt', columns: ['body_md'], why: 'Cowork hint, closing apply-it paragraph, punctuation fixes' },
+      { cell_id: 'c1-w34-scavenger-hunt', columns: ['body_md'], why: 'Cowork hint, connector/model support-doc links, closing apply-it paragraph, punctuation fixes' },
     ],
   },
 ];

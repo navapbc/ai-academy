@@ -595,11 +595,11 @@ Choose the exercises that are most interesting to you, your pod, and your work â
 
 ## Tool Exploration
 
-1. **Turn on and test multiple Claude connectors.** Notice the different permissions options each one asks for.
+1. **Turn on and test multiple Claude [connectors](https://support.claude.com/en/articles/11176164-use-connectors-to-extend-claude-s-capabilities).** Notice the different permissions options each one asks for.
 2. **Try a skill from the [skill library](https://hub.navapbc.com).** Browse the skill library in Claude, pick one that looks useful for your work, and run it on a real task. How did it work?
 3. **Use Cowork to design a basic skill.** Start from a task you repeat often, and work with Cowork to turn it into a simple reusable skill. (Hint: start by prompting Claude with, "Guide me in creating a new skill.")
 4. **Try using Notebook to create several different artifacts** from the same material.
-5. **Compare multiple different models.** For example, run the same prompt in Claude using Haiku, then Sonnet, then Opus. (You could also try using the same prompt in Claude and in Gemini.) What do you notice?
+5. **Compare multiple [different models](https://support.claude.com/en/articles/8664678-change-the-model-effort-and-thinking-settings).** For example, run the same prompt in Claude using Haiku, then Sonnet, then Opus. (You could also try using the same prompt in Claude and in Gemini.) What do you notice?
 6. **For engineers â€” or anyone with coding experience and access: try Claude Code.** How did it work?
 
 Before you wrap up, take a moment to think about how you can apply one of today's exercises to your own work. Is there a task on your plate right now where one of these tools or approaches would help? Try putting it into practice where relevant!$md$,
