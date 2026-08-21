@@ -23,8 +23,8 @@
 -- vendor guide is described as accurate, the Slack thread now says it carries
 -- employees' names and personal situations (so the risky-source call has the
 -- facts behind it), plus two grammar fixes in feedback copy.
--- c1-w34-scavenger-hunt: opener renumbered as Activity 4, punctuation fixes, a
--- Cowork prompt hint, and a closing apply-it-to-your-work paragraph.
+-- c1-w34-scavenger-hunt: punctuation fixes, a Cowork prompt hint, and a closing
+-- apply-it-to-your-work paragraph. The opening sentences are unchanged.
 -- c1-w34-walk-the-workflow-delivery is deliberately NOT in scope — the review
 -- left it unchanged.
 --
@@ -209,9 +209,9 @@ update public.modules set
 where cell_id = 'c1-w34-walk-the-workflow-general';
 
 -- c1-w34-scavenger-hunt — Meeting 2: AI Practice Scavenger Hunt
--- Activity 4 framing, Cowork hint, closing apply-it paragraph
+-- Cowork hint, closing apply-it paragraph, punctuation fixes
 update public.modules set
-  body_md = $md$Activity 4 of your Week 3–4 pod meetings (about 60 minutes — a good fit for your second pod meeting).
+  body_md = $md$We recommend completing this activity during your second pod meeting of Weeks 3-4. Plan to spend about 1 hour on these tasks.
 
 Choose **at least 3–4** of the tasks/exercises from the list below to try with your pod. You can work on each of them together, or choose to work on them in smaller groups or independently first before debriefing. You do not need to complete them in order. Feel free to try tasks that align with real work needs — or just try items for fun. Think back to any goals you set as a group at the end of your first meeting. The goal is to build familiarity with self-led experimentation.
 

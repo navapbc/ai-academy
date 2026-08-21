@@ -576,7 +576,7 @@ insert into public.modules
 values
   ('c1-w34-scavenger-hunt', null, 'course', 'program', 'published', 'Meeting 2: AI Practice Scavenger Hunt', 'content',
    ARRAY['Delegation', 'Description', 'Discernment', 'Diligence']::text[], 'performance-task', 'na', 907,
-   $md$Activity 4 of your Week 3–4 pod meetings (about 60 minutes — a good fit for your second pod meeting).
+   $md$We recommend completing this activity during your second pod meeting of Weeks 3-4. Plan to spend about 1 hour on these tasks.
 
 Choose **at least 3–4** of the tasks/exercises from the list below to try with your pod. You can work on each of them together, or choose to work on them in smaller groups or independently first before debriefing. You do not need to complete them in order. Feel free to try tasks that align with real work needs — or just try items for fun. Think back to any goals you set as a group at the end of your first meeting. The goal is to build familiarity with self-led experimentation.
 
