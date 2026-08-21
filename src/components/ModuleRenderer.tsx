@@ -353,10 +353,7 @@ export default function ModuleRenderer({
           />
         </div>
       ) : (
-        <div
-          className="px-8 py-10 sm:px-12"
-          style={{ background: 'linear-gradient(to right, var(--color-nava-plum), var(--color-nava-grey))' }}
-        >
+        <div className="px-8 py-10 sm:px-12 bg-nava-plum">
           <h3 className="text-2xl font-bold text-white">{module.title}</h3>
         </div>
       )}
