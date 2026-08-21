@@ -24,7 +24,8 @@
 --
 -- Learner progress is deliberately NOT reset. progress_reset_at is minted
 -- inside the admin-content Edge Function, so a migration cannot fire the epoch
--- protocol anyway, and with no completions recorded there is nothing to reset.
+-- protocol anyway; a copy pass that does need a reset has to go through the
+-- admin CMS publish dialog instead.
 --
 -- Idempotent: re-running writes identical values.
 
