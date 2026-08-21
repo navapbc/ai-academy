@@ -126,6 +126,10 @@ const RECONCILES = [
       'apply-it-to-your-work paragraph. The opening sentences are unchanged.',
       'c1-w34-walk-the-workflow-delivery is deliberately NOT in scope — the review',
       'left it unchanged.',
+      'Also carries support-doc links added to three Resources lessons: tool access',
+      '(custom-controlling-claude-tools-permissions), connectors',
+      '(custom-grounding-with-connectors), and Projects',
+      '(custom-reusing-context-claude-projects).',
     ],
     caveat: [
       'DATA-04: these UPDATEs are UNCONDITIONAL and would overwrite a CMS edit to',
@@ -137,6 +141,9 @@ const RECONCILES = [
       { cell_id: 'c1-w34-pod-kickoff', columns: ['title', 'body_md'], why: 'retitled to name the meeting and its agenda; Activity 2 navigation instructions + Activity 3 rewrite into timeboxed, tiered steps' },
       { cell_id: 'c1-w34-walk-the-workflow-general', columns: ['lab_config_json'], why: 'Devon scenario: source descriptions and two feedback grammar fixes' },
       { cell_id: 'c1-w34-scavenger-hunt', columns: ['body_md'], why: 'Cowork hint, connector/model support-doc links, closing apply-it paragraph, punctuation fixes' },
+      { cell_id: 'custom-controlling-claude-tools-permissions', columns: ['body_md'], why: '"adjust which tools" links to the manage-tool-access support article' },
+      { cell_id: 'custom-grounding-with-connectors', columns: ['body_md'], why: 'adds the connectors support-article link to "What connectors do"' },
+      { cell_id: 'custom-reusing-context-claude-projects', columns: ['body_md'], why: 'adds the Projects support-article link to "When to use one"' },
     ],
   },
 ];

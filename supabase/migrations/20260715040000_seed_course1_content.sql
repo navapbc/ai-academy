@@ -694,7 +694,7 @@ You decide how much Claude can do on its own:
 - Some tools Claude may use **automatically**, without stopping to ask.
 - Others require your **approval** each time before Claude acts.
 
-You can adjust which tools are available and which need a check-in from Claude's settings. If you're doing something sensitive, tightening these is a good habit; if you're doing routine research, letting Claude gather context on its own saves time.
+You can [adjust which tools](https://support.claude.com/en/articles/13730515-manage-claude-s-tool-access) are available and which need a check-in from Claude's settings. If you're doing something sensitive, tightening these is a good habit; if you're doing routine research, letting Claude gather context on its own saves time.
 
 When in doubt about what's appropriate on a given Nava program or contract, check with your manager or project lead and Nava's AI Tool Policy — see the **AI Support at Nava** resource.$md$,
    null)
@@ -712,6 +712,8 @@ values
 ## What connectors do
 
 Instead of copying everything into the chat yourself, a connector lets Claude pull from a connected space you've granted access to — for example **Confluence, Slack, or your Google Drive**. On Nava's Claude, connectors let you ground a conversation in real content without hunting it down and pasting it in first.
+
+For more information on connectors, see Claude's documentation: [Use connectors to extend Claude's capabilities](https://support.claude.com/en/articles/11176164-use-connectors-to-extend-claude-s-capabilities).
 
 ## Choosing good sources
 
@@ -748,6 +750,8 @@ Reach for a Project when:
 
 - You do a **recurring task** — the same kind of drafting, review, or analysis on a regular basis.
 - The **same grounding and scoping apply across many chats** — one set of sources and instructions you'd otherwise repeat.
+
+For more information on using Projects, see Claude's documentation: [Organize your tasks with projects](https://support.claude.com/en/articles/14116274-organize-your-tasks-with-projects-in-claude-cowork).
 
 ## Grounding and scoping, saved once
 

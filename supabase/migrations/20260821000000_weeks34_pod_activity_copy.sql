@@ -28,6 +28,10 @@
 -- apply-it-to-your-work paragraph. The opening sentences are unchanged.
 -- c1-w34-walk-the-workflow-delivery is deliberately NOT in scope — the review
 -- left it unchanged.
+-- Also carries support-doc links added to three Resources lessons: tool access
+-- (custom-controlling-claude-tools-permissions), connectors
+-- (custom-grounding-with-connectors), and Projects
+-- (custom-reusing-context-claude-projects).
 --
 -- DATA-04: these UPDATEs are UNCONDITIONAL and would overwrite a CMS edit to
 -- these cells. Unlike the earlier passes, Weeks 3-4 is live to a running cohort,
@@ -46,7 +50,7 @@ declare
   missing text[];
 begin
   select array_agg(c) into missing
-  from unnest(array['c1-w34-pod-kickoff', 'c1-w34-walk-the-workflow-general', 'c1-w34-scavenger-hunt']) as c
+  from unnest(array['c1-w34-pod-kickoff', 'c1-w34-walk-the-workflow-general', 'c1-w34-scavenger-hunt', 'custom-controlling-claude-tools-permissions', 'custom-grounding-with-connectors', 'custom-reusing-context-claude-projects']) as c
   where not exists (select 1 from public.modules m where m.cell_id = c);
 
   if missing is not null then
@@ -241,12 +245,92 @@ Choose the exercises that are most interesting to you, your pod, and your work �
 Before you wrap up, take a moment to think about how you can apply one of today's exercises to your own work. Is there a task on your plate right now where one of these tools or approaches would help? Try putting it into practice where relevant!$md$
 where cell_id = 'c1-w34-scavenger-hunt';
 
+-- custom-controlling-claude-tools-permissions — Controlling what Claude can do: tools & permissions
+-- "adjust which tools" links to the manage-tool-access support article
+update public.modules set
+  body_md = $md$Claude can do more than answer from what it already knows — it can use **tools** to go get information or take action. Knowing what those are, and how to control them, helps you get better results and stay in control.
+
+## Tools: how Claude gathers its own context
+
+Beyond the prompt you type, Claude can reach for tools to pull in what it needs — for example:
+
+- **Web search and fetching a page**, to get current information it wasn't trained on.
+- **Reading files** you share, so it can work from your actual documents.
+- **Connected apps and data** you've given it access to.
+
+This is why a modern answer can feel up-to-date or specific: Claude gathered extra context first, then predicted its reply from that fuller picture — rather than relying only on what you pasted in.
+
+## What you control
+
+You decide how much Claude can do on its own:
+
+- Some tools Claude may use **automatically**, without stopping to ask.
+- Others require your **approval** each time before Claude acts.
+
+You can [adjust which tools](https://support.claude.com/en/articles/13730515-manage-claude-s-tool-access) are available and which need a check-in from Claude's settings. If you're doing something sensitive, tightening these is a good habit; if you're doing routine research, letting Claude gather context on its own saves time.
+
+When in doubt about what's appropriate on a given Nava program or contract, check with your manager or project lead and Nava's AI Tool Policy — see the **AI Support at Nava** resource.$md$
+where cell_id = 'custom-controlling-claude-tools-permissions';
+
+-- custom-grounding-with-connectors — Grounding with connectors
+-- adds the connectors support-article link to "What connectors do"
+update public.modules set
+  body_md = $md$Grounding means giving Claude curated source material to predict from — the single most effective way to lower the odds of a confident wrong answer. Pasting text into the chat is one way to ground; **connectors** are another, for when the source already lives in a system you use.
+
+## What connectors do
+
+Instead of copying everything into the chat yourself, a connector lets Claude pull from a connected space you've granted access to — for example **Confluence, Slack, or your Google Drive**. On Nava's Claude, connectors let you ground a conversation in real content without hunting it down and pasting it in first.
+
+For more information on connectors, see Claude's documentation: [Use connectors to extend Claude's capabilities](https://support.claude.com/en/articles/11176164-use-connectors-to-extend-claude-s-capabilities).
+
+## Choosing good sources
+
+Grounding only helps if the source is worth grounding on. Aim for sources that are:
+
+- **Safe to share** with AI — check Nava's AI Tool Policy and any program-level restrictions first.
+- **Accurate** — you're anchoring the prediction to this, so a wrong source produces a confidently wrong answer.
+- **Narrow** — point Claude at the specific document or space that matters, not "everything." Aiming it at an entire wiki or drive gives it too much to sift and weakens the grounding.
+
+## Retrieval isn't fact-checking
+
+A connector grounds the prediction — it does not turn Claude into a fact-checker. Claude can still misread a source, pull the wrong passage, or lean on a source that is itself out of date. Retrieval lowers the odds of a bad answer; it doesn't remove the need to verify what matters against the source of truth.
+
+You also control which tools and connectors Claude may use on its own versus which need your approval — see **Controlling what Claude can do: tools & permissions**.$md$
+where cell_id = 'custom-grounding-with-connectors';
+
+-- custom-reusing-context-claude-projects — Reusing context: Claude Projects
+-- adds the Projects support-article link to "When to use one"
+update public.modules set
+  body_md = $md$When the same context comes up again and again — the same source documents, the same standing instructions — you don't have to set it up in every new chat. **Projects** let you save that context once and reuse it.
+
+## What a Project is
+
+A Project is a saved workspace that keeps instructions and reference files attached. Every chat you start inside the Project already has your context, so you're not re-pasting sources or re-explaining what you want each time.
+
+## When to use one
+
+Reach for a Project when:
+
+- You do a **recurring task** — the same kind of drafting, review, or analysis on a regular basis.
+- The **same grounding and scoping apply across many chats** — one set of sources and instructions you'd otherwise repeat.
+
+For more information on using Projects, see Claude's documentation: [Organize your tasks with projects](https://support.claude.com/en/articles/14116274-organize-your-tasks-with-projects-in-claude-cowork).
+
+## Grounding and scoping, saved once
+
+A Project is where the two habits come together. Put your curated sources (grounding) and your standing instructions — tone, format, what to avoid (scoping) — into the Project once, and every new chat inside it starts from that footing.
+
+## Still start fresh chats per task
+
+A Project doesn't change how the context window works. Each chat inside it still fills up as it goes, so keep the habit of starting a new chat at each logical breakpoint — you just won't lose your saved sources and instructions when you do. For why that matters, see **How Claude works: tokens & context windows**.$md$
+where cell_id = 'custom-reusing-context-claude-projects';
+
 do $$
 declare
   updated int;
 begin
   select count(*) into updated
   from public.modules
-  where cell_id = any (array['c1-w34-pod-kickoff', 'c1-w34-walk-the-workflow-general', 'c1-w34-scavenger-hunt']);
-  raise notice 'weeks34_pod_activity_copy: reconciled % of 3 reviewed cell(s).', updated;
+  where cell_id = any (array['c1-w34-pod-kickoff', 'c1-w34-walk-the-workflow-general', 'c1-w34-scavenger-hunt', 'custom-controlling-claude-tools-permissions', 'custom-grounding-with-connectors', 'custom-reusing-context-claude-projects']);
+  raise notice 'weeks34_pod_activity_copy: reconciled % of 6 reviewed cell(s).', updated;
 end $$;
