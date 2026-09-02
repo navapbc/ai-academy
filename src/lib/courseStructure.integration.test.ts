@@ -157,14 +157,16 @@ describe.skipIf(!RUN)('course structure schema + seed (U1)', () => {
 
     // U8 assigns the authored Course 1 content: Week 0 (public set-up), the two
     // Week-1 experiments, Week 2 (Ground & Scope), the four Weeks-3–4 pod
-    // activities, and Week 5 (Classify & Route + Spot the Pattern). Weeks 6–7 and
-    // 8 stay empty shells (authored later via the CMS).
+    // activities, and Week 5 (Classify & Route). Weeks 6–7 and 8 stay empty
+    // shells (authored later via the CMS).
     //
-    // The Lookup-vs-Predict sort (Week 1) and the Delegation sort (Week 2) are NOT
-    // here: they are Champion-run full-group live activities, unassigned and
-    // archived by 20260806010000_retire_lookup_and_delegation_sorts.sql (content
-    // review [4] / [5]). Their module rows still exist — archived, not deleted —
-    // so this membership assertion is what proves the retirement.
+    // Three seeded lessons are NOT here — the Lookup-vs-Predict sort (Week 1),
+    // the Delegation sort (Week 2), and Spot the Pattern (Week 5). All three are
+    // covered outside the Academy, and are unassigned and archived by
+    // 20260806010000_retire_lookup_and_delegation_sorts.sql and
+    // 20260902010000_retire_week5_pattern_spotting.sql. Their module rows still
+    // exist — archived, not deleted — so this membership assertion is what proves
+    // the retirement.
     const { data: members } = await svc
       .from('course_week_modules')
       .select('week_id, cell_id')
@@ -178,7 +180,6 @@ describe.skipIf(!RUN)('course structure schema + seed (U1)', () => {
         'Week 1:c1-w1-confidently-wrong',
         'Week 2:c1-w2-ground-and-scope',
         'Week 5:c1-w5-classify-route',
-        'Week 5:c1-w5-pattern-spotting',
         'Weeks 3–4:c1-w34-pod-kickoff',
         'Weeks 3–4:c1-w34-walk-the-workflow-delivery',
         'Weeks 3–4:c1-w34-walk-the-workflow-general',
@@ -187,9 +188,13 @@ describe.skipIf(!RUN)('course structure schema + seed (U1)', () => {
     );
   });
 
-  test('the two retired live activities are archived, not deleted, and hold no week membership', async () => {
+  test('the retired live activities are archived, not deleted, and hold no week membership', async () => {
     const svc = serviceClient();
-    const retired = ['c1-w1-lookup-vs-predict', 'c1-w2-delegation-sort'];
+    const retired = [
+      'c1-w1-lookup-vs-predict',
+      'c1-w2-delegation-sort',
+      'c1-w5-pattern-spotting',
+    ];
 
     // Still on the table with their CMS history intact (content review decision:
     // archive, never hard delete — a delete cascades content_versions).

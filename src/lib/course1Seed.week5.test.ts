@@ -16,7 +16,13 @@ type Obj = Record<string, unknown>;
 const w5 = (seed.modules as Obj[]).filter((m) => (m.week as string) === 'week5');
 
 describe('course1 Week 5 seed', () => {
-  test('both Week 5 modules are present', () => {
+  // Both rows are still SEEDED. c1-w5-pattern-spotting is then unassigned and
+  // archived by 20260902010000_retire_week5_pattern_spotting.sql (the activity is
+  // covered outside the Academy), which is the same seed-then-retire shape the
+  // Week 1/2 sorts use — the migration needs the row to exist to act on it, and
+  // archive is the soft-delete axis. What a learner actually sees under Week 5 is
+  // asserted by courseStructure.integration.test.ts.
+  test('both Week 5 modules are seeded', () => {
     const ids = w5.map((m) => m.cell_id).sort();
     expect(ids).toEqual(['c1-w5-classify-route', 'c1-w5-pattern-spotting']);
   });
