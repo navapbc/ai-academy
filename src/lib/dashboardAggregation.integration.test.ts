@@ -221,25 +221,49 @@ describe.skipIf(!RUN)('P5.2a aggregation views inherit the P5.1c boundary', () =
     const cohort = await makeCohortWith(svc, 'P52a Calc', learner.uid, admin.uid);
     expect((await svc.from('profiles').update({ role: 'admin' }).eq('id', admin.uid)).error).toBeNull();
 
-    // Published-module total (admin reads all rows; same scalar every row).
-    // Excludes archived rows, matching published_modules_total() (W1.3).
-    const { count: publishedTotal, error: cntErr } = await svc
-      .from('modules')
-      .select('cell_id', { count: 'exact', head: true })
-      .eq('status', 'published')
-      .is('archived_at', null);
-    expect(cntErr).toBeNull();
+    // modules_total is published_modules_total() — a GLOBAL count over
+    // public.modules, not something this test's fixture owns. Other integration
+    // files (courseAuthoring, courseStructure, adminContent, courseChanges)
+    // insert published module rows into this same shared database and never
+    // clean them up, and vitest runs test FILES in parallel, so that count moves
+    // WHILE this test runs. Comparing it to a single independently-timed count
+    // read is therefore a race, and it surfaced as an off-by-one
+    // (`expected 47 to be 46`) — a concurrent insert landing between the count
+    // read and the view read.
+    //
+    // So bracket the view read with a count on either side and assert the view's
+    // denominator lands inside the window we actually observed. That still
+    // proves the denominator IS the published-and-not-archived module count
+    // (W1.3) without pinning it to one instant that a parallel file can move.
+    const countPublished = async () => {
+      const { count, error } = await svc
+        .from('modules')
+        .select('cell_id', { count: 'exact', head: true })
+        .eq('status', 'published')
+        .is('archived_at', null);
+      expect(error).toBeNull();
+      return count as number;
+    };
 
+    const totalBefore = await countPublished();
     const lps = await admin.client
       .from('learner_progress_summary')
       .select('user_id, modules_completed, modules_total, completion_pct, glat_passed, reviewable_labs')
       .eq('user_id', learner.uid)
       // .single() is safe because enrollments.unique(user_id) => one row per learner.
       .single();
+    const totalAfter = await countPublished();
+
     expect(lps.error).toBeNull();
-    expect(lps.data!.modules_total).toBe(publishedTotal);
+    const modulesTotal = lps.data!.modules_total as number;
+    expect(modulesTotal).toBeGreaterThanOrEqual(Math.min(totalBefore, totalAfter));
+    expect(modulesTotal).toBeLessThanOrEqual(Math.max(totalBefore, totalAfter));
+
     expect(lps.data!.modules_completed).toBe(1); // one completed published cell (1.4)
-    expect(Number(lps.data!.completion_pct)).toBeCloseTo(1 / (publishedTotal as number), 6);
+    // Divide by the view's OWN modules_total, not a separately-read count: both
+    // numbers come from the same row, so they share one snapshot and this stays
+    // an exact check on the arithmetic no matter what a parallel file inserts.
+    expect(Number(lps.data!.completion_pct)).toBeCloseTo(1 / modulesTotal, 6);
     expect(lps.data!.glat_passed).toBe(true);
     expect(lps.data!.reviewable_labs).toBe(1);
 
