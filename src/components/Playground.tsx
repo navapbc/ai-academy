@@ -305,7 +305,7 @@ export default function Playground({ selectedPersona }: PlaygroundProps) {
                 <div className={
                   msg.role === 'user'
                     ? 'bg-nava-plum text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed'
-                    : 'bg-gray-50 border border-gray-100 rounded-2xl rounded-tl-sm px-4 py-3 text-sm prose prose-sm max-w-none prose-p:my-1.5 prose-p:text-gray-700 prose-li:my-0.5 prose-li:text-gray-700 prose-headings:text-gray-800 prose-headings:font-bold prose-strong:text-gray-800 prose-code:text-nava-plum prose-code:bg-white prose-code:rounded prose-code:px-1 prose-code:text-xs prose-a:text-nava-plum prose-a:no-underline hover:prose-a:underline prose-pre:bg-gray-900 prose-pre:text-gray-100'
+                    : 'bg-gray-50 border border-gray-100 rounded-2xl rounded-tl-sm px-4 py-3 text-sm prose prose-sm max-w-none prose-p:my-1.5 prose-p:text-gray-700 prose-li:my-0.5 prose-li:text-gray-700 prose-headings:text-gray-800 prose-headings:font-bold prose-strong:text-gray-800 prose-code:text-nava-plum prose-code:bg-white prose-code:rounded prose-code:px-1 prose-code:text-xs prose-a:text-nava-plum prose-a:no-underline [&_a:hover]:underline prose-pre:bg-gray-900 prose-pre:text-gray-100'
                 }>
                   {msg.role === 'assistant' ? (
                     msg.content ? (
