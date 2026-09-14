@@ -1,0 +1,178 @@
+// Generates the dated migrations that carry NEW course1-content.json cells to
+// databases that already ran the seed.
+//
+// WHY THIS EXISTS. There are two existing Course-1 pipelines and neither covers
+// adding a lesson after launch:
+//
+//   - generate-course1-seed.mjs rewrites 20260715040000_seed_course1_content.sql
+//     in place. Supabase never re-applies an already-applied migration, so a new
+//     module added to the seed JSON reaches ONLY a fresh `supabase db reset`.
+//     Against staging/prod the lesson simply never appears.
+//   - generate-content-reconcile.mjs emits `update … where cell_id = …`, which
+//     matches 0 rows for a cell that does not exist yet. It is the right tool for
+//     changing a shipped cell's columns, and the wrong one for introducing a cell.
+//
+// So a pass that ADDS lessons needs one dated migration carrying the same
+// `insert … on conflict (cell_id) do nothing` + course_week_modules membership
+// the seed generator emits, rendered from the same JSON so the two can't drift.
+//
+// Each entry in BATCHES below is one such migration, listing the cell_ids that
+// pass introduced. A batch is marked `frozen` once its migration has shipped: it
+// renders from the CURRENT seed JSON, so regenerating it after a later content
+// edit would silently rewrite an already-applied migration. Frozen entries stay
+// here as the record of what each pass carried, and are skipped on write.
+//
+// Run: node scripts/generate-course1-new-cells.mjs
+
+import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { stdout } from 'node:process';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const SEED_JSON = join(ROOT, 'supabase/seed-data/course1-content.json');
+const MIGRATIONS = join(ROOT, 'supabase/migrations');
+
+const BATCHES = [
+  {
+    file: '20260914000000_seed_weeks67_content.sql',
+    frozen: false,
+    notice: 'seed_weeks67',
+    title: 'seed_weeks67_content — the Weeks 6–7 pod activities.',
+    scope: [
+      'SCOPE: four NEW cells under the Weeks 6-7 group, and nothing else. Copy source',
+      'is the "Weeks 6-7 Pod Activities" facilitator doc: two meeting lessons plus the',
+      'delivery / non-delivery routes of the Find-the-Failure activity, which run on',
+      "the new failure-shape-id lab kind (per-option authored feedback — see the kind's",
+      'doc comment in src/types.ts for why harm-rubric could not carry it).',
+    ],
+    caveat: [
+      'DATA-04: safe by construction. Every statement is INSERT … ON CONFLICT DO',
+      'NOTHING, so on any database where these cell_ids already exist — including one',
+      'where an author has since edited them through the admin CMS — this migration',
+      'writes nothing at all. It can never clobber authored copy.',
+    ],
+    cells: [
+      'c1-w67-pod-meeting-1',
+      'c1-w67-find-the-failure-delivery',
+      'c1-w67-find-the-failure-nondelivery',
+      'c1-w67-pod-meeting-2',
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------
+// SQL emit helpers — deliberately identical to generate-course1-seed.mjs, so a
+// cell inserted by a batch migration is byte-for-byte the cell a fresh reset
+// produces.
+// ---------------------------------------------------------------------------
+const data = JSON.parse(readFileSync(SEED_JSON, 'utf8'));
+const WEEK_IDS = data.weeks;
+const modules = new Map(data.modules.map((m) => [m.cell_id, m]));
+
+const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
+const comment = (lines) => lines.map((l) => `-- ${l}`).join('\n');
+const dimArray = (dims) =>
+  dims.length === 0 ? 'ARRAY[]::text[]' : `ARRAY[${dims.map(q).join(', ')}]::text[]`;
+
+function moduleInsert(m) {
+  const lab = m.lab_config_json
+    ? `$json$${JSON.stringify(m.lab_config_json, null, 2)}$json$::jsonb`
+    : 'null';
+  return `-- ${m.cell_id} — ${m.title}
+insert into public.modules
+  (cell_id, stage, origin, visibility, status, title, type, dimension,
+   evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
+values
+  (${q(m.cell_id)}, null, ${q(m.origin)}, ${q(m.visibility)}, 'published', ${q(m.title)}, ${q(m.type)},
+   ${dimArray(m.dimension)}, ${q(m.evidence_type)}, 'na', ${m.sort_order},
+   $md$${m.body_md}$md$,
+   ${lab})
+on conflict (cell_id) do nothing;
+`;
+}
+
+function render({ notice, title, scope, caveat, cells }) {
+  const rows = cells.map((id) => {
+    const m = modules.get(id);
+    if (!m) throw new Error(`${id} is not in course1-content.json`);
+    if (m.week === null) throw new Error(`${id} has no week — nothing to assign`);
+    return m;
+  });
+
+  const membership = rows
+    .map((m) => `  ('${WEEK_IDS[m.week]}', ${q(m.cell_id)}, ${m.week_sort_order})`)
+    .join(',\n');
+  const cellList = rows.map((m) => q(m.cell_id)).join(', ');
+
+  return `-- ${title}
+--
+-- GENERATED by scripts/generate-course1-new-cells.mjs from
+-- supabase/seed-data/course1-content.json — DO NOT HAND-EDIT. Change the JSON,
+-- re-run the generator (and generate-course1-seed.mjs alongside it).
+--
+-- WHY: 20260715040000_seed_course1_content.sql already ran everywhere, and
+-- Supabase never re-applies an applied migration, so adding a module to the seed
+-- JSON reaches only a fresh \`supabase db reset\`. This migration carries the same
+-- rows to databases that are already seeded. generate-content-reconcile.mjs is
+-- the wrong channel for this: its \`update … where cell_id\` matches 0 rows for a
+-- cell that does not exist yet.
+--
+${comment(scope)}
+--
+${comment(caveat)}
+--
+-- Mechanics (mirrors the seed generator so both paths produce the same rows):
+--   - modules: INSERT … ON CONFLICT (cell_id) DO NOTHING (idempotent, D-25);
+--     stage=null, status='published', visibility from the JSON.
+--   - membership: INSERT into course_week_modules resolving the week BY the
+--     FIXED uuid minted in 20260715000000_course_structure.sql. The table's
+--     unique(cell_id) means a module belongs to at most one week; ON CONFLICT DO
+--     NOTHING keeps that invariant intact on re-run.
+--   - A week group is hidden from learners until it holds ≥1 published member
+--     (course_structure RLS), so the Weeks 6–7 group appears the moment this
+--     applies — deploy it when the cohort should see the activities.
+--
+-- Learner progress is untouched: these are new cell_ids, so nothing was
+-- completed against them. They DO enter published_modules_total(), which lowers
+-- every learner's completion_pct — expected for new coursework, but worth
+-- warning champions of an in-flight cohort about.
+--
+-- Idempotent: running twice inserts nothing the second time.
+
+${rows.map(moduleInsert).join('\n')}
+-- ---------------------------------------------------------------------------
+-- Week membership (fixed week uuids from 20260715000000_course_structure.sql).
+-- ---------------------------------------------------------------------------
+insert into public.course_week_modules (week_id, cell_id, sort_order)
+values
+${membership}
+on conflict do nothing;
+
+do $$
+declare
+  present int;
+  assigned int;
+begin
+  select count(*) into present
+  from public.modules
+  where cell_id = any (array[${cellList}]);
+
+  select count(*) into assigned
+  from public.course_week_modules
+  where cell_id = any (array[${cellList}]);
+
+  raise notice '${notice}: % of ${rows.length} cell(s) present, % assigned to a week.',
+    present, assigned;
+end $$;
+`;
+}
+
+for (const spec of BATCHES) {
+  if (spec.frozen) {
+    stdout.write(`Skipped ${spec.file}: already applied — frozen.\n`);
+    continue;
+  }
+  writeFileSync(join(MIGRATIONS, spec.file), render(spec));
+  stdout.write(`Wrote ${spec.file}: ${spec.cells.length} new cell(s).\n`);
+}

@@ -34,6 +34,7 @@ import ChatCompare from './exercises/ChatCompare';
 import DecisionScenario from './exercises/DecisionScenario';
 import PredictionSort from './exercises/PredictionSort';
 import DelegationSort from './exercises/DelegationSort';
+import FailureShapeId from './exercises/FailureShapeId';
 import GlatExam from './exercises/GlatExam';
 
 interface Props {
@@ -251,6 +252,13 @@ export default function ModuleRenderer({
         // auto-completes the module via the participation seam (via='lab'); no
         // onComplete (see DelegationSortConfig). Matches prediction-sort.
         return <DelegationSort config={module.labConfig} labId={module.cellId} />;
+      case 'failure-shape-id':
+        // 1.04 "Find-the-Failure" (Course 1, Weeks 6–7) — name the failure shape
+        // in each exchange, with per-option authored feedback (the reason this
+        // isn't harm-rubric). Records a submission that auto-completes the module
+        // via the participation seam (via='lab'); no onComplete (see
+        // FailureShapeIdConfig). Matches decision-scenario/delegation-sort.
+        return <FailureShapeId config={module.labConfig} labId={module.cellId} />;
       case 'glat':
         // GLAT (P4.10 → U9): no longer a gate — submitting records a
         // quiz_attempts row, whose participation event auto-completes 2.14 at
