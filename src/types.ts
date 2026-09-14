@@ -328,6 +328,60 @@ export interface DelegationSortConfig {
 }
 
 /**
+ * 1.04 failure-shape-id (Course 1, Weeks 6–7): "Find-the-Failure" — pod practice
+ * at naming which of the four civic-tech failure shapes a realistic AI exchange
+ * shows. Flow per scenario: read the exchange (markdown) → stage a pick → Submit
+ * reveals the authored feedback FOR THE OPTION THE LEARNER ACTUALLY PICKED →
+ * "Try again" reopens it. Once every scenario is revealed, an explicit Finish
+ * records ONE lab_submissions row and shows the score.
+ *
+ * Why this is not one of the existing kinds — both drop authored content:
+ *   - `harm-rubric` carries ONE `why` per scenario, so a wrong pick reads the
+ *     CORRECT answer's rationale rather than why its own call missed. The Weeks
+ *     6–7 source authors four feedback strings per scenario (one per shape), and
+ *     that per-option correction is the point of the activity.
+ *   - `failure-spotter` forces a second "what would you do about it" MC per item;
+ *     this activity asks one question per scenario.
+ * Per-option feedback follows the `decision-scenario` house shape
+ * (`DecisionOption`), not a new convention.
+ *
+ * UNGRADED in the gating sense: the submission auto-completes the module through
+ * the participation seam (via='lab') and never gates it, so — like chat-compare,
+ * decision-scenario, prediction-sort and delegation-sort — the component takes no
+ * onComplete prop.
+ */
+export interface FailureShapeOption {
+  /** id of the `shapes[]` entry this option names. */
+  shapeId: string;
+  /** Authored feedback markdown revealed once this option is chosen. */
+  feedbackMd: string;
+}
+
+export interface FailureShapeScenario {
+  id: string;
+  /** The user prompt + AI response, rendered as markdown. */
+  exchangeMd: string;
+  /** The question asked under the exchange. */
+  prompt: string;
+  /** id of the `shapes[]` entry that is the right call. */
+  correct: string;
+  /** One option per shape, in display order. Every shape needs an entry so a
+   *  learner always reads feedback written for the call they actually made. */
+  options: FailureShapeOption[];
+}
+
+export interface FailureShapeIdConfig {
+  kind: 'failure-shape-id';
+  /** Exercise header; generic fallback if absent. */
+  title?: string;
+  /** Optional markdown scene-setter above the shapes reference. */
+  introMd?: string;
+  /** The failure shapes: a standing reference panel AND the source of option labels. */
+  shapes: { id: string; label: string; desc: string }[];
+  scenarios: FailureShapeScenario[];
+}
+
+/**
  * 1.8 / 1.11 reflection (P3.10): an UNGRADED written reflection (no right
  * answer). The learner reads a prompt + guidance and writes a free-text
  * response; `minWords` is a soft target shown in a live word counter. On submit
@@ -901,6 +955,7 @@ export type LabConfig =
   | DecisionScenarioConfig
   | PredictionSortConfig
   | DelegationSortConfig
+  | FailureShapeIdConfig
   | GlatConfig;
 
 export interface UserProgress {

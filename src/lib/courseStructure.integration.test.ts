@@ -157,8 +157,10 @@ describe.skipIf(!RUN)('course structure schema + seed (U1)', () => {
 
     // U8 assigns the authored Course 1 content: Week 0 (public set-up), the two
     // Week-1 experiments, Week 2 (Ground & Scope), the four Weeks-3–4 pod
-    // activities, and Week 5 (Classify & Route). Weeks 6–7 and 8 stay empty
-    // shells (authored later via the CMS).
+    // activities, and Week 5 (Classify & Route). 20260914000000_seed_weeks67_content.sql
+    // then adds the four Weeks-6–7 pod activities (two meeting lessons + the
+    // delivery / non-delivery Find-the-Failure routes). Week 8 is the only
+    // remaining empty shell (authored later via the CMS).
     //
     // Three seeded lessons are NOT here — the Lookup-vs-Predict sort (Week 1),
     // the Delegation sort (Week 2), and Spot the Pattern (Week 5). All three are
@@ -184,6 +186,10 @@ describe.skipIf(!RUN)('course structure schema + seed (U1)', () => {
         'Weeks 3–4:c1-w34-walk-the-workflow-delivery',
         'Weeks 3–4:c1-w34-walk-the-workflow-general',
         'Weeks 3–4:c1-w34-scavenger-hunt',
+        'Weeks 6–7:c1-w67-pod-meeting-1',
+        'Weeks 6–7:c1-w67-find-the-failure-delivery',
+        'Weeks 6–7:c1-w67-find-the-failure-nondelivery',
+        'Weeks 6–7:c1-w67-pod-meeting-2',
       ].sort(),
     );
   });

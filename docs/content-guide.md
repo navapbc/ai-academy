@@ -105,6 +105,18 @@ There are **two authoring paths**, and which one is authoritative depends on the
   week uuids). **Do not hand-edit the generated SQL**, and never fold course content into
   the matrix pipeline above. The generator also enforces the Week 0/1 pre-reveal copy rule
   ("Claude", never "LLM").
+  - **Editing a shipped cell** — because that seed is `on conflict do nothing`, a JSON edit
+    only reaches a fresh `supabase db reset`. Add the pass to `RECONCILES` in
+    `scripts/generate-content-reconcile.mjs` and run it: it emits a dated migration of
+    explicit `update … where cell_id = …` for the changed columns. Mark the entry `frozen`
+    once it has shipped, or a later content pass will silently rewrite an applied migration.
+  - **Adding a NEW cell** — a reconcile `update` matches 0 rows for a cell that doesn't exist
+    yet, so new lessons take the third generator: add the pass to `BATCHES` in
+    `scripts/generate-course1-new-cells.mjs` and run it alongside `generate-course1-seed.mjs`.
+    It emits a dated migration carrying the same `insert … on conflict (cell_id) do nothing`
+    plus `course_week_modules` membership, rendered from the same JSON so the two paths can't
+    drift. Same `frozen` discipline. (A week group is hidden from learners until it holds at
+    least one published member, so such a migration is also what reveals a new week.)
 
 ## Authoring conventions
 

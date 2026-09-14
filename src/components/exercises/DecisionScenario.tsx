@@ -349,7 +349,13 @@ export default function DecisionScenario({ config, labId }: Props) {
                   key={oi}
                   className={`flex items-start gap-3 rounded-2xl border-2 p-4 text-sm leading-relaxed transition-colors ${
                     checked ? 'border-nava-green bg-nava-mint/30' : 'border-gray-100 bg-white'
-                  } ${locked ? 'opacity-90' : 'cursor-pointer hover:border-nava-green/50'}`}
+                  } ${locked ? 'opacity-90' : 'cursor-pointer'} ${
+                    /* Hover is the plum affordance colour (--color-nava-plum is the
+                       brand's "button hover"), and only on options that are NOT the
+                       current pick — otherwise hovering a chosen option would shift
+                       its green selection border to a different hue. */
+                    !locked && !checked ? 'hover:border-nava-plum/50' : ''
+                  }`}
                 >
                   <input
                     type="checkbox"
@@ -382,7 +388,9 @@ export default function DecisionScenario({ config, labId }: Props) {
                   aria-pressed={chosen}
                   className={`w-full flex items-start gap-3 text-left rounded-2xl border-2 p-4 text-sm leading-relaxed transition-colors ${
                     chosen ? 'border-nava-green bg-nava-mint/30' : 'border-gray-100 bg-white'
-                  } ${locked ? 'opacity-90' : 'hover:border-nava-green/50'}`}
+                  } ${!locked && !chosen ? 'hover:border-nava-plum/50' : ''} ${
+                    locked ? 'opacity-90' : ''
+                  }`}
                 >
                   <span className="text-gray-700">{opt.text}</span>
                   {/* Symmetric with multi-select: the "Your choice" marker is the

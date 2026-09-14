@@ -38,6 +38,7 @@ export const LAB_KINDS: LabConfig['kind'][] = [
   'decision-scenario',
   'prediction-sort',
   'delegation-sort',
+  'failure-shape-id',
   'glat',
 ];
 
@@ -74,6 +75,7 @@ export const LAB_KIND_LABELS: Record<LabConfig['kind'], string> = {
   'decision-scenario': 'Decision scenario',
   'prediction-sort': 'Prediction sort',
   'delegation-sort': 'Delegation sort',
+  'failure-shape-id': 'Find-the-Failure (failure shape id)',
   glat: 'GLAT exam',
 };
 
@@ -606,6 +608,55 @@ const LAB_VALIDATORS: Record<string, (c: Obj) => string | null> = {
         ? null
         : '`takeaway` must be { title, body } (both non-empty strings).',
     ),
+
+
+  // failure-shape-id (Course 1, Weeks 6-7): "Find-the-Failure" — a shapes[]
+  // reference of { id, label, desc } plus >=1 scenarios of { id, exchangeMd,
+  // prompt, correct, options }. `correct` and every `options[].shapeId` must
+  // reference a declared shape, and each shape needs EXACTLY ONE option, because
+  // the whole point of the kind is that any pick reveals feedback written for
+  // that call. title/introMd optional.
+  'failure-shape-id': (c) => {
+    const shapesErr = checkArray(c.shapes, 'shapes', (sh, p) =>
+      isObj(sh) && isNonEmptyStr(sh.id) && isNonEmptyStr(sh.label) && typeof sh.desc === 'string'
+        ? null
+        : `\`${p}\` must be { id, label, desc }.`,
+    );
+    if (shapesErr) return shapesErr;
+    if ('title' in c && c.title !== undefined && !isNonEmptyStr(c.title)) {
+      return '`title` must be a non-empty string when present.';
+    }
+    if ('introMd' in c && c.introMd !== undefined && typeof c.introMd !== 'string') {
+      return '`introMd` must be a string.';
+    }
+    const shapeIds = (c.shapes as Obj[]).map((s) => s.id as string);
+    const shapeIdSet = new Set(shapeIds);
+    if (shapeIdSet.size !== shapeIds.length) return '`shapes[].id` must be unique.';
+    return checkArray(c.scenarios, 'scenarios', (s, p) => {
+      if (!isObj(s)) return `\`${p}\` must be an object.`;
+      if (!isNonEmptyStr(s.id)) return `\`${p}.id\` must be a non-empty string.`;
+      if (!isNonEmptyStr(s.exchangeMd)) return `\`${p}.exchangeMd\` must be a non-empty string.`;
+      if (!isNonEmptyStr(s.prompt)) return `\`${p}.prompt\` must be a non-empty string.`;
+      if (!shapeIdSet.has(s.correct as string)) return `\`${p}.correct\` must reference a shape id.`;
+      const optErr = checkArray(s.options, `${p}.options`, (o, op) =>
+        isObj(o) && isNonEmptyStr(o.shapeId) && isNonEmptyStr(o.feedbackMd)
+          ? null
+          : `\`${op}\` must be { shapeId, feedbackMd } (both non-empty strings).`,
+      );
+      if (optErr) return optErr;
+      const picked = (s.options as Obj[]).map((o) => o.shapeId as string);
+      if (picked.some((id) => !shapeIdSet.has(id))) {
+        return `\`${p}.options[].shapeId\` must each reference a shape id.`;
+      }
+      if (new Set(picked).size !== picked.length) {
+        return `\`${p}.options[].shapeId\` must be unique within a scenario.`;
+      }
+      if (picked.length !== shapeIds.length) {
+        return `\`${p}.options\` must carry one option per shape (${shapeIds.length}).`;
+      }
+      return null;
+    });
+  },
 
   glat: (c) => {
     // Number.isFinite rejects NaN/Infinity/non-numbers (a bare `typeof === number`
