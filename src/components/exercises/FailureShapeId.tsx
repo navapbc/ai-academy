@@ -234,7 +234,7 @@ export default function FailureShapeId({ config, labId }: Props) {
                       ? 'border-red-600 bg-red-50'
                       : sel
                         ? 'border-nava-green bg-nava-mint/30'
-                        : 'border-gray-100 bg-white hover:border-nava-green/50'
+                        : 'border-gray-100 bg-white hover:border-nava-plum/50'
                 }`}
               >
                 <span className="text-gray-700">
