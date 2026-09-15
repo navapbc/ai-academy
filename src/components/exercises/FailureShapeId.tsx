@@ -157,32 +157,36 @@ export default function FailureShapeId({ config, labId }: Props) {
     const correct = isRevealed && picked === scenario.correct;
     const pickedOption = scenario.options.find((o) => o.shapeId === picked);
 
+    // Same three-part shape as decision-scenario's feedback card: a small inline
+    // icon in an 11px uppercase label row, then the authored copy at prose-sm.
+    // The body must NOT be smaller than the options it explains (both 14px), and
+    // the icon is a glyph rather than a filled 28px disc, which read as an alert
+    // badge and dominated the panel.
     const feedback = isRevealed && pickedOption && (
       <AnimatePresence>
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`flex gap-3 rounded-2xl p-4 ${correct ? 'bg-green-100/60' : 'bg-red-100/50'}`}
+          className={`rounded-2xl border-2 p-4 space-y-2 ${
+            correct ? 'border-green-600/20 bg-green-50' : 'border-red-600/20 bg-red-50'
+          }`}
         >
           <div
-            aria-hidden="true"
-            className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-              correct ? 'bg-green-200' : 'bg-red-200'
+            className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-widest ${
+              correct ? 'text-green-700' : 'text-red-700'
             }`}
           >
             {correct ? (
-              <Check className="w-4 h-4 text-green-700" />
+              <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
             ) : (
-              <X className="w-4 h-4 text-red-700" />
+              <X className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
             )}
-          </div>
-          <div
-            className={`prose prose-sm max-w-none text-xs leading-relaxed ${
-              correct ? 'prose-p:text-green-800' : 'prose-p:text-red-800'
-            }`}
-          >
-            {/* Correctness must not be conveyed by colour + icon alone (D-20). */}
+            {/* Correctness must not be conveyed by colour + icon alone (D-20).
+                The authored copy also opens "Correct —" / "Not quite —". */}
             <span className="sr-only">{correct ? 'Correct. ' : 'Incorrect. '}</span>
+            Feedback
+          </div>
+          <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
               {pickedOption.feedbackMd}
             </ReactMarkdown>
