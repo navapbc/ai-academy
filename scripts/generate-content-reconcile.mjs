@@ -169,6 +169,35 @@ const RECONCILES = [
       { cell_id: 'custom-reusing-context-claude-projects', columns: ['body_md'], why: 'adds the Projects support-article link to "When to use one"' },
     ],
   },
+  {
+    file: '20260923000000_weeks67_meeting1_copy.sql',
+    frozen: false,
+    notice: 'weeks67_meeting1_copy',
+    title: 'weeks67_meeting1_copy — Weeks 6-7 Meeting 1 copy pass (Week 5 reflection opener).',
+    scope: [
+      'SCOPE: c1-w67-pod-meeting-1 plus the two Find-the-Failure route cells that',
+      'name it. Meeting 1 now opens with a transcribed 5-10 minute Week 5 feedback',
+      'and reflection discussion before the Quick-Reference Card intro, the agenda',
+      'bullet lists it as the first item, and the lesson is retitled "Meeting 1:',
+      'Week 5 Reflection -> Redact & Rebuild -> Find-the-Failure -> Pick a Prompt".',
+      'c1-w67-find-the-failure-delivery and -nondelivery change only where they',
+      'send learners back by that title, so the nav name they print still matches.',
+      'Activity headings and the rest of the Meeting 1 body are unchanged, and',
+      'c1-w67-pod-meeting-2 is deliberately NOT in scope.',
+    ],
+    caveat: [
+      'DATA-04: these UPDATEs are UNCONDITIONAL and would overwrite a CMS edit to',
+      'these cells. 20260914000000_seed_weeks67_content.sql shipped in #167, so',
+      'Weeks 6-7 may already be live to a cohort; confirm none of these three cells',
+      'has been published through the admin CMS before deploying. If one has, fold',
+      'the live copy into the seed JSON first.',
+    ],
+    targets: [
+      { cell_id: 'c1-w67-pod-meeting-1', columns: ['title', 'body_md'], why: 'retitled to name the Week 5 reflection opener; new "Before you start" discussion section + agenda bullet' },
+      { cell_id: 'c1-w67-find-the-failure-delivery', columns: ['body_md'], why: 'cross-reference to the renamed Meeting 1 lesson' },
+      { cell_id: 'c1-w67-find-the-failure-nondelivery', columns: ['body_md'], why: 'cross-reference to the renamed Meeting 1 lesson' },
+    ],
+  },
 ];
 
 const data = JSON.parse(readFileSync(SEED_JSON, 'utf8'));

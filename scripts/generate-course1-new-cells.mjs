@@ -36,7 +36,7 @@ const MIGRATIONS = join(ROOT, 'supabase/migrations');
 const BATCHES = [
   {
     file: '20260914000000_seed_weeks67_content.sql',
-    frozen: false,
+    frozen: true, // shipped in #167 — later copy edits go through a reconcile migration
     notice: 'seed_weeks67',
     title: 'seed_weeks67_content — the Weeks 6–7 pod activities.',
     scope: [

@@ -1077,16 +1077,16 @@ values
 }$json$::jsonb)
 on conflict (cell_id) do nothing;
 
--- c1-w67-pod-meeting-1 — Meeting 1: Redact & Rebuild → Find-the-Failure → Pick-a-Prompt
+-- c1-w67-pod-meeting-1 — Meeting 1: Week 5 Reflection → Redact & Rebuild → Find-the-Failure → Pick a Prompt
 insert into public.modules
   (cell_id, stage, origin, visibility, status, title, type, dimension,
    evidence_type, self_report_validity, sort_order, body_md, lab_config_json)
 values
-  ('c1-w67-pod-meeting-1', null, 'course', 'program', 'published', 'Meeting 1: Redact & Rebuild → Find-the-Failure → Pick-a-Prompt', 'content',
+  ('c1-w67-pod-meeting-1', null, 'course', 'program', 'published', 'Meeting 1: Week 5 Reflection → Redact & Rebuild → Find-the-Failure → Pick a Prompt', 'content',
    ARRAY['Diligence', 'Discernment']::text[], 'reflection', 'na', 951,
    $md$Welcome to your Week 6–7 pod activities! These two weeks put Week 5's “what's safe to put in, what's safe to get out” lessons to work. Complete the activities across roughly 2 hours, spread over two meetings. Here's a starting suggestion for dividing the work:
 
-- **Meeting 1:** Redact & Rebuild (15–20 min) → Find-the-Failure (20–25 min) → Pick-a-Prompt (10–15 min)
+- **Meeting 1:** Week 5 Reflection (5-10 min) → Redact & Rebuild (15–20 min) → Find-the-Failure (20–25 min) → Pick a Prompt (10–15 min)
 - **Meeting 2:** Personal Reflection (15–20 min) → Pod Reflection: Choose Your Own Adventure (15–20 min) → Prep for Week 8 Pod Spotlight (10–15 min)
 
 For the best learning experience, complete the activities in order, but feel free to adapt the split to your pod's pace. You can always revisit anything you don't finish.
@@ -1097,6 +1097,14 @@ Two things to keep in mind before you start:
 - **Privacy reminder:** Only share what's appropriate for your pod to see. If a real example from your own work still has anything sensitive in it, use one of the provided scenarios instead.
 
 This week is hands-on practice with both sides of Week 5's guidance: what's safe to put into an AI tool, and what's worth a second look coming out.
+
+### Before you start: Week 5 Feedback and Reflection (5-10 min)
+
+As a pod, take about five minutes to discuss the following two questions. Please turn on the meeting transcription before answering.
+
+**Quick note:** we want to hear the specifics of what you thought about the material itself, so we're asking you to transcribe this portion to capture details that will help us shape this content for future use at Nava. Pods are still your space to talk and try things out freely outside of this, so turn transcription off as soon as you're done.
+
+When learning about harm patterns, what stood out or surprised you? How do you think this might affect or influence your use of AI at Nava?
 
 ### Let's build your Quick-Reference Card
 
@@ -1241,7 +1249,7 @@ values
 
 Read each exchange, agree as a pod on which failure shape it shows, then check your answer. The feedback you get back is written for the option you picked, so a split pod can read why each call was or wasn't the one.
 
-Afterwards, head back to *Meeting 1: Redact & Rebuild → Find-the-Failure → Pick-a-Prompt* to add 2–3 failure shapes to your Quick-Reference Card and pick up with Activity 3.$md$,
+Afterwards, head back to *Meeting 1: Week 5 Reflection → Redact & Rebuild → Find-the-Failure → Pick a Prompt* to add 2–3 failure shapes to your Quick-Reference Card and pick up with Activity 3.$md$,
    $json${
   "kind": "failure-shape-id",
   "title": "Find-the-Failure: delivery scenarios",
@@ -1380,7 +1388,7 @@ values
 
 Read each exchange, agree as a pod on which failure shape it shows, then check your answer. The feedback you get back is written for the option you picked, so a split pod can read why each call was or wasn't the one.
 
-Afterwards, head back to *Meeting 1: Redact & Rebuild → Find-the-Failure → Pick-a-Prompt* to add 2–3 failure shapes to your Quick-Reference Card and pick up with Activity 3.$md$,
+Afterwards, head back to *Meeting 1: Week 5 Reflection → Redact & Rebuild → Find-the-Failure → Pick a Prompt* to add 2–3 failure shapes to your Quick-Reference Card and pick up with Activity 3.$md$,
    $json${
   "kind": "failure-shape-id",
   "title": "Find-the-Failure: non-delivery scenarios",
