@@ -50,8 +50,19 @@ No matrix cell now contains stage-gating language.
 
 **Still open:**
 
-- **Merge candidates 1.1, 1.6, 2.5** — real redundancy with Week 0/Week 1 and the
-  `custom-how-claude-works-tokens` resource, but which copy survives is an L&D editorial call.
+- ~~**Merge candidates 1.1 and 2.5**~~ — **done 2026-09-24**,
+  `20260924060000_dedupe_llm_mechanics.sql`. The token/context-window explanation now has one
+  home each: 1.1 owns the mechanics (next-token prediction, what a token is), 2.5 owns managing
+  the window, and each points at the other instead of restating it. The Resources lesson is
+  unchanged — it must stand alone for Week 1 learners who never open the supplemental section,
+  so its overlap is deliberate. 2.5 was **not** gutted: only its opening definition was
+  duplicated; the failure modes, tactics and worked example appear nowhere else. Also repaired
+  seed/DB drift on 1.1 and 1.3 (unshipped plain-language edits) and dropped a mis-citation in
+  1.1. All 28 matrix bodies now match the seed JSON byte for byte.
+- **1.6 Setup and access** — reclassified: *not* a merge candidate. It is the vendor-neutral
+  "why" to `c1-w0-claude-setup`'s Claude-specific "how", which is a defensible pair. Its real
+  defect is accuracy: the checklist tells learners to "turn on MFA and confirm it prompts you on
+  next login", which is moot under Nava's Google SSO. Small copy fix, still open.
 - **1.10 and the Digital Omnibus** — whether to reflect Article 4's rewrite (see above).
 - ~~**Staff `completion_pct`**~~ — **done 2026-09-24**,
   `20260924040000_training_only_completion_denominator.sql`. New
