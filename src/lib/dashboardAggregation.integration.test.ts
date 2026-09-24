@@ -13,7 +13,7 @@ import { isSupabaseConfigured } from './supabaseClient';
 //   • an admin sees all cohorts in the rollups;
 //   • a plain learner sees only their own row (no leak through the aggregates);
 //   • the new enrollments policy: champion reads in-cohort, not cross-cohort; admin all;
-//   • correctness: completion_pct and glat_pass_rate compute on known seeded data.
+//   • correctness: completion_pct and avg_quiz_pct compute on known seeded data.
 // Setup uses the service_role path (the W2-2 trigger permits service_role role
 // changes), mirroring championAdminRls.integration.test.ts.
 
@@ -79,21 +79,29 @@ async function makeCohortWith(
 
 // Seed a known, fully-controlled activity fixture for `uid` via service_role.
 //  - one completed module on a published cell ('1.4') and one quiz attempt on it
-//  - `glatPass`: optionally a passing GLAT (2.14) attempt
+//  - `glatPass`: optionally a passing GLAT (2.14) attempt. The views no longer
+//    expose a GLAT column (20260924050000), but the attempt still feeds avg_quiz_pct.
 //  - one reviewable lab submission
 async function seedKnownActivity(
   svc: SupabaseClient,
   uid: string,
   opts: { quizPct: number; glatPass: boolean },
 ): Promise<void> {
-  expect(
-    (
-      await svc.from('module_progress').upsert(
-        { user_id: uid, module_id: '1.4', status: 'completed', completed_at: new Date().toISOString() },
-        { onConflict: 'user_id,module_id' },
-      )
-    ).error,
-  ).toBeNull();
+  // Two completions on purpose: one COURSE cell, which is the only kind that
+  // counts toward completion_pct (20260924040000 / isTrainingModule), and one
+  // MATRIX cell, which must NOT count — supplemental work is not required for
+  // course completion. 1.4 also carries the quiz attempt below, so it has to
+  // stay.
+  for (const moduleId of ['c1-w0-claude-setup', '1.4']) {
+    expect(
+      (
+        await svc.from('module_progress').upsert(
+          { user_id: uid, module_id: moduleId, status: 'completed', completed_at: new Date().toISOString() },
+          { onConflict: 'user_id,module_id' },
+        )
+      ).error,
+    ).toBeNull();
+  }
   const max = 10;
   expect(
     (
@@ -136,7 +144,7 @@ describe.skipIf(!RUN)('P5.2a aggregation views inherit the P5.1c boundary', () =
     // learner_progress_summary: champA sees learnerA, not learnerB.
     const lps = await champA.client
       .from('learner_progress_summary')
-      .select('user_id, cohort_id, glat_passed');
+      .select('user_id, cohort_id');
     expect(lps.error).toBeNull();
     const ids = (lps.data ?? []).map((r) => r.user_id);
     expect(ids).toContain(learnerA.uid);
@@ -213,7 +221,7 @@ describe.skipIf(!RUN)('P5.2a aggregation views inherit the P5.1c boundary', () =
     expect(eB.data?.length).toBe(0);
   });
 
-  test('correctness: completion_pct and glat_pass_rate compute on known data', async () => {
+  test('correctness: completion_pct counts course lessons only, and avg_quiz_pct computes on known data', async () => {
     const svc = serviceClient();
     const learner = await newUser('p52a-calc-learner');
     const admin = await newUser('p52a-calc-admin');
@@ -221,8 +229,8 @@ describe.skipIf(!RUN)('P5.2a aggregation views inherit the P5.1c boundary', () =
     const cohort = await makeCohortWith(svc, 'P52a Calc', learner.uid, admin.uid);
     expect((await svc.from('profiles').update({ role: 'admin' }).eq('id', admin.uid)).error).toBeNull();
 
-    // modules_total is published_modules_total() — a GLOBAL count over
-    // public.modules, not something this test's fixture owns. Other integration
+    // modules_total is training_modules_total() — a GLOBAL count over the
+    // COURSE-origin rows of public.modules, not something this fixture owns. Other integration
     // files (courseAuthoring, courseStructure, adminContent, courseChanges)
     // insert published module rows into this same shared database and never
     // clean them up, and vitest runs test FILES in parallel, so that count moves
@@ -233,48 +241,53 @@ describe.skipIf(!RUN)('P5.2a aggregation views inherit the P5.1c boundary', () =
     //
     // So bracket the view read with a count on either side and assert the view's
     // denominator lands inside the window we actually observed. That still
-    // proves the denominator IS the published-and-not-archived module count
-    // (W1.3) without pinning it to one instant that a parallel file can move.
-    const countPublished = async () => {
+    // proves the denominator IS the course-origin, published, not-archived
+    // module count without pinning it to one instant a parallel file can move.
+    const countTraining = async () => {
       const { count, error } = await svc
         .from('modules')
         .select('cell_id', { count: 'exact', head: true })
+        .eq('origin', 'course')
         .eq('status', 'published')
         .is('archived_at', null);
       expect(error).toBeNull();
       return count as number;
     };
 
-    const totalBefore = await countPublished();
+    const totalBefore = await countTraining();
     const lps = await admin.client
       .from('learner_progress_summary')
-      .select('user_id, modules_completed, modules_total, completion_pct, glat_passed, reviewable_labs')
+      .select('user_id, modules_completed, modules_total, completion_pct, reviewable_labs')
       .eq('user_id', learner.uid)
       // .single() is safe because enrollments.unique(user_id) => one row per learner.
       .single();
-    const totalAfter = await countPublished();
+    const totalAfter = await countTraining();
 
     expect(lps.error).toBeNull();
     const modulesTotal = lps.data!.modules_total as number;
     expect(modulesTotal).toBeGreaterThanOrEqual(Math.min(totalBefore, totalAfter));
     expect(modulesTotal).toBeLessThanOrEqual(Math.max(totalBefore, totalAfter));
 
-    expect(lps.data!.modules_completed).toBe(1); // one completed published cell (1.4)
+    // The fixture completed TWO cells — c1-w0-claude-setup (course) and 1.4
+    // (matrix). Only the course one counts, so this also asserts that
+    // supplemental completions never inflate the staff completion metric.
+    expect(lps.data!.modules_completed).toBe(1);
     // Divide by the view's OWN modules_total, not a separately-read count: both
     // numbers come from the same row, so they share one snapshot and this stays
     // an exact check on the arithmetic no matter what a parallel file inserts.
     expect(Number(lps.data!.completion_pct)).toBeCloseTo(1 / modulesTotal, 6);
-    expect(lps.data!.glat_passed).toBe(true);
     expect(lps.data!.reviewable_labs).toBe(1);
 
-    // glat_pass_rate for this single-learner cohort = 1.0.
+    // glat_pass_rate was dropped in 20260924050000 — the GLAT is a learner
+    // self-check, not a staff-facing credential. The rollup still aggregates the
+    // learner rows, so assert that it does.
     const cps = await admin.client
       .from('cohort_progress_summary')
-      .select('glat_pass_rate, learner_count')
+      .select('learner_count, avg_quiz_pct')
       .eq('cohort_id', cohort)
       .single();
     expect(cps.error).toBeNull();
     expect(cps.data!.learner_count).toBe(1);
-    expect(Number(cps.data!.glat_pass_rate)).toBeCloseTo(1.0, 6);
+    expect(Number(cps.data!.avg_quiz_pct)).toBeCloseTo(0.9, 6);
   });
 });

@@ -30,7 +30,6 @@ const LEARNER_A: LearnerRosterEntry = {
   email: 'ada@navapbc.com',
   completionPct: 0.5,
   avgQuizPct: 0.7,
-  glatPassed: false,
   reviewableLabs: 1,
 };
 const noop = () => {};
@@ -41,7 +40,6 @@ const ALPHA: CohortSummary = {
   archived: false,
   learnerCount: 3,
   avgCompletionPct: 0.5,
-  glatPassRate: 0,
   avgQuizPct: null,
   reviewableTotal: 2,
 };
@@ -51,7 +49,6 @@ const BETA: CohortSummary = {
   archived: false,
   learnerCount: 4,
   avgCompletionPct: 0.75,
-  glatPassRate: 0.25,
   avgQuizPct: 0.82,
   reviewableTotal: 0,
 };

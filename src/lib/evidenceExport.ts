@@ -490,7 +490,6 @@ export interface EvidenceLearnerRow {
   cohort_ids?: string[];
   completion_pct: number | string | null;
   avg_quiz_pct: number | string | null;
-  glat_passed: boolean;
   reviewable_labs: number;
 }
 
@@ -740,7 +739,7 @@ export function buildEvidenceRows({
 // ---------------------------------------------------------------------------
 
 const LEARNER_COLS =
-  'user_id, cohort_id, completion_pct, avg_quiz_pct, glat_passed, reviewable_labs';
+  'user_id, cohort_id, completion_pct, avg_quiz_pct, reviewable_labs';
 
 const MODULE_COLS =
   'cell_id, title, stage, dimension, evidence_type';

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { ChevronDown, Loader2, AlertTriangle } from 'lucide-react';
 import type { CurriculumSection } from '../types';
 import { useLearnerDetail } from '../lib/useLearnerDetail';
+import { isTrainingModule } from '../lib/modules';
 import { summarizeOwnProgress } from '../lib/learnerSelf';
 import { buildWeekProgress, currentWeek, type WeekProgress } from '../lib/courseWeekProgress';
 import {
@@ -115,8 +116,8 @@ export default function LearnerDashboard({
   // column — Course 1 has no quizzes) directly under its stats, and Supplemental +
   // Resources gets its own list (with the quiz column, which is real for matrix
   // content) directly under its stats.
-  const courseModules = detail?.modules.filter((m) => m.origin === 'course') ?? [];
-  const supplementalModules = detail?.modules.filter((m) => m.origin !== 'course') ?? [];
+  const courseModules = detail?.modules.filter(isTrainingModule) ?? [];
+  const supplementalModules = detail?.modules.filter((m) => !isTrainingModule(m)) ?? [];
 
   return (
     <div className="space-y-8">

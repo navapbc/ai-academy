@@ -61,7 +61,6 @@ export default function LearnerDetail({
           value={formatPct(learner.avgQuizPct)}
           note="across all attempted modules, incl. in review"
         />
-        <StatCard label="GLAT" value={learner.glatPassed ? 'Passed' : 'Not yet'} />
         <StatCard label="Labs awaiting review" value={String(learner.reviewableLabs)} />
       </div>
 

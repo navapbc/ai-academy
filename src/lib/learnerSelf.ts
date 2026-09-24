@@ -1,4 +1,5 @@
 import type { LearnerDetailData } from './learnerDetail';
+import { isTrainingModule } from './modules';
 
 // Learner self-view summary (P5.3a, redesigned 2026-07-21 for the Course 1
 // restructure — see docs/superpowers/specs/2026-07-21-learner-dashboard-redesign-design.md).
@@ -54,8 +55,8 @@ export interface OwnProgressSummary {
  * custom) combined — matching the Module progress table's own section grouping.
  */
 export function summarizeOwnProgress(detail: LearnerDetailData): OwnProgressSummary {
-  const courseModules = detail.modules.filter((m) => m.origin === 'course');
-  const supplementalModules = detail.modules.filter((m) => m.origin !== 'course');
+  const courseModules = detail.modules.filter(isTrainingModule);
+  const supplementalModules = detail.modules.filter((m) => !isTrainingModule(m));
 
   const courseCompletedCount = courseModules.filter((m) => m.completed).length;
   const courseTotalCount = courseModules.length;

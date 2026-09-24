@@ -36,7 +36,6 @@ const learners: EvidenceLearnerRow[] = [
     cohort_id: 'c1',
     completion_pct: '0.5',
     avg_quiz_pct: '0.75',
-    glat_passed: false,
     reviewable_labs: 0,
   },
 ];
@@ -227,9 +226,9 @@ describe('buildEvidenceRows', () => {
 
 describe('dedupLearnerRows (U5 multi-enrollment)', () => {
   const dualRows: EvidenceLearnerRow[] = [
-    { user_id: 'u1', cohort_id: 'c1', completion_pct: '0.5', avg_quiz_pct: '0.75', glat_passed: false, reviewable_labs: 0 },
-    { user_id: 'u1', cohort_id: 'c2', completion_pct: '0.5', avg_quiz_pct: '0.75', glat_passed: false, reviewable_labs: 0 },
-    { user_id: 'u2', cohort_id: 'c2', completion_pct: '0.25', avg_quiz_pct: null, glat_passed: false, reviewable_labs: 1 },
+    { user_id: 'u1', cohort_id: 'c1', completion_pct: '0.5', avg_quiz_pct: '0.75', reviewable_labs: 0 },
+    { user_id: 'u1', cohort_id: 'c2', completion_pct: '0.5', avg_quiz_pct: '0.75', reviewable_labs: 0 },
+    { user_id: 'u2', cohort_id: 'c2', completion_pct: '0.25', avg_quiz_pct: null, reviewable_labs: 1 },
   ];
 
   it('merges a dual-enrolled learner into one row carrying both cohort ids', () => {
@@ -244,7 +243,7 @@ describe('dedupLearnerRows (U5 multi-enrollment)', () => {
 
   it('is a no-op shape-wise for single-enrollment and unenrolled learners', () => {
     const single: EvidenceLearnerRow[] = [
-      { user_id: 'u9', cohort_id: null, completion_pct: null, avg_quiz_pct: null, glat_passed: false, reviewable_labs: 0 },
+      { user_id: 'u9', cohort_id: null, completion_pct: null, avg_quiz_pct: null, reviewable_labs: 0 },
     ];
     const out = dedupLearnerRows(single);
     expect(out).toHaveLength(1);
@@ -317,7 +316,7 @@ describe('fetchCohortEvidence', () => {
   it('queries the correct tables with correct columns', async () => {
     const learnerRow = {
       user_id: 'u1', cohort_id: 'c1',
-      completion_pct: '1', avg_quiz_pct: '1', glat_passed: true, reviewable_labs: 0,
+      completion_pct: '1', avg_quiz_pct: '1', reviewable_labs: 0,
     };
     const labRow = {
       id: 'sub1', user_id: 'u1', lab_id: '2.1', status: 'reviewed',
@@ -354,7 +353,7 @@ describe('fetchCohortEvidence', () => {
     // reviewers (champions/admins) return zero rows for a champion caller.
     const learnerRow = {
       user_id: 'u1', cohort_id: 'c1',
-      completion_pct: '1', avg_quiz_pct: '1', glat_passed: true, reviewable_labs: 0,
+      completion_pct: '1', avg_quiz_pct: '1', reviewable_labs: 0,
     };
     const labRow = {
       id: 'sub1', user_id: 'u1', lab_id: '2.1', status: 'reviewed',
@@ -386,8 +385,8 @@ describe('fetchCohortEvidence', () => {
 
   it('all-cohorts mode dedups a dual-enrolled learner (one row per learner × module)', async () => {
     const dualLearnerRows = [
-      { user_id: 'u1', cohort_id: 'c1', completion_pct: '1', avg_quiz_pct: null, glat_passed: false, reviewable_labs: 0 },
-      { user_id: 'u1', cohort_id: 'c2', completion_pct: '1', avg_quiz_pct: null, glat_passed: false, reviewable_labs: 0 },
+      { user_id: 'u1', cohort_id: 'c1', completion_pct: '1', avg_quiz_pct: null, reviewable_labs: 0 },
+      { user_id: 'u1', cohort_id: 'c2', completion_pct: '1', avg_quiz_pct: null, reviewable_labs: 0 },
     ];
     const moduleRow = {
       cell_id: '1.1', title: 'AI Foundations', stage: '1a',

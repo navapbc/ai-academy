@@ -27,7 +27,6 @@ export interface LearnerRosterEntry {
   email: string | null;
   completionPct: number | null; // 0..1
   avgQuizPct: number | null;    // 0..1
-  glatPassed: boolean;
   reviewableLabs: number;
 }
 
@@ -37,7 +36,6 @@ export interface LearnerSummaryRow {
   cohort_id: string | null;
   completion_pct: number | string | null;
   avg_quiz_pct: number | string | null;
-  glat_passed: boolean;
   reviewable_labs: number;
 }
 export interface ProfileNameRow {
@@ -47,7 +45,7 @@ export interface ProfileNameRow {
 }
 
 const LEARNER_SUMMARY_COLUMNS =
-  'user_id, cohort_id, completion_pct, avg_quiz_pct, glat_passed, reviewable_labs';
+  'user_id, cohort_id, completion_pct, avg_quiz_pct, reviewable_labs';
 
 /**
  * Pure: join summary rows to profile names, coerce numerics, sort by name.
@@ -71,7 +69,6 @@ export function buildLearnerRoster(
         email,
         completionPct: toNum(r.completion_pct),
         avgQuizPct: toNum(r.avg_quiz_pct),
-        glatPassed: r.glat_passed,
         reviewableLabs: r.reviewable_labs,
       };
     })
@@ -250,7 +247,11 @@ export async function fetchLearnerDetail(userId: string): Promise<LearnerDetailD
   const sb = getSupabaseClient();
 
   const [modulesRes, progressRes, quizRes, labRes] = await Promise.all([
-    sb.from('modules').select('cell_id, title, origin').eq('status', 'published').order('sort_order', { ascending: true }),
+    // `.is('archived_at', null)`: retired lessons stay published rows (they are
+    // archived, never hard-deleted) but no learner can complete them, so counting
+    // them capped the "Completion" card below 100% and disagreed with the Sidebar,
+    // whose curriculum fetch already filters archived (modules.ts).
+    sb.from('modules').select('cell_id, title, origin').eq('status', 'published').is('archived_at', null).order('sort_order', { ascending: true }),
     sb.from('module_progress').select('module_id, status').eq('user_id', userId),
     sb.from('quiz_attempts').select('module_id, score, max_score, passed').eq('user_id', userId),
     sb.from('lab_submissions').select('id, lab_id, status, created_at').eq('user_id', userId),

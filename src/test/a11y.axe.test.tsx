@@ -92,7 +92,7 @@ const USAGE_ROWS: UsageByUser[] = [
   { userId: 'u-2', name: 'Grace Hopper', callCount: 40, inputTokens: 900_000, outputTokens: 200_000, totalTokens: 1_100_000, overThreshold: true },
 ];
 const COHORTS: CohortSummary[] = [
-  { cohortId: 'c-a', cohortName: 'Alpha cohort', archived: false, learnerCount: 3, avgCompletionPct: 0.5, glatPassRate: 0, avgQuizPct: 0.7, reviewableTotal: 2 },
+  { cohortId: 'c-a', cohortName: 'Alpha cohort', archived: false, learnerCount: 3, avgCompletionPct: 0.5, avgQuizPct: 0.7, reviewableTotal: 2 },
 ];
 const DIST = new Map<string, ScoreDistribution>([['c-a', { lt60: 1, '60to79': 1, '80to100': 1 }]]);
 
@@ -286,8 +286,8 @@ const CASES: Case[] = [
     element: <HarmRubric config={harmRubricConfig} labId="1.12" />,
   },
   {
-    // GLAT exit exam (cell 2.14) — the highest-stakes objective gate. Sync render.
-    name: 'GlatExam (2.14 exit gate)',
+    // GLAT self-check (cell 2.14). Sync render.
+    name: 'GlatExam (2.14 self-check)',
     element: <GlatExam config={glatConfig} labId="2.14" onComplete={noop} />,
     // The exam card's first heading is an <h3> (page h1/h2 live in the shell).
     axeOptions: IGNORE_PAGE_HEADING_ORDER,
