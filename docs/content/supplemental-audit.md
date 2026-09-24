@@ -59,10 +59,15 @@ No matrix cell now contains stage-gating language.
   duplicated; the failure modes, tactics and worked example appear nowhere else. Also repaired
   seed/DB drift on 1.1 and 1.3 (unshipped plain-language edits) and dropped a mis-citation in
   1.1. All 28 matrix bodies now match the seed JSON byte for byte.
-- **1.6 Setup and access** — reclassified: *not* a merge candidate. It is the vendor-neutral
-  "why" to `c1-w0-claude-setup`'s Claude-specific "how", which is a defensible pair. Its real
-  defect is accuracy: the checklist tells learners to "turn on MFA and confirm it prompts you on
-  next login", which is moot under Nava's Google SSO. Small copy fix, still open.
+- ~~**1.6 Setup and access**~~ — **done 2026-09-24**, `20260924070000_fix_1_6_mfa_step.sql`.
+  Reclassified first: *not* a merge candidate. It is the vendor-neutral "why" to
+  `c1-w0-claude-setup`'s Claude-specific "how", which is a defensible pair. The real defect was
+  accuracy — the checklist said "Turn on MFA and confirm it actually prompts you on next login",
+  a setting that does not exist at Nava, where sign-in is Google SSO and multi-factor lives at
+  the identity provider (Week 0 never mentions MFA for that reason). Replaced across all four
+  places it appeared (three in the body, one quiz option) with the failure mode Week 0 actually
+  warns about: taking the wrong sign-in path and landing in a personal workspace that looks
+  identical to the org one.
 - **1.10 and the Digital Omnibus** — whether to reflect Article 4's rewrite (see above).
 - ~~**Staff `completion_pct`**~~ — **done 2026-09-24**,
   `20260924040000_training_only_completion_denominator.sql`. New
