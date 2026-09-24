@@ -62,6 +62,12 @@ No matrix cell now contains stage-gating language.
   is untouched — its RPC contract is asserted by `enrollmentVisibility.integration.test.ts`.
   Evidence-export **output** is unaffected: `evidenceExport.ts` selects `completion_pct` but
   never emits it.
-- **The "GLAT" stat card** — now that the check is explicitly a self-check, consider whether a
-  pass/fail card belongs on the *staff* learner-detail view and in the evidence export, or
-  whether it should be learner-facing only.
+- ~~**The "GLAT" stat card**~~ — **done 2026-09-24**, `20260924050000_drop_staff_glat_signal.sql`.
+  The GLAT is learner-facing only now. Removed the per-learner "GLAT" card from staff
+  LearnerDetail and the "GLAT pass rate" card from the Cohort Dashboard, and dropped
+  `glat_passed` / `glat_pass_rate` from `learner_progress_summary` / `cohort_progress_summary`
+  (DROP + recreate, since `create or replace view` cannot remove a column; `security_invoker` and
+  grants re-stated and verified). The learner keeps their own GLAT card — it is computed
+  client-side in `summarizeOwnProgress` from their own attempts, not from these views. The
+  instrument, its `passThreshold` and the `quiz_attempts` history are untouched, so the decision
+  is reversible.

@@ -22,7 +22,6 @@ export interface CohortSummary {
   archived: boolean;
   learnerCount: number;
   avgCompletionPct: number | null; // 0..1
-  glatPassRate: number | null;     // 0..1 — 0 until the GLAT (P4.10) ships
   avgQuizPct: number | null;       // 0..1
   reviewableTotal: number;         // integer count
 }
@@ -33,7 +32,6 @@ export interface CohortSummaryRow {
   cohort_id: string | null;
   learner_count: number;
   avg_completion_pct: number | string | null;
-  glat_pass_rate: number | string | null;
   avg_quiz_pct: number | string | null;
   reviewable_total: number;
 }
@@ -73,7 +71,6 @@ export function buildCohortSummaries(
       archived: (nameRowById.get(r.cohort_id)?.archived_at ?? null) !== null,
       learnerCount: r.learner_count,
       avgCompletionPct: toNum(r.avg_completion_pct),
-      glatPassRate: toNum(r.glat_pass_rate),
       avgQuizPct: toNum(r.avg_quiz_pct),
       reviewableTotal: r.reviewable_total,
     }))
@@ -101,7 +98,7 @@ export async function fetchCohortSummaries(): Promise<CohortSummary[]> {
   const sb = getSupabaseClient();
   const { data: rows, error } = await sb
     .from('cohort_progress_summary')
-    .select('cohort_id, learner_count, avg_completion_pct, glat_pass_rate, avg_quiz_pct, reviewable_total');
+    .select('cohort_id, learner_count, avg_completion_pct, avg_quiz_pct, reviewable_total');
   if (error) throw error;
 
   const summaryRows = (rows ?? []) as CohortSummaryRow[];

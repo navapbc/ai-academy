@@ -133,7 +133,6 @@ function CohortBlock({
       </header>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <SummaryCard label="Avg completion" value={formatPct(summary.avgCompletionPct)} />
-        <SummaryCard label="GLAT pass rate" value={formatPct(summary.glatPassRate)} />
         <SummaryCard label="Avg quiz score" value={formatPct(summary.avgQuizPct)} />
         <SummaryCard label="Labs awaiting review" value={String(summary.reviewableTotal)} />
       </div>

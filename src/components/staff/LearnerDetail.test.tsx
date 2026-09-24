@@ -15,7 +15,6 @@ const LEARNER: LearnerRosterEntry = {
   email: 'ada@navapbc.com',
   completionPct: 0.5,
   avgQuizPct: 0.82,
-  glatPassed: true,
   reviewableLabs: 1,
 };
 
@@ -37,7 +36,9 @@ describe('LearnerDetail', () => {
     render(<LearnerDetail learner={LEARNER} onBack={() => {}} />);
 
     expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument();
-    expect(screen.getByText('Passed')).toBeInTheDocument(); // GLAT card
+    // The GLAT pass/fail card was removed from the staff view (20260924050000):
+    // the GLAT is a learner self-check, not a staff-facing credential.
+    expect(screen.queryByText('GLAT')).not.toBeInTheDocument();
 
     expect(await screen.findByText('Prompting')).toBeInTheDocument();
     // Section headings (U13): grouped by curriculum section, not stage.

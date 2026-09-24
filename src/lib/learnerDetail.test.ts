@@ -23,7 +23,6 @@ describe('buildLearnerRoster', () => {
       cohort_id: 'c-a',
       completion_pct: '0.5',
       avg_quiz_pct: '0.82',
-      glat_passed: true,
       reviewable_labs: 1,
     },
     {
@@ -31,7 +30,6 @@ describe('buildLearnerRoster', () => {
       cohort_id: 'c-a',
       completion_pct: null,
       avg_quiz_pct: null,
-      glat_passed: false,
       reviewable_labs: 0,
     },
   ];
@@ -44,7 +42,7 @@ describe('buildLearnerRoster', () => {
     const out = buildLearnerRoster(rows, names);
 
     expect(out.map((l) => l.name)).toEqual(['Ada Lovelace', 'Zoe Park']);
-    expect(out[0]).toMatchObject({ userId: 'u-1', completionPct: null, glatPassed: false });
+    expect(out[0]).toMatchObject({ userId: 'u-1', completionPct: null });
     expect(out[1]).toMatchObject({ userId: 'u-2', completionPct: 0.5, avgQuizPct: 0.82 });
   });
 

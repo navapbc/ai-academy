@@ -33,7 +33,6 @@ const cohort = (id: string): CohortSummary => ({
   archived: false,
   learnerCount: 1,
   avgCompletionPct: 0.5,
-  glatPassRate: 0,
   avgQuizPct: 0.7,
   reviewableTotal: 0,
 });

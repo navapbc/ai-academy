@@ -153,9 +153,11 @@ export default function GlatExam({
   return (
     <div className="bg-white border-2 border-nava-plum/20 rounded-3xl p-8 shadow-sm space-y-10" id="glat-exam">
       <header className="space-y-1">
-        <h3 className="text-xl font-bold text-gray-900">GLAT — objective gate</h3>
+        <h3 className="text-xl font-bold text-gray-900">GLAT — objective self-check</h3>
         <p className="text-sm text-gray-600">
-          {/* U13: learner copy speaks curriculum, not matrix stages (GLAT itself stays pending D12). */}
+          {/* U13: learner copy speaks curriculum, not matrix stages. Self-check, not a
+              gate — it records an attempt and completes the module, and nothing
+              downstream depends on passing (20260924030000/20260924050000). */}
           A {config.sectionBC.length}-question objective check across the AI-literacy curriculum. Score{' '}
           {Math.round(config.passThreshold * 100)}% or higher to pass. The first few questions are a
           quick self-check and aren&apos;t scored.

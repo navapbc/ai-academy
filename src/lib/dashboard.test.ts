@@ -19,7 +19,6 @@ describe('buildCohortSummaries', () => {
         cohort_id: 'c-b',
         learner_count: 4,
         avg_completion_pct: '0.5',
-        glat_pass_rate: '0',
         avg_quiz_pct: '0.82',
         reviewable_total: 2,
       },
@@ -27,7 +26,6 @@ describe('buildCohortSummaries', () => {
         cohort_id: 'c-a',
         learner_count: 3,
         avg_completion_pct: '0.333333',
-        glat_pass_rate: null,
         avg_quiz_pct: null,
         reviewable_total: 0,
       },
@@ -35,7 +33,6 @@ describe('buildCohortSummaries', () => {
         cohort_id: null,
         learner_count: 9,
         avg_completion_pct: '0.1',
-        glat_pass_rate: '0',
         avg_quiz_pct: '0.1',
         reviewable_total: 5,
       },
@@ -50,19 +47,17 @@ describe('buildCohortSummaries', () => {
       archived: false,
       learnerCount: 3,
       avgCompletionPct: 0.333333,
-      glatPassRate: null,
       avgQuizPct: null,
       reviewableTotal: 0,
     });
     expect(result[1].avgCompletionPct).toBe(0.5);
-    expect(result[1].glatPassRate).toBe(0);
     // U5: an archived cohort stays in the rollup, flagged read-only.
     expect(result[1].archived).toBe(true);
   });
 
   test('falls back to a placeholder name when a cohort id has no name row', () => {
     const rows: CohortSummaryRow[] = [
-      { cohort_id: 'c-x', learner_count: 1, avg_completion_pct: '0', glat_pass_rate: '0', avg_quiz_pct: null, reviewable_total: 0 },
+      { cohort_id: 'c-x', learner_count: 1, avg_completion_pct: '0', avg_quiz_pct: null, reviewable_total: 0 },
     ];
     const summary = buildCohortSummaries(rows, []).at(0);
     expect(summary?.cohortName).toBe('Unnamed cohort');

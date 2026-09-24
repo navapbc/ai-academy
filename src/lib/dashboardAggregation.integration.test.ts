@@ -13,7 +13,7 @@ import { isSupabaseConfigured } from './supabaseClient';
 //   • an admin sees all cohorts in the rollups;
 //   • a plain learner sees only their own row (no leak through the aggregates);
 //   • the new enrollments policy: champion reads in-cohort, not cross-cohort; admin all;
-//   • correctness: completion_pct and glat_pass_rate compute on known seeded data.
+//   • correctness: completion_pct and avg_quiz_pct compute on known seeded data.
 // Setup uses the service_role path (the W2-2 trigger permits service_role role
 // changes), mirroring championAdminRls.integration.test.ts.
 
@@ -79,7 +79,8 @@ async function makeCohortWith(
 
 // Seed a known, fully-controlled activity fixture for `uid` via service_role.
 //  - one completed module on a published cell ('1.4') and one quiz attempt on it
-//  - `glatPass`: optionally a passing GLAT (2.14) attempt
+//  - `glatPass`: optionally a passing GLAT (2.14) attempt. The views no longer
+//    expose a GLAT column (20260924050000), but the attempt still feeds avg_quiz_pct.
 //  - one reviewable lab submission
 async function seedKnownActivity(
   svc: SupabaseClient,
@@ -143,7 +144,7 @@ describe.skipIf(!RUN)('P5.2a aggregation views inherit the P5.1c boundary', () =
     // learner_progress_summary: champA sees learnerA, not learnerB.
     const lps = await champA.client
       .from('learner_progress_summary')
-      .select('user_id, cohort_id, glat_passed');
+      .select('user_id, cohort_id');
     expect(lps.error).toBeNull();
     const ids = (lps.data ?? []).map((r) => r.user_id);
     expect(ids).toContain(learnerA.uid);
@@ -220,7 +221,7 @@ describe.skipIf(!RUN)('P5.2a aggregation views inherit the P5.1c boundary', () =
     expect(eB.data?.length).toBe(0);
   });
 
-  test('correctness: completion_pct counts course lessons only, and glat_pass_rate computes on known data', async () => {
+  test('correctness: completion_pct counts course lessons only, and avg_quiz_pct computes on known data', async () => {
     const svc = serviceClient();
     const learner = await newUser('p52a-calc-learner');
     const admin = await newUser('p52a-calc-admin');
@@ -256,7 +257,7 @@ describe.skipIf(!RUN)('P5.2a aggregation views inherit the P5.1c boundary', () =
     const totalBefore = await countTraining();
     const lps = await admin.client
       .from('learner_progress_summary')
-      .select('user_id, modules_completed, modules_total, completion_pct, glat_passed, reviewable_labs')
+      .select('user_id, modules_completed, modules_total, completion_pct, reviewable_labs')
       .eq('user_id', learner.uid)
       // .single() is safe because enrollments.unique(user_id) => one row per learner.
       .single();
@@ -275,17 +276,18 @@ describe.skipIf(!RUN)('P5.2a aggregation views inherit the P5.1c boundary', () =
     // numbers come from the same row, so they share one snapshot and this stays
     // an exact check on the arithmetic no matter what a parallel file inserts.
     expect(Number(lps.data!.completion_pct)).toBeCloseTo(1 / modulesTotal, 6);
-    expect(lps.data!.glat_passed).toBe(true);
     expect(lps.data!.reviewable_labs).toBe(1);
 
-    // glat_pass_rate for this single-learner cohort = 1.0.
+    // glat_pass_rate was dropped in 20260924050000 — the GLAT is a learner
+    // self-check, not a staff-facing credential. The rollup still aggregates the
+    // learner rows, so assert that it does.
     const cps = await admin.client
       .from('cohort_progress_summary')
-      .select('glat_pass_rate, learner_count')
+      .select('learner_count, avg_quiz_pct')
       .eq('cohort_id', cohort)
       .single();
     expect(cps.error).toBeNull();
     expect(cps.data!.learner_count).toBe(1);
-    expect(Number(cps.data!.glat_pass_rate)).toBeCloseTo(1.0, 6);
+    expect(Number(cps.data!.avg_quiz_pct)).toBeCloseTo(0.9, 6);
   });
 });

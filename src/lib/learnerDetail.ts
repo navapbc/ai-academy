@@ -27,7 +27,6 @@ export interface LearnerRosterEntry {
   email: string | null;
   completionPct: number | null; // 0..1
   avgQuizPct: number | null;    // 0..1
-  glatPassed: boolean;
   reviewableLabs: number;
 }
 
@@ -37,7 +36,6 @@ export interface LearnerSummaryRow {
   cohort_id: string | null;
   completion_pct: number | string | null;
   avg_quiz_pct: number | string | null;
-  glat_passed: boolean;
   reviewable_labs: number;
 }
 export interface ProfileNameRow {
@@ -47,7 +45,7 @@ export interface ProfileNameRow {
 }
 
 const LEARNER_SUMMARY_COLUMNS =
-  'user_id, cohort_id, completion_pct, avg_quiz_pct, glat_passed, reviewable_labs';
+  'user_id, cohort_id, completion_pct, avg_quiz_pct, reviewable_labs';
 
 /**
  * Pure: join summary rows to profile names, coerce numerics, sort by name.
@@ -71,7 +69,6 @@ export function buildLearnerRoster(
         email,
         completionPct: toNum(r.completion_pct),
         avgQuizPct: toNum(r.avg_quiz_pct),
-        glatPassed: r.glat_passed,
         reviewableLabs: r.reviewable_labs,
       };
     })

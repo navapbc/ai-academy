@@ -270,26 +270,43 @@ describe.skipIf(!RUN)('enrollment-based modules visibility (U4)', () => {
     // The actual published count, read via service_role (RLS-free). Archived
     // rows are excluded: archive is the soft-delete axis, so a retired lesson
     // must not sit in every learner's completion denominator forever (W1.3).
-    const { count: actual, error: cntErr } = await svc
-      .from('modules')
-      .select('cell_id', { count: 'exact', head: true })
-      .eq('status', 'published')
-      .is('archived_at', null);
-    expect(cntErr).toBeNull();
+    //
+    // Bracket the RPC reads with a count on either side, for the same reason
+    // dashboardAggregation.integration.test.ts does: this is a GLOBAL count over
+    // public.modules that this fixture does not own. Other integration files
+    // insert published module rows into the same database and never clean them
+    // up, and vitest runs test FILES in parallel, so the count moves WHILE this
+    // test runs. Comparing a single independently-timed count read to the RPC is
+    // a race, and it surfaced as an off-by-one (`expected 130 to be 131`).
+    const countPublished = async () => {
+      const { count, error } = await svc
+        .from('modules')
+        .select('cell_id', { count: 'exact', head: true })
+        .eq('status', 'published')
+        .is('archived_at', null);
+      expect(error).toBeNull();
+      return count as number;
+    };
 
+    const before = await countPublished();
     const champTotal = await champ.client.rpc('published_modules_total');
     expect(champTotal.error).toBeNull();
     const adminTotal = await admin.client.rpc('published_modules_total');
     expect(adminTotal.error).toBeNull();
-    expect(champTotal.data).toBe(adminTotal.data);
-    expect(champTotal.data).toBe(actual);
-
     // The sharpest definer proof: an unenrolled LEARNER — who cannot read the
     // program row at all — still gets the same total (the count includes rows
     // the caller's RLS hides).
     const learnerTotal = await learner.client.rpc('published_modules_total');
     expect(learnerTotal.error).toBeNull();
-    expect(learnerTotal.data).toBe(actual);
+    const after = await countPublished();
+
+    // Viewer-independence is an EXACT check — all three reads share whatever
+    // snapshot the window saw, so a concurrent insert cannot explain a mismatch.
+    expect(champTotal.data).toBe(adminTotal.data);
+    expect(learnerTotal.data).toBe(adminTotal.data);
+    // The value itself only has to land inside the window we actually observed.
+    expect(champTotal.data).toBeGreaterThanOrEqual(Math.min(before, after));
+    expect(champTotal.data).toBeLessThanOrEqual(Math.max(before, after));
   });
 
   test('learner_progress_summary returns consistent totals for admin vs unenrolled champion', async () => {
