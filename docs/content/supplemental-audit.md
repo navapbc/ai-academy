@@ -48,7 +48,7 @@ is unchanged** — sectionA (5) / sectionBC (35) items and `passThreshold` 0.8 a
 `glat_passed` keeps its meaning on the learner dashboard, staff learner detail and evidence export.
 No matrix cell now contains stage-gating language.
 
-**Still open:**
+**Still open:** nothing blocking — every item below has landed.
 
 - ~~**Merge candidates 1.1 and 2.5**~~ — **done 2026-09-24**,
   `20260924060000_dedupe_llm_mechanics.sql`. The token/context-window explanation now has one
@@ -68,7 +68,15 @@ No matrix cell now contains stage-gating language.
   places it appeared (three in the body, one quiz option) with the failure mode Week 0 actually
   warns about: taking the wrong sign-in path and landing in a personal workspace that looks
   identical to the org one.
-- **1.10 and the Digital Omnibus** — whether to reflect Article 4's rewrite (see above).
+- ~~**1.10 and the Digital Omnibus**~~ — **done 2026-09-24**,
+  `20260924080000_reflect_article4_digital_omnibus.sql`. 1.10 now records that Article 4 was
+  rewritten by Regulation (EU) 2026/1744 (in force 27 July 2026): the provider/deployer duty is
+  framed as taking measures to *support* the development of AI literacy — effort rather than
+  result — and new paragraphs put a support duty on the Commission and Member States. The copy
+  describes the *direction* of the change and does not quote the amended paragraph 1's operative
+  wording, because artificialintelligenceact.eu renders the original and the amendment together
+  and the surviving phrasing could not be pinned down to the standard this particular lesson
+  demands. Anyone tightening it should read the consolidated Article 4 in EUR-Lex.
 - ~~**Staff `completion_pct`**~~ — **done 2026-09-24**,
   `20260924040000_training_only_completion_denominator.sql`. New
   `training_modules_total()` (course-origin, published, not archived) replaces
