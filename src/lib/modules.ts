@@ -200,6 +200,28 @@ export interface CourseStructure {
 }
 
 /**
+ * Whether a module counts toward the "Your Training" completion headline.
+ *
+ * Only course-origin lessons — the champion-led cohort program — are training.
+ * "Supplemental coursework" (matrix) and "Resources & additional lessons"
+ * (custom) are explicitly extra: optional practice must never move the
+ * completion number, in either direction.
+ *
+ * This is an ALLOW-LIST on purpose. An earlier pair of hand-synced
+ * `origin !== 'matrix'` filters excluded supplemental but silently counted
+ * resources, so a learner reading a resource lesson moved their training
+ * percentage. Any origin added later is "extra" until it is named here.
+ *
+ * Single source of truth for App.tsx's headline, the Sidebar's own count,
+ * `summarizeOwnProgress`'s course tier and LearnerDashboard's own split — they
+ * must never disagree. Takes a widened `origin` because the learner-detail rows
+ * carry it as a plain string.
+ */
+export function isTrainingModule(m: { origin: ModuleOrigin | string }): boolean {
+  return m.origin === 'course';
+}
+
+/**
  * Groups learner-visible modules (already ordered by sort_order and filtered by
  * the per-origin status rule) into the U2 section order:
  *

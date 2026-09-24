@@ -133,11 +133,15 @@ describe.skipIf(!RUN)('Curriculum provenance (DATA-01 / D-24)', () => {
   // that is actually intended now (audit W2-5): a Stage-1b cell's provenance is
   // DETERMINISTIC from the migration chain —
   //   • cells with no later lab-config seed stay reconciled: published / v1;
-  //   • cells whose interactive config landed after the reconcile carry the
-  //     not-yet-SME-reviewed marker: in_review / v2 with a non-null config
-  //     (1.2 via 20260603010000; 1.12 via 20260602240000, restored by
-  //     20260609000000 after the reconcile clobbered it — audit D-24).
-  test('Stage-1b provenance is deterministic: reconciled cells published/v1, lab-config cells in_review/v2', async () => {
+  //   • cells whose interactive config landed after the reconcile carry v2 with
+  //     a non-null config (1.2 via 20260603010000; 1.12 via 20260602240000,
+  //     restored by 20260609000000 after the reconcile clobbered it — audit D-24).
+  //
+  // Those v2 cells used to also carry status='in_review', the not-yet-SME-reviewed
+  // marker. 20260924000000_publish_supplemental_matrix_cells.sql signs off every
+  // matrix cell, so status is now uniformly 'published' and `version` + a non-null
+  // lab_config_json are what still distinguish the two provenance groups.
+  test('Stage-1b provenance is deterministic: reconciled cells published/v1, lab-config cells published/v2', async () => {
     const client = freshClient();
     await client.auth.signUp({ email: uniqueEmail('prov', 'navapbc.com'), password: PASSWORD });
 
@@ -156,13 +160,13 @@ describe.skipIf(!RUN)('Curriculum provenance (DATA-01 / D-24)', () => {
         expect(row.version, `cell ${row.cell_id}`).toBe(1);
       } else {
         expect(labSeeded).toContain(row.cell_id);
-        expect(row.status, `cell ${row.cell_id}`).toBe('in_review');
+        expect(row.status, `cell ${row.cell_id}`).toBe('published');
         expect(row.version, `cell ${row.cell_id}`).toBe(2);
         expect(row.lab_config_json, `cell ${row.cell_id}`).not.toBeNull();
       }
     }
-    // (1.3 and 1.13 are legitimately 'in_review' per their own latest migrations —
-    // a deliberate authoring state — so they are intentionally left untouched.)
+    // (All 18 matrix cells that were still 'in_review' — including 1.3 and 1.13 —
+    // were signed off by 20260924000000, so no matrix cell carries the badge.)
   });
 });
 

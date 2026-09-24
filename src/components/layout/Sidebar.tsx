@@ -4,7 +4,7 @@ import { CurriculumSection, Module, UserProgress, View } from '../../types';
 import { useEffect, useMemo, useState } from 'react';
 
 import { BRANDING } from '../../branding';
-import { isModuleLive } from '../../lib/modules';
+import { isModuleLive, isTrainingModule } from '../../lib/modules';
 
 // Course-tree navigation (cohort-restructure U2): Course 1's weeks, then
 // "Supplemental coursework", then "Resources & additional lessons" — every
@@ -35,20 +35,18 @@ function sectionIdOf(sections: CurriculumSection[], moduleId: string): string | 
 
 export default function Sidebar({ isOpen, onClose, sections, progress, onModuleSelect, overallProgress, onOpenSupport, activeView, onViewChange, isStaff }: SidebarProps) {
   const completed = new Set(progress.completedModuleIds);
-  // The "Your Training" headline excludes 'matrix'-origin modules (the ungated
-  // "Supplemental coursework" section) — optional practice, not part of the
-  // gated program, so it must not move the overall completion number. Mirrors
-  // the same exclusion in the My Progress dashboard (summarizeOwnProgress).
-  // Per-section counts below (sectionCompleted/section.modules.length) are
-  // unaffected — those are section-scoped, not "overall".
+  // The "Your Training" headline counts course-origin lessons only: both
+  // "Supplemental coursework" (matrix) and "Resources & additional lessons"
+  // (custom) are extra and must not move it. Shared predicate so this can't
+  // drift from App.tsx's overallProgress or summarizeOwnProgress.
   const totalModules = sections.reduce(
-    (n, s) => n + s.modules.filter(m => m.origin !== 'matrix').length,
+    (n, s) => n + s.modules.filter(isTrainingModule).length,
     0,
   );
   // Count only completed ids that are still in the visible, completion-eligible
   // curriculum, so the headline count can't exceed the total (U2 denominator rule).
   const completedCount = sections.reduce(
-    (n, s) => n + s.modules.filter(m => completed.has(m.id) && m.origin !== 'matrix').length,
+    (n, s) => n + s.modules.filter(m => completed.has(m.id) && isTrainingModule(m)).length,
     0,
   );
   // "Soon" badge tracks which cells are still stubs — derived from the fetched

@@ -172,19 +172,29 @@ describe('Sidebar course tree (U2)', () => {
     renderSidebar({
       progress: { completedModuleIds: ['c1-w1-a', 'ghost-id', 'another-ghost'], currentModuleId: 'c1-w1-a' },
     });
-    // 3 completion-eligible modules across the fixtures (2 course + 1 custom;
-    // supplemental is excluded — see the test below); only c1-w1-a counts.
-    expect(screen.getByText('1 of 3 complete')).toBeInTheDocument();
+    // 2 completion-eligible modules across the fixtures (the course lessons
+    // only); the ghost ids aren't in the visible set, so only c1-w1-a counts.
+    expect(screen.getByText('1 of 2 complete')).toBeInTheDocument();
   });
 
   test('supplemental (matrix) modules never count toward the "Your Training" headline', () => {
     renderSidebar({
       // '1.3' is supplemental and completed, but must not move either the
       // numerator or the denominator — it's optional practice, not part of
-      // the gated program. Mirrors the My Progress dashboard's exclusion.
+      // the program. Mirrors the My Progress dashboard's exclusion.
       progress: { completedModuleIds: ['1.3'], currentModuleId: '1.3' },
     });
-    expect(screen.getByText('0 of 3 complete')).toBeInTheDocument();
+    expect(screen.getByText('0 of 2 complete')).toBeInTheDocument();
+  });
+
+  test('resources (custom) modules never count toward the "Your Training" headline', () => {
+    renderSidebar({
+      // 'custom-extra' lives in "Resources & additional lessons". Resources are
+      // extra in exactly the same way supplemental coursework is, so completing
+      // one must leave the headline at 0 of 2 rather than reading 1 of 3.
+      progress: { completedModuleIds: ['custom-extra'], currentModuleId: 'custom-extra' },
+    });
+    expect(screen.getByText('0 of 2 complete')).toBeInTheDocument();
   });
 });
 

@@ -15,6 +15,7 @@ import ModuleRenderer from './components/ModuleRenderer';
 import Playground from './components/Playground';
 import RoleGuard from './components/RoleGuard';
 import Sidebar from './components/layout/Sidebar';
+import { isTrainingModule } from './lib/modules';
 import StaffArea from './components/StaffArea';
 import SupportModal from './components/SupportModal';
 import { useAuth } from './lib/auth';
@@ -249,19 +250,20 @@ function Academy({ sections, userId, onSignOut }: { sections: CurriculumSection[
   // Progress denominators (restructure U2): numerator = completions ∩ the
   // VISIBLE module set, denominator = visible modules — a learner with stored
   // completions for ids no longer visible to them must never exceed 100%.
-  // 'matrix'-origin modules (the ungated "Supplemental coursework" section) are
-  // excluded from both — optional practice must not move the overall completion
-  // number, matching the same exclusion in the My Progress dashboard
-  // (summarizeOwnProgress) and the Sidebar's own headline count.
+  // Only course-origin lessons count: both "Supplemental coursework" (matrix)
+  // and "Resources & additional lessons" (custom) are extra, and optional
+  // practice must not move the overall completion number. `isTrainingModule`
+  // is the shared predicate, so this, the Sidebar's own headline count and the
+  // My Progress dashboard (summarizeOwnProgress) can never drift apart.
   const completionEligibleCount = useMemo(
-    () => allModules.filter((m) => m.origin !== 'matrix').length,
+    () => allModules.filter(isTrainingModule).length,
     [allModules],
   );
   const completedVisibleCount = useMemo(
     () =>
       progress.completedModuleIds.filter((id) => {
         const m = moduleById.get(id);
-        return !!m && m.origin !== 'matrix';
+        return !!m && isTrainingModule(m);
       }).length,
     [progress.completedModuleIds, moduleById],
   );

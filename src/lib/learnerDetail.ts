@@ -250,7 +250,11 @@ export async function fetchLearnerDetail(userId: string): Promise<LearnerDetailD
   const sb = getSupabaseClient();
 
   const [modulesRes, progressRes, quizRes, labRes] = await Promise.all([
-    sb.from('modules').select('cell_id, title, origin').eq('status', 'published').order('sort_order', { ascending: true }),
+    // `.is('archived_at', null)`: retired lessons stay published rows (they are
+    // archived, never hard-deleted) but no learner can complete them, so counting
+    // them capped the "Completion" card below 100% and disagreed with the Sidebar,
+    // whose curriculum fetch already filters archived (modules.ts).
+    sb.from('modules').select('cell_id, title, origin').eq('status', 'published').is('archived_at', null).order('sort_order', { ascending: true }),
     sb.from('module_progress').select('module_id, status').eq('user_id', userId),
     sb.from('quiz_attempts').select('module_id, score, max_score, passed').eq('user_id', userId),
     sb.from('lab_submissions').select('id, lab_id, status, created_at').eq('user_id', userId),
