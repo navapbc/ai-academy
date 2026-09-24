@@ -336,8 +336,12 @@ describe.skipIf(!RUN)('enrollment-based modules visibility (U4)', () => {
     expect(Number(champRow.data!.completion_pct)).toBeCloseTo(Number(adminRow.data!.completion_pct), 10);
 
     // And the denominator IS the definer count — viewer-independent by
-    // construction, not by coincidence of both viewers being staff.
-    const rpcTotal = await admin.client.rpc('published_modules_total');
+    // construction, not by coincidence of both viewers being staff. Since
+    // 20260924040000 the view divides by training_modules_total() (course-origin
+    // only), not published_modules_total(); supplemental coursework and resources
+    // are not required for course completion. published_modules_total() itself is
+    // unchanged and still asserted above.
+    const rpcTotal = await admin.client.rpc('training_modules_total');
     expect(rpcTotal.error).toBeNull();
     expect(champRow.data!.modules_total).toBe(rpcTotal.data);
   });

@@ -53,10 +53,15 @@ No matrix cell now contains stage-gating language.
 - **Merge candidates 1.1, 1.6, 2.5** — real redundancy with Week 0/Week 1 and the
   `custom-how-claude-works-tokens` resource, but which copy survives is an L&D editorial call.
 - **1.10 and the Digital Omnibus** — whether to reflect Article 4's rewrite (see above).
-- **Staff `completion_pct`** — `learner_progress_summary` still divides by all 46 published
-  modules while the learner-facing headline counts 13 course lessons. Given the decision that
-  supplemental work is not required for course completion, aligning the staff denominator is now
-  the most defensible option; it needs a migration and would change the evidence export.
+- ~~**Staff `completion_pct`**~~ — **done 2026-09-24**,
+  `20260924040000_training_only_completion_denominator.sql`. New
+  `training_modules_total()` (course-origin, published, not archived) replaces
+  `published_modules_total()` in `learner_progress_summary`, and the numerator is scoped to
+  match so supplemental completions can't push a learner past 100%. Staff denominator 46 → 13.
+  `cohort_progress_summary` / `cohort_score_distribution` inherit it. `published_modules_total()`
+  is untouched — its RPC contract is asserted by `enrollmentVisibility.integration.test.ts`.
+  Evidence-export **output** is unaffected: `evidenceExport.ts` selects `completion_pct` but
+  never emits it.
 - **The "GLAT" stat card** — now that the check is explicitly a self-check, consider whether a
   pass/fail card belongs on the *staff* learner-detail view and in the evidence export, or
   whether it should be learner-facing only.
